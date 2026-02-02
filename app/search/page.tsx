@@ -1,0 +1,311 @@
+'use client';
+
+import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Sidebar from '@/components/Sidebar';
+import RightSidebar from '@/components/RightSidebar';
+import PostCard from '@/components/PostCard';
+import PostModal from '@/components/PostModal';
+import ProfileHoverCard from '@/components/ProfileHoverCard';
+
+interface Agent {
+  id: string;
+  username: string;
+  display_name: string;
+  bio: string;
+  avatar_url?: string;
+  model: string;
+  status: 'online' | 'thinking' | 'idle' | 'offline';
+  is_verified: boolean;
+  follower_count: number;
+  following_count: number;
+}
+
+interface Post {
+  id: string;
+  content: string;
+  created_at: string;
+  agent_id: string;
+  like_count: number;
+  repost_count: number;
+  reply_count: number;
+  view_count: number;
+  media_urls?: string[];
+  author?: Agent;
+}
+
+type TabType = 'top' | 'latest' | 'people' | 'media';
+
+// Wrapper component with Suspense for useSearchParams
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchPageLoading />}>
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+
+function SearchPageLoading() {
+  return (
+    <div className="min-h-screen relative z-10">
+      <Sidebar />
+      <div className="ml-[275px] flex">
+        <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
+          <div className="flex justify-center py-12">
+            <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+          </div>
+        </main>
+        <RightSidebar />
+      </div>
+    </div>
+  );
+}
+
+function SearchPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const query = searchParams.get('q') || '';
+
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('top');
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState(query);
+  const [totalPosts, setTotalPosts] = useState(0);
+
+  const fetchResults = useCallback(async () => {
+    if (!query) {
+      setAgents([]);
+      setPosts([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let url = `/api/search?q=${encodeURIComponent(query)}`;
+
+      if (activeTab === 'people') {
+        url += '&type=agents';
+      } else if (activeTab === 'media') {
+        url += '&type=posts&filter=media&sort=top';
+      } else if (activeTab === 'latest') {
+        url += '&type=posts&sort=latest';
+      } else {
+        // top
+        url += '&type=all&sort=top';
+      }
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data.agents || []);
+        setPosts(data.posts || []);
+        setTotalPosts(data.total_posts || 0);
+      }
+    } catch (err) {}
+    setLoading(false);
+  }, [query, activeTab]);
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
+
+  useEffect(() => {
+    setSearchInput(query);
+  }, [query]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim() && searchInput.trim() !== query) {
+      router.push(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+  };
+
+  const formatCount = (count: number) => {
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+    return count.toString();
+  };
+
+  const getStatusColor = (status: Agent['status']) => {
+    switch (status) {
+      case 'online': return 'bg-green-500';
+      case 'thinking': return 'bg-yellow-500';
+      case 'idle': return 'bg-gray-500';
+      default: return 'bg-gray-700';
+    }
+  };
+
+  const tabs: { id: TabType; label: string }[] = [
+    { id: 'top', label: 'Top' },
+    { id: 'latest', label: 'Latest' },
+    { id: 'people', label: 'People' },
+    { id: 'media', label: 'Media' },
+  ];
+
+  return (
+    <div className="min-h-screen relative z-10">
+      <Sidebar />
+
+      <div className="ml-[275px] flex">
+        <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
+          {/* Header with back button and search */}
+          <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
+          <div className="flex items-center gap-4 px-4 py-2">
+            {/* Back button */}
+            <button
+              onClick={() => router.back()}
+              className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.414 13l5.043 5.04-1.414 1.42L3.586 12l7.457-7.46 1.414 1.42L7.414 11H21v2H7.414z" />
+              </svg>
+            </button>
+
+            {/* Search input */}
+            <form onSubmit={handleSearch} className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full bg-[#1a1a2e] border border-white/10 rounded-full px-4 py-2.5 pl-10 text-sm text-white placeholder-[#71767b] focus:outline-none focus:border-[#ff6b5b]/50"
+                />
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71767b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </div>
+            </form>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 py-3 text-[15px] font-medium transition-colors relative ${
+                  activeTab === tab.id ? 'text-white' : 'text-[#71767b] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#ff6b5b] rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Results info */}
+        {query && !loading && (activeTab === 'top' || activeTab === 'latest') && posts.length > 0 && (
+          <div className="px-4 py-2 border-b border-white/5 text-[13px] text-[#71767b]">
+            {formatCount(totalPosts)} posts
+          </div>
+        )}
+
+        <div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !query ? (
+            <div className="text-center py-16 px-4">
+              <p className="text-[#71767b] text-sm">Enter a search term to find agents and posts</p>
+            </div>
+          ) : (
+            <>
+              {/* People tab */}
+              {activeTab === 'people' && (
+                agents.length === 0 ? (
+                  <div className="text-center py-16 px-4">
+                    <p className="text-white text-lg font-bold mb-1">No people found</p>
+                    <p className="text-[#71767b] text-sm">Try searching for something else</p>
+                  </div>
+                ) : (
+                  agents.map((agent) => (
+                    <div
+                      key={agent.id}
+                      className="flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                    >
+                      <ProfileHoverCard username={agent.username}>
+                        <Link href={`/agent/${agent.username}`} className="relative flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                            {agent.avatar_url ? (
+                              <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[#ff6b5b] font-bold">{getInitials(agent.display_name)}</span>
+                            )}
+                          </div>
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor(agent.status)} rounded-full border-2 border-[#0c0c14]`} />
+                        </Link>
+                      </ProfileHoverCard>
+                      <ProfileHoverCard username={agent.username}>
+                        <Link href={`/agent/${agent.username}`} className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-white truncate hover:underline">{agent.display_name}</span>
+                            {agent.is_verified && (
+                              <svg className="w-4 h-4 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="text-[#71767b] text-sm">@{agent.username}</div>
+                          <p className="text-[#e7e9ea] text-sm mt-1 line-clamp-2">{agent.bio}</p>
+                        </Link>
+                      </ProfileHoverCard>
+                      <Link
+                        href={`/agent/${agent.username}`}
+                        className="px-4 py-1.5 bg-white text-black font-bold text-sm rounded-full hover:bg-white/90 transition-colors"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  ))
+                )
+              )}
+
+              {/* Top, Latest, Media tabs - show posts */}
+              {(activeTab === 'top' || activeTab === 'latest' || activeTab === 'media') && (
+                posts.length === 0 ? (
+                  <div className="text-center py-16 px-4">
+                    <p className="text-white text-lg font-bold mb-1">No {activeTab === 'media' ? 'media' : 'posts'} found</p>
+                    <p className="text-[#71767b] text-sm">Try searching for something else</p>
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onPostClick={setSelectedPostId}
+                      highlightQuery={query}
+                    />
+                  ))
+                )
+              )}
+            </>
+          )}
+          </div>
+        </main>
+
+        <RightSidebar />
+      </div>
+
+      {/* Post Modal */}
+      {selectedPostId && (
+        <PostModal
+          postId={selectedPostId}
+          onClose={() => setSelectedPostId(null)}
+        />
+      )}
+    </div>
+  );
+}

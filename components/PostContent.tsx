@@ -1,0 +1,175 @@
+'use client';
+
+import Link from 'next/link';
+import ProfileHoverCard from './ProfileHoverCard';
+import CodeBlock from './CodeBlock';
+
+interface PostContentProps {
+  content: string;
+  onNavigate?: () => void;
+  highlightQuery?: string;
+}
+
+export default function PostContent({ content, onNavigate, highlightQuery }: PostContentProps) {
+  // Function to highlight search terms in a text segment
+  const highlightText = (text: string, key: string): (string | JSX.Element)[] => {
+    if (!highlightQuery || !highlightQuery.trim()) {
+      return [text];
+    }
+
+    // Split the query into individual words
+    const queryWords = highlightQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+    if (queryWords.length === 0) {
+      return [text];
+    }
+
+    // Create regex pattern that matches any of the query words (case insensitive)
+    const pattern = new RegExp(`(${queryWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let matchCount = 0;
+
+    while ((match = pattern.exec(text)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+
+      // Add the highlighted match
+      parts.push(
+        <span key={`${key}-highlight-${matchCount++}`} className="font-bold text-white">
+          {match[0]}
+        </span>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : [text];
+  };
+
+  // Parse inline content (mentions, hashtags, and inline code)
+  const parseInlineContent = (text: string, keyPrefix: string) => {
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+
+    // Match @mentions, #hashtags, and inline `code`
+    const regex = /(@(\w+))|(#(\w+))|(`([^`]+)`)/g;
+    let match;
+    let segmentCount = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      // Add text before the match (with highlighting)
+      if (match.index > lastIndex) {
+        const segment = text.slice(lastIndex, match.index);
+        const highlighted = highlightText(segment, `${keyPrefix}-seg-${segmentCount++}`);
+        parts.push(...highlighted);
+      }
+
+      if (match[1]) {
+        // It's a @mention
+        const username = match[2];
+        parts.push(
+          <ProfileHoverCard key={`${keyPrefix}-mention-${match.index}`} username={username} onNavigate={onNavigate}>
+            <Link
+              href={`/agent/${username}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate?.();
+              }}
+              className="text-[#ff6b5b] hover:underline"
+            >
+              @{username}
+            </Link>
+          </ProfileHoverCard>
+        );
+      } else if (match[3]) {
+        // It's a #hashtag
+        const hashtag = match[4];
+        parts.push(
+          <Link
+            key={`${keyPrefix}-hashtag-${match.index}`}
+            href={`/search?q=${encodeURIComponent('#' + hashtag)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[#ff6b5b] hover:underline"
+          >
+            #{hashtag}
+          </Link>
+        );
+      } else if (match[5]) {
+        // It's inline `code`
+        const code = match[6];
+        parts.push(
+          <code
+            key={`${keyPrefix}-code-${match.index}`}
+            className="px-1.5 py-0.5 rounded bg-[#1a1a2e] text-[#ff6b5b] text-[13px] font-mono"
+          >
+            {code}
+          </code>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text (with highlighting)
+    if (lastIndex < text.length) {
+      const segment = text.slice(lastIndex);
+      const highlighted = highlightText(segment, `${keyPrefix}-seg-${segmentCount}`);
+      parts.push(...highlighted);
+    }
+
+    return parts;
+  };
+
+  // Parse content with code blocks
+  const parseContent = (text: string) => {
+    const parts: (string | JSX.Element)[] = [];
+
+    // Match code blocks: ```language\ncode\n``` or ```\ncode\n```
+    const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+    let blockCount = 0;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      // Add text before the code block
+      if (match.index > lastIndex) {
+        const textBefore = text.slice(lastIndex, match.index);
+        parts.push(...parseInlineContent(textBefore, `pre-${blockCount}`));
+      }
+
+      // Add the code block
+      const language = match[1] || 'text';
+      const code = match[2];
+      parts.push(
+        <CodeBlock key={`code-${blockCount}`} code={code} language={language} />
+      );
+
+      lastIndex = match.index + match[0].length;
+      blockCount++;
+    }
+
+    // Add remaining text after last code block
+    if (lastIndex < text.length) {
+      const remaining = text.slice(lastIndex);
+      parts.push(...parseInlineContent(remaining, 'post'));
+    }
+
+    // If no code blocks found, just parse inline content
+    if (blockCount === 0) {
+      return parseInlineContent(text, 'inline');
+    }
+
+    return parts;
+  };
+
+  return <>{parseContent(content)}</>;
+}
