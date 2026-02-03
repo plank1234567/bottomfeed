@@ -301,11 +301,14 @@ export default function PostCard({ post, onPostClick, highlightQuery, isReplyInT
   // Check if this post has a parent that's a conversation root (not itself a reply)
   const hasConversationParent = post.reply_to?.post_type === 'conversation' && !post.reply_to.reply_to_id;
 
+  // Check if this is ANY reply with parent data (for showing connecting line in feed)
+  const hasParentToShow = post.reply_to?.id && !isReplyInThread;
+
   // Display as conversation in feed if it's a conversation type and not in thread view
   const showAsConversation = isConversationType && !isReplyInThread;
 
   return (
-    <div ref={postRef} className={`border-b border-white/10 hover:bg-white/[0.02] transition-colors ${hasConversationParent && !isReplyInThread ? 'cursor-pointer' : ''}`}>
+    <div ref={postRef} className={`border-b border-white/10 hover:bg-white/[0.02] transition-colors ${hasParentToShow ? 'cursor-pointer' : ''}`}>
       {/* Conversation header for conversation-type posts */}
       {showAsConversation && (
         <Link
@@ -332,8 +335,8 @@ export default function PostCard({ post, onPostClick, highlightQuery, isReplyInT
         </Link>
       )}
 
-      {/* Parent conversation post if this is a reply to a conversation */}
-      {hasConversationParent && !isReplyInThread && post.reply_to?.id && (
+      {/* Parent post with connecting line for ANY reply in feed */}
+      {hasParentToShow && (
         <div
           className="px-4 pt-1 cursor-pointer"
           onClick={() => router.push(`/post/${post.reply_to!.id}`)}
@@ -429,55 +432,7 @@ export default function PostCard({ post, onPostClick, highlightQuery, isReplyInT
         </div>
       )}
 
-      {/* Show "Replying to" link for any reply that doesn't show conversation header or parent */}
-      {post.reply_to && !showAsConversation && !hasConversationParent && !isReplyInThread && (
-        <Link
-          href={`/post/${post.id}`}
-          className="block px-4 pt-3 pb-2 hover:bg-white/[0.02] transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Check if this reply is part of a conversation chain */}
-          {(() => {
-            // Walk up the chain to find a conversation
-            let current: Post | undefined = post.reply_to;
-            let conversationTitle: string | undefined;
-            let conversationId: string | undefined;
-            while (current) {
-              if (current.post_type === 'conversation' && current.title) {
-                conversationTitle = current.title;
-                conversationId = current.id;
-                break;
-              }
-              current = current.reply_to;
-            }
-
-            if (conversationTitle) {
-              return (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-[#2a2a3e] flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z" />
-                    </svg>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[#ff6b5b] font-medium text-[13px]">Conversation</span>
-                    <span className="text-[13px] text-[#71767b] italic truncate">{conversationTitle}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            // Regular reply, not part of a conversation
-            return (
-              <span className="text-[13px] text-[#71767b]">
-                Replying to <span className="text-[#ff6b5b]">@{post.reply_to?.author?.username}</span>
-              </span>
-            );
-          })()}
-        </Link>
-      )}
-
-      <div className={`px-4 py-3 cursor-pointer ${hasConversationParent && !isReplyInThread ? 'pt-1' : ''}`} onClick={handlePostClick}>
+      <div className={`px-4 py-3 cursor-pointer ${hasParentToShow ? 'pt-1' : ''}`} onClick={handlePostClick}>
       <div className="flex gap-3">
         {/* Avatar + Model + Rank Badge Overlay */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1" onClick={(e) => e.stopPropagation()}>

@@ -939,7 +939,7 @@ export function getFeed(limit: number = 50, cursor?: string, filter?: 'all' | 'o
   const trendingReplies: Post[] = [];
 
   // Engagement threshold for replies to appear in feed
-  const REPLY_ENGAGEMENT_THRESHOLD = 3; // likes + replies + reposts
+  const REPLY_ENGAGEMENT_THRESHOLD = 1; // likes + replies + reposts (lowered for testing)
 
   for (const post of posts.values()) {
     if (cursor && post.created_at >= cursor) continue;
@@ -1073,6 +1073,31 @@ export function getPostReplies(postId: string): Post[] {
   }
   replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   return replies.map(p => enrichPost(p));
+}
+
+// Get all replies in a conversation thread (recursive)
+export function getAllThreadReplies(rootPostId: string): Post[] {
+  const allReplies: Post[] = [];
+  const visited = new Set<string>();
+
+  function collectReplies(postId: string) {
+    if (visited.has(postId)) return;
+    visited.add(postId);
+
+    for (const post of posts.values()) {
+      if (post.reply_to_id === postId && !visited.has(post.id)) {
+        allReplies.push({ ...post });
+        // Recursively get replies to this reply
+        collectReplies(post.id);
+      }
+    }
+  }
+
+  collectReplies(rootPostId);
+
+  // Sort by creation time
+  allReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return allReplies.map(p => enrichPost(p));
 }
 
 export function getHotPosts(limit: number = 10, hoursAgo: number = 24): Post[] {

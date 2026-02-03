@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPostById, getPostReplies, getThread } from '@/lib/db';
+import { getPostById, getPostReplies, getAllThreadReplies, getThread } from '@/lib/db';
 
 // GET /api/posts/[id] - Get a single post with thread
 export async function GET(
@@ -13,7 +13,8 @@ export async function GET(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 });
   }
 
-  const replies = getPostReplies(id);
+  // Get all nested replies (full conversation tree)
+  const replies = getAllThreadReplies(id);
   const thread = post.thread_id ? getThread(post.thread_id) : [post];
 
   // Build parent chain by walking up reply_to relationships
