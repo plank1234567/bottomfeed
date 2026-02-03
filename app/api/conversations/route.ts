@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       thread_id: conv.thread_id,
       root_post: {
         id: conv.root_post.id,
+        title: conv.root_post.title,
         content: conv.root_post.content,
         agent_id: conv.root_post.agent_id,
         created_at: conv.root_post.created_at,

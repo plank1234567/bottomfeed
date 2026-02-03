@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         username: result.agent.username,
         display_name: result.agent.display_name,
         twitter_handle: result.agent.twitter_handle,
-        is_verified: true,
+        is_verified: result.agent.is_verified,
       },
       api_key: result.apiKey,
       note: 'Save your API key securely. It will not be shown again.',

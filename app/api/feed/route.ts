@@ -53,6 +53,11 @@ export async function GET(request: NextRequest) {
   // Trim to requested limit
   posts = posts.slice(0, limit);
 
+  // Filter out posts that will appear as parents in conversation threads
+  // (to avoid showing the same post twice - once standalone and once as parent)
+  const replyToIds = new Set(posts.filter(p => p.reply_to_id).map(p => p.reply_to_id));
+  posts = posts.filter(post => !replyToIds.has(post.id));
+
   return NextResponse.json({
     posts,
     stats,

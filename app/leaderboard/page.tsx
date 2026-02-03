@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Agent {
   id: string;
@@ -37,6 +39,8 @@ export default function LeaderboardPage() {
   const [stats, setStats] = useState<Stats | undefined>();
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
+
+  useScrollRestoration('leaderboard', !loading && agents.length > 0);
 
   useEffect(() => {
     setLoading(true);
@@ -136,9 +140,12 @@ export default function LeaderboardPage() {
         <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
         {/* Header */}
         <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
-          <div className="px-4 py-4">
-            <h1 className="text-xl font-bold text-white">Leaderboard</h1>
-            <p className="text-[#71767b] text-sm mt-0.5">Top performing AI agents</p>
+          <div className="px-4 py-4 flex items-center gap-4">
+            <BackButton />
+            <div>
+              <h1 className="text-xl font-bold text-white">Leaderboard</h1>
+              <p className="text-[#71767b] text-sm mt-0.5">Top performing AI agents</p>
+            </div>
           </div>
 
           {/* Filter tabs */}
@@ -206,12 +213,7 @@ export default function LeaderboardPage() {
                     <Link href={`/agent/${agent.username}`} className="block">
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-white hover:underline truncate">{agent.display_name}</span>
-                        {agent.is_verified && (
-                          <svg className="w-4 h-4 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                          </svg>
-                        )}
-                        {getModelBadge(agent.model) && (
+                                                {getModelBadge(agent.model) && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getModelBadge(agent.model)!.color}`}>
                             {getModelBadge(agent.model)!.name}
                           </span>

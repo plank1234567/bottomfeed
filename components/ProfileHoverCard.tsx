@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
+import AutonomousBadge from './AutonomousBadge';
 
 interface Agent {
   id: string;
@@ -12,7 +14,7 @@ interface Agent {
   model: string;
   status: 'online' | 'thinking' | 'idle' | 'offline';
   is_verified: boolean;
-  trust_tier?: 'new' | 'verified' | 'trusted' | 'established';
+  trust_tier?: string;
   follower_count: number;
   following_count: number;
   post_count: number;
@@ -29,9 +31,29 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
   const [loading, setLoading] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
+  const [following, setFollowing] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
+
+  // Check follow status when card shows
+  useEffect(() => {
+    if (showCard && username) {
+      setFollowing(isFollowing(username));
+    }
+  }, [showCard, username]);
+
+  const handleFollow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (following) {
+      unfollowAgent(username);
+      setFollowing(false);
+    } else {
+      followAgent(username);
+      setFollowing(true);
+    }
+  };
 
   const fetchAgent = async () => {
     if (agent) return;
@@ -85,7 +107,12 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     });
   };
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    // Don't show profile card if hovering over autonomous badge
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-tier-badge]')) {
+      return;
+    }
     timeoutRef.current = setTimeout(() => {
       setShowCard(true);
       fetchAgent();
@@ -132,6 +159,20 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     return count.toString();
   };
 
+  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
+    if (!model) return null;
+    const modelLower = model.toLowerCase();
+    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
+    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
+    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
+    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
+    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
+    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
+    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
+    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
+    return null;
+  };
+
   return (
     <span className="relative inline" ref={triggerRef}>
       <span
@@ -169,21 +210,31 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
                   onClick={onNavigate}
                   className="block"
                 >
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2a2a3e] to-[#1a1a2e] overflow-hidden flex items-center justify-center ring-2 ring-[#ff6b5b]/20">
-                    {agent.avatar_url ? (
-                      <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[#ff6b5b] font-bold text-lg">{getInitials(agent.display_name)}</span>
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2a2a3e] to-[#1a1a2e] overflow-hidden flex items-center justify-center ring-2 ring-[#ff6b5b]/20">
+                      {agent.avatar_url ? (
+                        <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[#ff6b5b] font-bold text-lg">{getInitials(agent.display_name)}</span>
+                      )}
+                    </div>
+                    {agent.trust_tier && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                        <AutonomousBadge tier={agent.trust_tier} size="xs" showTooltip={false} />
+                      </div>
                     )}
                   </div>
                 </Link>
-                <Link
-                  href={`/agent/${agent.username}`}
-                  onClick={onNavigate}
-                  className="px-4 py-1.5 bg-[#ff6b5b] text-white font-semibold text-sm rounded-full hover:bg-[#ff5a4a] transition-colors shadow-lg shadow-[#ff6b5b]/20"
+                <button
+                  onClick={handleFollow}
+                  className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
+                    following
+                      ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
+                      : 'bg-[#ff6b5b] text-white hover:bg-[#ff5a4a] shadow-lg shadow-[#ff6b5b]/20'
+                  }`}
                 >
-                  View
-                </Link>
+                  {following ? 'Following' : 'Follow'}
+                </button>
               </div>
 
               {/* Name and handle */}
@@ -194,29 +245,14 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               >
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-white text-[15px] hover:underline">{agent.display_name}</span>
-                  {agent.trust_tier && agent.trust_tier !== 'new' && (
-                    <span title={
-                      agent.trust_tier === 'established' ? 'Established: 30+ days autonomous' :
-                      agent.trust_tier === 'trusted' ? 'Trusted: 7+ days autonomous' :
-                      'Verified autonomous agent'
-                    }>
-                      <svg
-                        className={`w-4 h-4 ${
-                          agent.trust_tier === 'established' ? 'text-yellow-400' :
-                          agent.trust_tier === 'trusted' ? 'text-gray-300' :
-                          'text-amber-600'
-                        }`}
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                      </svg>
+                  {getModelLogo(agent.model) && (
+                    <span
+                      style={{ backgroundColor: getModelLogo(agent.model)!.brandColor }}
+                      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                      title={agent.model}
+                    >
+                      <img src={getModelLogo(agent.model)!.logo} alt={getModelLogo(agent.model)!.name} className="w-2.5 h-2.5 object-contain" />
                     </span>
-                  )}
-                  {agent.is_verified && !agent.trust_tier && (
-                    <svg className="w-4 h-4 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                    </svg>
                   )}
                 </div>
                 <span className="text-[#71767b] text-sm">@{agent.username}</span>

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfileHoverCard from './ProfileHoverCard';
+import AutonomousBadge from './AutonomousBadge';
 
 interface Agent {
   id: string;
@@ -15,6 +16,7 @@ interface Agent {
   is_verified?: boolean;
   follower_count?: number;
   popularity_score?: number;
+  trust_tier?: string;
 }
 
 interface TrendingTag {
@@ -252,6 +254,20 @@ export default function RightSidebar() {
     return count.toString();
   };
 
+  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
+    if (!model) return null;
+    const modelLower = model.toLowerCase();
+    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
+    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
+    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
+    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
+    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
+    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
+    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
+    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
+    return null;
+  };
+
   return (
     <aside className="w-[350px] flex-shrink-0">
       <div
@@ -336,12 +352,7 @@ export default function RightSidebar() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-[--text] text-[15px] truncate">{agent.display_name}</span>
-                      {agent.is_verified && (
-                        <svg className="w-4 h-4 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                        </svg>
-                      )}
-                    </div>
+                                          </div>
                     <span className="text-[--text-muted] text-sm">@{agent.username}</span>
                   </div>
                 </button>
@@ -441,14 +452,21 @@ export default function RightSidebar() {
                 {/* Avatar with hover card */}
                 <ProfileHoverCard username={agent.username}>
                   <Link href={`/agent/${agent.username}`} className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                      {agent.avatar_url ? (
-                        <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-xs">{getInitials(agent.display_name)}</span>
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                        {agent.avatar_url ? (
+                          <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[--accent] font-semibold text-xs">{getInitials(agent.display_name)}</span>
+                        )}
+                      </div>
+                      {agent.trust_tier && (
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={agent.trust_tier} size="xs" showTooltip={false} />
+                        </div>
                       )}
                     </div>
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#1a1a2e] ${getStatusColor(agent.status)}`} />
+                    <div className={`absolute top-0 -right-0.5 w-3 h-3 rounded-full border-2 border-[#1a1a2e] ${getStatusColor(agent.status)}`} />
                   </Link>
                 </ProfileHoverCard>
                 {/* Info with hover card */}
@@ -456,10 +474,14 @@ export default function RightSidebar() {
                   <Link href={`/agent/${agent.username}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <p className="font-semibold text-sm text-[--text] truncate hover:underline">{agent.display_name}</p>
-                      {agent.is_verified && (
-                        <svg className="w-3.5 h-3.5 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                        </svg>
+                      {getModelLogo(agent.model) && (
+                        <span
+                          style={{ backgroundColor: getModelLogo(agent.model)!.brandColor }}
+                          className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                          title={agent.model}
+                        >
+                          <img src={getModelLogo(agent.model)!.logo} alt={getModelLogo(agent.model)!.name} className="w-2.5 h-2.5 object-contain" />
+                        </span>
                       )}
                     </div>
                     <p className="text-xs text-[--text-muted]">{formatCount(agent.follower_count || 0)} followers</p>

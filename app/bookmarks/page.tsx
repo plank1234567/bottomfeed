@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/PostCard';
-import { getBookmarks } from '@/lib/humanPrefs';
+import { getBookmarks, removeBookmark, addBookmark } from '@/lib/humanPrefs';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Post {
   id: string;
@@ -37,19 +39,24 @@ export default function BookmarksPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookmarkIds, setBookmarkIds] = useState<string[]>([]);
+  const [removedPost, setRemovedPost] = useState<Post | null>(null);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useScrollRestoration('bookmarks', !loading);
 
   useEffect(() => {
     const ids = getBookmarks();
-    setBookmarkIds(ids);
 
     if (ids.length === 0) {
+      setBookmarkIds([]);
       setLoading(false);
       return;
     }
 
-    // Fetch each bookmarked post
+    // Fetch each bookmarked post and clean up invalid ones
     const fetchPosts = async () => {
       const fetchedPosts: Post[] = [];
+      const validIds: string[] = [];
 
       for (const id of ids) {
         try {
@@ -58,14 +65,22 @@ export default function BookmarksPage() {
             const data = await res.json();
             if (data.post) {
               fetchedPosts.push(data.post);
+              validIds.push(id);
+            } else {
+              // Post doesn't exist, remove from bookmarks
+              removeBookmark(id);
             }
+          } else {
+            // Post not found, remove from bookmarks
+            removeBookmark(id);
           }
         } catch {
-          // Skip failed fetches
+          // Skip failed fetches but don't remove (might be network issue)
         }
       }
 
       setPosts(fetchedPosts);
+      setBookmarkIds(validIds);
       setLoading(false);
     };
 
@@ -84,6 +99,44 @@ export default function BookmarksPage() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleUndo = () => {
+    if (removedPost) {
+      addBookmark(removedPost.id);
+      setPosts(prev => [removedPost, ...prev]);
+      setRemovedPost(null);
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+        undoTimeoutRef.current = null;
+      }
+    }
+  };
+
+  const handleRemovePost = (post: Post) => {
+    // Clear any existing timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+
+    // Store the removed post for undo
+    setRemovedPost(post);
+    setPosts(prev => prev.filter(p => p.id !== post.id));
+
+    // Auto-dismiss after 5 seconds
+    undoTimeoutRef.current = setTimeout(() => {
+      setRemovedPost(null);
+      undoTimeoutRef.current = null;
+    }, 5000);
+  };
+
   return (
     <div className="min-h-screen bg-[--bg]">
       <Sidebar />
@@ -92,11 +145,14 @@ export default function BookmarksPage() {
         <main className="flex-1 min-w-0 border-x border-white/5">
           {/* Header */}
           <header className="sticky top-0 z-20 bg-[--bg]/80 backdrop-blur-sm border-b border-[--border]">
-            <div className="px-4 py-3">
-              <h1 className="text-xl font-bold text-[--text]">Bookmarks</h1>
-              <p className="text-sm text-[--text-muted]">
-                {bookmarkIds.length} saved {bookmarkIds.length === 1 ? 'post' : 'posts'}
-              </p>
+            <div className="px-4 py-3 flex items-center gap-4">
+              <BackButton />
+              <div>
+                <h1 className="text-xl font-bold text-[--text]">Bookmarks</h1>
+                <p className="text-sm text-[--text-muted]">
+                  {loading ? 'Loading...' : `${posts.length} saved ${posts.length === 1 ? 'post' : 'posts'}`}
+                </p>
+              </div>
             </div>
           </header>
 
@@ -121,7 +177,18 @@ export default function BookmarksPage() {
             ) : (
               <div className="divide-y divide-white/5">
                 {posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onBookmarkChange={(postId, isBookmarked) => {
+                      if (!isBookmarked) {
+                        const postToRemove = posts.find(p => p.id === postId);
+                        if (postToRemove) {
+                          handleRemovePost(postToRemove);
+                        }
+                      }
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -130,6 +197,21 @@ export default function BookmarksPage() {
 
         <RightSidebar />
       </div>
+
+      {/* Undo Toast */}
+      {removedPost && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <div className="bg-[#1d9bf0] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <span className="text-sm">Bookmark removed</span>
+            <button
+              onClick={handleUndo}
+              className="font-bold text-sm hover:underline"
+            >
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

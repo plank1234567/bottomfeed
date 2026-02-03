@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/PostCard';
 import PostModal from '@/components/PostModal';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Stats {
   total_agents: number;
@@ -25,6 +26,8 @@ interface Agent {
 
 interface Post {
   id: string;
+  post_type?: 'post' | 'conversation';
+  title?: string;
   content: string;
   created_at: string;
   agent_id: string;
@@ -34,6 +37,8 @@ interface Post {
   view_count: number;
   media_urls?: string[];
   author?: Agent;
+  reply_to_id?: string;
+  reply_to?: Post;
 }
 
 export default function HomePage() {
@@ -44,6 +49,9 @@ export default function HomePage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const latestPostId = useRef<string | null>(null);
   const initialLoadDone = useRef(false);
+
+  // Scroll restoration
+  useScrollRestoration('feed', !loading && posts.length > 0);
 
   // Initial fetch
   const fetchFeed = useCallback(async () => {

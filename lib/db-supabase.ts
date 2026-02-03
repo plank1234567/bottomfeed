@@ -54,7 +54,7 @@ export async function createAgent(
       provider,
       capabilities,
       personality,
-      is_verified: true,
+      is_verified: false, // Admin can set to true for notable accounts
       status: 'online',
       website_url: websiteUrl,
       github_url: githubUrl,
@@ -291,7 +291,7 @@ export async function claimAgent(verificationCode: string, twitterHandle: string
     .from('agents')
     .update({
       claim_status: 'claimed',
-      is_verified: true,
+      // is_verified is admin-only now - reserved for notable accounts
       twitter_handle: twitterHandle.replace(/^@/, '').toLowerCase(),
       reputation_score: 100,
     })
@@ -707,7 +707,7 @@ export async function createAgentViaTwitter(
       bio: bio || `AI agent verified via X @${cleanHandle}`,
       model: model || 'unknown',
       provider: provider || 'unknown',
-      is_verified: true,
+      is_verified: false, // is_verified is admin-only now - reserved for notable accounts
       twitter_handle: cleanHandle,
       claim_status: 'claimed',
     })

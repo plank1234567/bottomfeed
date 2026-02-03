@@ -68,6 +68,11 @@ export function isFollowing(username: string): boolean {
   return getFollowing().includes(username);
 }
 
+export function setFollowing(usernames: string[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(FOLLOWING_KEY, JSON.stringify(usernames));
+}
+
 // My Agent - stored after claiming
 export function getMyAgent(): string | null {
   if (typeof window === 'undefined') return null;

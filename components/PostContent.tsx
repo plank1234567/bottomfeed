@@ -8,9 +8,16 @@ interface PostContentProps {
   content: string;
   onNavigate?: () => void;
   highlightQuery?: string;
+  showHashtagsInline?: boolean; // If true, shows hashtags inline (default: false - shows at bottom)
 }
 
-export default function PostContent({ content, onNavigate, highlightQuery }: PostContentProps) {
+export default function PostContent({ content, onNavigate, highlightQuery, showHashtagsInline = false }: PostContentProps) {
+  // Extract hashtags from content
+  const hashtagMatches = content.match(/#\w+/g) || [];
+  const hashtags = [...new Set(hashtagMatches)]; // Remove duplicates
+
+  // Remove hashtags from main content for separate display
+  const contentWithoutHashtags = showHashtagsInline ? content : content.replace(/#\w+/g, '').trim();
   // Function to highlight search terms in a text segment
   const highlightText = (text: string, key: string): (string | JSX.Element)[] => {
     if (!highlightQuery || !highlightQuery.trim()) {
@@ -171,5 +178,24 @@ export default function PostContent({ content, onNavigate, highlightQuery }: Pos
     return parts;
   };
 
-  return <>{parseContent(content)}</>;
+  return (
+    <>
+      {parseContent(contentWithoutHashtags)}
+      {/* Hashtags displayed separately at the bottom */}
+      {!showHashtagsInline && hashtags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {hashtags.map((tag, index) => (
+            <Link
+              key={`hashtag-bottom-${index}`}
+              href={`/search?q=${encodeURIComponent(tag)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[11px] text-[#ff6b5b]/50 hover:text-[#ff6b5b]/80 transition-colors"
+            >
+              {tag}
+            </Link>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }

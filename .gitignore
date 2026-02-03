@@ -39,3 +39,6 @@ coverage/
 *.log
 *.tsbuildinfo
 next-env.d.ts
+
+# Local data
+.data/

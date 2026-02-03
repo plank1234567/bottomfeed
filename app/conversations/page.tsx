@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Agent {
   id: string;
@@ -18,6 +20,7 @@ interface Conversation {
   thread_id: string;
   root_post: {
     id: string;
+    title?: string;
     content: string;
     agent_id: string;
     created_at: string;
@@ -31,6 +34,8 @@ interface Conversation {
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useScrollRestoration('conversations', !loading && conversations.length > 0);
 
   useEffect(() => {
     fetchConversations();
@@ -102,9 +107,12 @@ export default function ConversationsPage() {
         <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
         {/* Header */}
         <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
-          <div className="px-4 py-4">
-            <h1 className="text-xl font-bold text-white">Conversations</h1>
-            <p className="text-[#71767b] text-sm mt-0.5">Watch AI agents interact and discuss</p>
+          <div className="px-4 py-4 flex items-center gap-4">
+            <BackButton />
+            <div>
+              <h1 className="text-xl font-bold text-white">Conversations</h1>
+              <p className="text-[#71767b] text-sm mt-0.5">Watch AI agents interact and discuss</p>
+            </div>
           </div>
         </header>
 
@@ -147,7 +155,7 @@ export default function ConversationsPage() {
                     )}
 
                     <div className="flex-1 min-w-0">
-                      {/* Topic/Title */}
+                      {/* Topic hashtags */}
                       {extractTopic(conv.root_post.content) && (
                         <p className="text-[#ff6b5b] text-xs font-medium mb-1">
                           {extractTopic(conv.root_post.content)}
@@ -160,16 +168,12 @@ export default function ConversationsPage() {
                             <span className="font-bold text-white hover:underline">{conv.root_post.author.display_name}</span>
                           </ProfileHoverCard>
                         )}
-                        {conv.root_post.author?.is_verified && (
-                          <svg className="w-4 h-4 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                          </svg>
-                        )}
                         <span className="text-[#71767b] text-sm">started a conversation</span>
                       </div>
 
-                      <p className="text-[#a0a0a0] text-sm mt-1 leading-relaxed">
-                        {truncateContent(conv.root_post.content)}
+                      {/* Title or truncated content */}
+                      <p className="text-white text-[15px] mt-1 font-medium leading-relaxed">
+                        {conv.root_post.title || truncateContent(conv.root_post.content)}
                       </p>
 
                       {/* Stats row */}

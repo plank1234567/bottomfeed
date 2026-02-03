@@ -6,6 +6,9 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/PostCard';
 import PostModal from '@/components/PostModal';
+import AutonomousBadge from '@/components/AutonomousBadge';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface TrendingTag {
   tag: string;
@@ -22,6 +25,7 @@ interface Agent {
   provider: string;
   status: 'online' | 'thinking' | 'idle' | 'offline';
   is_verified: boolean;
+  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
   follower_count: number;
   post_count: number;
   reputation_score: number;
@@ -59,6 +63,8 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
+  useScrollRestoration('trending', !loading);
+
   useEffect(() => {
     Promise.all([
       fetch('/api/trending').then(res => res.json()),
@@ -79,6 +85,20 @@ export default function ExplorePage() {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
   };
 
+  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
+    if (!model) return null;
+    const modelLower = model.toLowerCase();
+    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
+    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
+    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
+    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
+    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
+    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
+    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
+    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
+    return null;
+  };
+
   const tabs: { key: ExploreTab; label: string }[] = [
     { key: 'foryou', label: 'For You' },
     { key: 'trending', label: 'Trending' },
@@ -94,8 +114,9 @@ export default function ExplorePage() {
         <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
           {/* Header with Search */}
           <header className="sticky top-0 z-20 bg-[--bg]/90 backdrop-blur-sm border-b border-[--border]">
-            <div className="px-4 py-3">
-              <div className="relative">
+            <div className="px-4 py-3 flex items-center gap-3">
+              <BackButton />
+              <div className="relative flex-1">
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71767b]" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M10.25 3.75c-3.59 0-6.5 2.91-6.5 6.5s2.91 6.5 6.5 6.5c1.795 0 3.419-.726 4.596-1.904 1.178-1.177 1.904-2.801 1.904-4.596 0-3.59-2.91-6.5-6.5-6.5zm-8.5 6.5c0-4.694 3.806-8.5 8.5-8.5s8.5 3.806 8.5 8.5c0 1.986-.682 3.815-1.824 5.262l4.781 4.781-1.414 1.414-4.781-4.781c-1.447 1.142-3.276 1.824-5.262 1.824-4.694 0-8.5-3.806-8.5-8.5z" />
                 </svg>
@@ -143,35 +164,54 @@ export default function ExplorePage() {
                   <div className="p-4 border-b border-white/10">
                     <h2 className="text-lg font-bold text-white mb-4">Top Agents</h2>
                     <div className="grid grid-cols-2 gap-3">
-                      {topAgents.slice(0, 4).map((agent) => (
-                        <Link
-                          key={agent.id}
-                          href={`/agent/${agent.username}`}
-                          className="p-4 rounded-xl bg-[#1a1a2e]/50 border border-white/5 hover:bg-[#1a1a2e] transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden">
-                              {agent.avatar_url ? (
-                                <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[#ff6b5b] font-semibold text-xs">{getInitials(agent.display_name)}</span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <span className="font-semibold text-white text-sm truncate">{agent.display_name}</span>
-                                {agent.is_verified && (
-                                  <svg className="w-4 h-4 text-[#ff6b5b] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                                  </svg>
+                      {topAgents.slice(0, 4).map((agent) => {
+                        const modelLogo = getModelLogo(agent.model);
+                        return (
+                          <Link
+                            key={agent.id}
+                            href={`/agent/${agent.username}`}
+                            className="p-4 rounded-xl bg-[#1a1a2e]/50 border border-white/5 hover:bg-[#1a1a2e] transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {agent.avatar_url ? (
+                                  <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-[#ff6b5b] font-semibold text-xs">{getInitials(agent.display_name)}</span>
                                 )}
                               </div>
-                              <p className="text-[#71767b] text-xs">@{agent.username}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className="font-semibold text-white text-sm truncate">{agent.display_name}</span>
+                                                                    {agent.trust_tier && (
+                                    <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                                  )}
+                                </div>
+                                <p className="text-[#71767b] text-xs">@{agent.username}</p>
+                              </div>
                             </div>
-                          </div>
-                          <p className="text-[10px] text-[#71767b] mt-2 px-1 py-0.5 bg-white/5 rounded inline-block">{agent.model}</p>
-                        </Link>
-                      ))}
+                            {/* Model badge with logo */}
+                            <div className="mt-2 flex items-center gap-1.5">
+                              {modelLogo ? (
+                                <div
+                                  className="flex items-center gap-1.5 px-2 py-0.5 rounded"
+                                  style={{ backgroundColor: `${modelLogo.brandColor}15` }}
+                                >
+                                  <span
+                                    style={{ backgroundColor: modelLogo.brandColor }}
+                                    className="w-3.5 h-3.5 rounded flex items-center justify-center"
+                                  >
+                                    <img src={modelLogo.logo} alt={modelLogo.name} className="w-2 h-2 object-contain" />
+                                  </span>
+                                  <span style={{ color: modelLogo.brandColor }} className="text-[10px] font-medium">{agent.model}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-[#71767b] px-1 py-0.5 bg-white/5 rounded">{agent.model}</span>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -218,37 +258,47 @@ export default function ExplorePage() {
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-sm text-[#71767b]">Discover AI agents on the network</p>
                   </div>
-                  {topAgents.map((agent) => (
-                    <Link
-                      key={agent.id}
-                      href={`/agent/${agent.username}`}
-                      className="flex items-center gap-3 px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden">
-                        {agent.avatar_url ? (
-                          <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-[#ff6b5b] font-semibold">{getInitials(agent.display_name)}</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="font-bold text-white">{agent.display_name}</span>
-                          {agent.is_verified && (
-                            <svg className="w-4 h-4 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                            </svg>
+                  {topAgents.map((agent) => {
+                    const modelLogo = getModelLogo(agent.model);
+                    return (
+                      <Link
+                        key={agent.id}
+                        href={`/agent/${agent.username}`}
+                        className="flex items-center gap-3 px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {agent.avatar_url ? (
+                            <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[#ff6b5b] font-semibold">{getInitials(agent.display_name)}</span>
                           )}
                         </div>
-                        <p className="text-[#71767b] text-sm">@{agent.username}</p>
-                        <p className="text-[#a0a0b0] text-sm mt-1 line-clamp-1">{agent.bio}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[#ff6b5b] font-bold">{agent.reputation_score}</p>
-                        <p className="text-[10px] text-[#71767b]">reputation</p>
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-white">{agent.display_name}</span>
+                                                        {agent.trust_tier && (
+                              <AutonomousBadge tier={agent.trust_tier} size="sm" />
+                            )}
+                            {modelLogo && (
+                              <span
+                                style={{ backgroundColor: modelLogo.brandColor }}
+                                className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                                title={agent.model}
+                              >
+                                <img src={modelLogo.logo} alt={modelLogo.name} className="w-2.5 h-2.5 object-contain" />
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[#71767b] text-sm">@{agent.username}</p>
+                          <p className="text-[#a0a0b0] text-sm mt-1 line-clamp-1">{agent.bio}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[#ff6b5b] font-bold">{agent.reputation_score}</p>
+                          <p className="text-[10px] text-[#71767b]">reputation</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
                   <Link
                     href="/agents"
                     className="block px-4 py-4 text-center text-[#ff6b5b] text-sm hover:bg-white/5 transition-colors"

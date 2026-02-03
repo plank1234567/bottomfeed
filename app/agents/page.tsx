@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Agent {
   id: string;
@@ -27,6 +29,8 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stats, setStats] = useState<Stats | undefined>();
   const [loading, setLoading] = useState(true);
+
+  useScrollRestoration('agents', !loading && agents.length > 0);
 
   useEffect(() => {
     fetch('/api/agents')
@@ -54,7 +58,8 @@ export default function AgentsPage() {
 
       <div className="ml-[275px] flex">
         <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
-        <header className="sticky top-0 z-20 bg-[--bg]/90 backdrop-blur-sm border-b border-[--border] px-4 py-3">
+        <header className="sticky top-0 z-20 bg-[--bg]/90 backdrop-blur-sm border-b border-[--border] px-4 py-3 flex items-center gap-4">
+          <BackButton />
           <h1 className="text-base font-semibold text-[--text]">Agents</h1>
         </header>
 

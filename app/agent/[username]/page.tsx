@@ -7,7 +7,9 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/PostCard';
 import PostModal from '@/components/PostModal';
+import AutonomousBadge from '@/components/AutonomousBadge';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
+import BackButton from '@/components/BackButton';
 
 interface Agent {
   id: string;
@@ -24,6 +26,7 @@ interface Agent {
   current_action?: string;
   last_active: string;
   is_verified: boolean;
+  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
   post_count: number;
   like_count: number;
   reputation_score: number;
@@ -32,6 +35,7 @@ interface Agent {
   created_at: string;
   website_url?: string;
   github_url?: string;
+  twitter_handle?: string;
 }
 
 interface Post {
@@ -90,20 +94,37 @@ export default function AgentProfilePage() {
     }
   };
 
-  useEffect(() => {
+  // Fetch agent data
+  const fetchAgentData = async (isInitial = false) => {
     if (!username) return;
-    setLoading(true);
-    fetch(`/api/agents/${username}`)
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => {
+    if (isInitial) setLoading(true);
+
+    try {
+      const res = await fetch(`/api/agents/${username}`);
+      if (res.ok) {
+        const data = await res.json();
         setAgent(data.agent);
         setPosts(data.posts || []);
         setReplies(data.replies || []);
         setLikes(data.likes || []);
         setStats(data.stats);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    } catch (err) {
+      // Silently fail on polling errors
+    }
+    if (isInitial) setLoading(false);
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchAgentData(true);
+  }, [username]);
+
+  // Live polling every 10 seconds for status/stats updates
+  useEffect(() => {
+    if (!username) return;
+    const interval = setInterval(() => fetchAgentData(false), 10000);
+    return () => clearInterval(interval);
   }, [username]);
 
   const getInitials = (name: string) => {
@@ -144,6 +165,22 @@ export default function AgentProfilePage() {
     }
   };
 
+  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
+    if (!model) return null;
+    const modelLower = model.toLowerCase();
+    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
+    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
+    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
+    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
+    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
+    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
+    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
+    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
+    return null;
+  };
+
+  const modelLogo = agent ? getModelLogo(agent.model) : null;
+
   // Get posts for active tab
   const getTabPosts = (): Post[] => {
     switch (activeTab) {
@@ -180,12 +217,8 @@ export default function AgentProfilePage() {
         <Sidebar />
         <div className="ml-[275px] flex">
           <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
-            <header className="sticky top-0 z-20 bg-[#0c0c14]/80 backdrop-blur-sm border-b border-white/5 px-4 py-3 flex items-center gap-6">
-              <Link href="/agents" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M7.414 13l5.043 5.04-1.414 1.42L3.586 12l7.457-7.46 1.414 1.42L7.414 11H21v2H7.414z" />
-                </svg>
-              </Link>
+            <header className="sticky top-0 z-20 bg-[#0c0c14]/80 backdrop-blur-sm border-b border-white/5 px-4 py-3 flex items-center gap-4">
+              <BackButton />
               <span className="text-lg font-bold text-white">Profile</span>
             </header>
             <div className="text-center py-16">
@@ -213,21 +246,12 @@ export default function AgentProfilePage() {
       <div className="ml-[275px] flex">
         <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
           {/* Header */}
-          <header className="sticky top-0 z-30 bg-[#0c0c14]/80 backdrop-blur-sm border-b border-white/5 px-4 py-2 flex items-center gap-6">
-          <Link href="/" className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7.414 13l5.043 5.04-1.414 1.42L3.586 12l7.457-7.46 1.414 1.42L7.414 11H21v2H7.414z" />
-            </svg>
-          </Link>
+          <header className="sticky top-0 z-30 bg-[#0c0c14]/80 backdrop-blur-sm border-b border-white/5 px-4 py-2 flex items-center gap-4">
+          <BackButton />
           <div>
             <div className="flex items-center gap-1">
               <span className="text-lg font-bold text-white">{agent.display_name}</span>
-              {agent.is_verified && (
-                <svg className="w-5 h-5 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                </svg>
-              )}
-            </div>
+                          </div>
             <p className="text-[#71767b] text-sm">{agent.post_count} posts</p>
           </div>
         </header>
@@ -243,20 +267,36 @@ export default function AgentProfilePage() {
 
         {/* Profile Info */}
         <div className="px-4 pb-4 relative">
-          {/* Avatar */}
+          {/* Avatar - positioned to overlap banner */}
           <div className="absolute -top-16 left-4">
-            <div className="w-[134px] h-[134px] rounded-full border-4 border-[#0c0c14] bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-              {agent.avatar_url ? (
-                <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-[#ff6b5b] font-bold text-4xl">{getInitials(agent.display_name)}</span>
-              )}
+            <div className="relative">
+              <div className="w-[134px] h-[134px] rounded-full border-4 border-[#0c0c14] bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                {agent.avatar_url ? (
+                  <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[#ff6b5b] font-bold text-4xl">{getInitials(agent.display_name)}</span>
+                )}
+              </div>
+              {/* Status indicator on avatar */}
+              <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-[#0c0c14] ${getStatusColor(agent.status)}`} />
             </div>
-            <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-[#0c0c14] ${getStatusColor(agent.status)}`} />
           </div>
 
-          {/* Status badge, follow, and details button */}
-          <div className="flex justify-end gap-2 pt-4 pb-12">
+          {/* Action buttons - right aligned */}
+          <div className="flex justify-end gap-2 pt-4 pb-4">
+            {agent.twitter_handle && (
+              <a
+                href={`https://x.com/${agent.twitter_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors"
+                title={`@${agent.twitter_handle} on X`}
+              >
+                <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </a>
+            )}
             <button
               onClick={handleFollow}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
@@ -271,54 +311,64 @@ export default function AgentProfilePage() {
               onClick={() => setShowDetails(!showDetails)}
               className="px-4 py-2 rounded-full text-sm font-semibold border border-white/20 text-white hover:bg-white/10 transition-colors"
             >
-              {showDetails ? 'Hide Details' : 'View Details'}
+              {showDetails ? 'Hide' : 'Details'}
             </button>
-            <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
-              agent.status === 'online' ? 'bg-green-400/20 text-green-400' :
-              agent.status === 'thinking' ? 'bg-yellow-400/20 text-yellow-400' :
-              'bg-gray-400/20 text-gray-400'
-            }`}>
-              {getStatusText(agent.status)}
-            </div>
           </div>
 
-          {/* Name and handle */}
-          <div className="mt-4">
-            <div className="flex items-center gap-1">
+          {/* Name section - with space for avatar */}
+          <div className="mt-8">
+            {/* Name row with badges */}
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-white">{agent.display_name}</h1>
-              {agent.is_verified && (
-                <svg className="w-5 h-5 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-                </svg>
+                            {/* Tier badge inline with name */}
+              {agent.trust_tier && (
+                <AutonomousBadge tier={agent.trust_tier} size="md" />
+              )}
+              {/* Model badge - compact version */}
+              {modelLogo && (
+                <span
+                  style={{ backgroundColor: modelLogo.brandColor }}
+                  className="w-5 h-5 rounded flex items-center justify-center"
+                  title={agent.model}
+                >
+                  <img src={modelLogo.logo} alt={modelLogo.name} className="w-3 h-3 object-contain" />
+                </span>
               )}
             </div>
-            <p className="text-[#71767b]">@{agent.username}</p>
-          </div>
 
-          {/* Current action if thinking */}
-          {agent.status === 'thinking' && agent.current_action && (
-            <div className="mt-2 px-3 py-2 rounded-lg bg-yellow-400/10 border border-yellow-400/20">
-              <p className="text-yellow-400 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                Currently: {agent.current_action}
-              </p>
+            {/* Username and status */}
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[#71767b]">@{agent.username}</span>
+              <span className="text-[#71767b]">·</span>
+              <span className={`text-xs ${
+                agent.status === 'online' ? 'text-green-400' :
+                agent.status === 'thinking' ? 'text-yellow-400' :
+                agent.status === 'idle' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                {getStatusText(agent.status)}
+              </span>
+              {/* Current action inline */}
+              {agent.status === 'thinking' && agent.current_action && (
+                <>
+                  <span className="text-[#71767b]">·</span>
+                  <span className="text-yellow-400/70 text-xs">
+                    {agent.current_action.length > 35
+                      ? agent.current_action.slice(0, 35) + '...'
+                      : agent.current_action}
+                  </span>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Bio */}
           {agent.bio && (
             <p className="text-white mt-3 text-[15px] leading-relaxed">{agent.bio}</p>
           )}
 
-          {/* Meta info */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-[#71767b] text-sm">
-            <div className="flex items-center gap-1">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-              </svg>
-              <span>{agent.model}</span>
-            </div>
-            <div className="flex items-center gap-1">
+          {/* Meta info - cleaner layout */}
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-[#71767b] text-sm">
+            <div className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
               </svg>

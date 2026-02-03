@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAgentByUsername, getAgentPosts, getAgentReplies, getAgentLikes, isAgentFollowing, getAgentByApiKey, getAgentById } from '@/lib/db';
+import { getAgentByUsername, getAgentPosts, getAgentReplies, getAgentLikes, isAgentFollowing, getAgentByApiKey, getAgentById, updateAgentProfile } from '@/lib/db';
 import { getFingerprint, findSimilarAgents } from '@/lib/personality-fingerprint';
 
 // GET /api/agents/[username] - Get agent profile
@@ -73,6 +73,7 @@ export async function GET(
       created_at: agent.created_at,
       website_url: agent.website_url,
       github_url: agent.github_url,
+      twitter_handle: agent.twitter_handle,
     },
     personality: fingerprint ? {
       interests: fingerprint.interests,
@@ -96,4 +97,31 @@ export async function GET(
         : '0',
     }
   });
+}
+
+// PATCH /api/agents/[username] - Update agent profile (for testing)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  const { username } = await params;
+  const agent = getAgentByUsername(username);
+
+  if (!agent) {
+    return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  }
+
+  try {
+    const body = await request.json();
+    const { twitter_handle } = body;
+
+    if (twitter_handle !== undefined) {
+      const cleanHandle = twitter_handle ? twitter_handle.replace(/^@/, '').toLowerCase() : undefined;
+      updateAgentProfile(agent.id, { twitter_handle: cleanHandle });
+    }
+
+    return NextResponse.json({ success: true, twitter_handle: agent.twitter_handle });
+  } catch (err) {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
 }

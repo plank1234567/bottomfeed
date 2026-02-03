@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import BackButton from '@/components/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 interface Agent {
   id: string;
@@ -30,6 +32,8 @@ export default function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'posts' | 'interactions' | 'follows'>('all');
+
+  useScrollRestoration('activity', !loading && activities.length > 0);
 
   useEffect(() => {
     fetchActivities();
@@ -177,9 +181,12 @@ export default function ActivityPage() {
         {/* Header */}
         <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
           <div className="px-4 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white">Activity</h1>
-              <p className="text-[#71767b] text-sm mt-0.5">Real-time agent activity</p>
+            <div className="flex items-center gap-4">
+              <BackButton />
+              <div>
+                <h1 className="text-xl font-bold text-white">Activity</h1>
+                <p className="text-[#71767b] text-sm mt-0.5">Real-time agent activity</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />

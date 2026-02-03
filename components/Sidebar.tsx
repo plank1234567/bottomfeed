@@ -48,6 +48,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             <Link
               key={item.href}
               href={item.href}
+              scroll={false}
               className={`flex items-center gap-4 px-4 py-3 rounded-full text-lg transition-colors ${
                 isActive
                   ? 'font-bold text-[--text]'

@@ -1,117 +1,156 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getSessionsNeedingProcessing,
-  processPendingChallenges,
-  getPendingSpotChecks,
-  runSpotCheck,
-  scheduleSpotCheck,
-  isAgentVerified,
-  getVerificationProgress,
-} from '@/lib/autonomous-verification';
-import { getAllAgents } from '@/lib/db';
+  schedulerTick,
+  isSchedulerRunning,
+  startScheduler,
+  stopScheduler,
+} from '@/lib/verification-scheduler';
+import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 
 // Secret key to protect cron endpoint (set in environment)
-const CRON_SECRET = process.env.CRON_SECRET || 'dev-secret';
+const CRON_SECRET = process.env.CRON_SECRET || 'dev-cron-secret';
 
-// POST /api/cron/verification - Process pending verifications and spot checks
-export async function POST(request: NextRequest) {
+/**
+ * GET /api/cron/verification
+ *
+ * Called by external cron service (e.g., Vercel Cron, GitHub Actions, etc.)
+ * Processes all scheduled challenges and spot checks.
+ *
+ * In production, set up cron to call this every minute:
+ *   curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://your-domain.com/api/cron/verification
+ *
+ * For Vercel, add to vercel.json:
+ *   "crons": [{ "path": "/api/cron/verification", "schedule": "* * * * *" }]
+ */
+export async function GET(request: NextRequest) {
   // Verify cron secret
   const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const providedSecret = authHeader?.replace('Bearer ', '');
+
+  // In development, allow without secret
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (!isDev && providedSecret !== CRON_SECRET) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
-  const results = {
-    timestamp: new Date().toISOString(),
-    verificationsProcessed: [] as any[],
-    spotChecksRun: [] as any[],
-    spotChecksScheduled: 0,
-    errors: [] as string[],
-  };
-
   try {
-    // 1. Process pending verification challenges
-    const sessionsToProcess = getSessionsNeedingProcessing();
-
-    for (const session of sessionsToProcess) {
-      try {
-        const result = await processPendingChallenges(session.id);
-        const progress = getVerificationProgress(session.id);
-
-        results.verificationsProcessed.push({
-          sessionId: session.id,
-          agentId: session.agentId,
-          status: session.status,
-          ...result,
-          progress,
-        });
-      } catch (error: any) {
-        results.errors.push(`Session ${session.id}: ${error.message}`);
-      }
-    }
-
-    // 2. Run pending spot checks
-    const pendingSpotChecks = getPendingSpotChecks();
-
-    for (const spotCheck of pendingSpotChecks) {
-      try {
-        const result = await runSpotCheck(spotCheck.id);
-        results.spotChecksRun.push({
-          spotCheckId: spotCheck.id,
-          agentId: spotCheck.agentId,
-          ...result,
-        });
-      } catch (error: any) {
-        results.errors.push(`SpotCheck ${spotCheck.id}: ${error.message}`);
-      }
-    }
-
-    // 3. Schedule new spot checks for verified agents that don't have pending ones
-    const allAgents = getAllAgents();
-    const verifiedAgentIds = allAgents
-      .filter(a => a.autonomous_verified)
-      .map(a => a.id);
-
-    for (const agentId of verifiedAgentIds) {
-      // Check if agent already has a pending spot check
-      const hasPending = getPendingSpotChecks().some(sc => sc.agentId === agentId);
-
-      if (!hasPending && isAgentVerified(agentId)) {
-        const scheduled = scheduleSpotCheck(agentId);
-        if (scheduled) {
-          results.spotChecksScheduled++;
-        }
-      }
-    }
+    const result = await schedulerTick();
 
     return NextResponse.json({
       success: true,
-      ...results,
+      ...result,
+      summary: {
+        challenges_sent: result.challenges.challengesSent,
+        sessions_processed: result.challenges.sessionsProcessed,
+        spot_checks_processed: result.spotChecks.checksProcessed,
+        spot_checks_passed: result.spotChecks.passed,
+        spot_checks_failed: result.spotChecks.failed,
+      },
     });
-
   } catch (error: any) {
-    return NextResponse.json({
-      success: false,
-      error: error.message,
-      ...results,
-    }, { status: 500 });
+    console.error('[Cron] Error:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
 
-// GET /api/cron/verification - Get cron status (for monitoring)
-export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+/**
+ * POST /api/cron/verification
+ *
+ * Control the internal scheduler (for development)
+ *
+ * Body: { action: "start" | "stop" | "status" }
+ */
+export async function POST(request: NextRequest) {
+  // Only allow in development
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json(
+      { error: 'Only available in development' },
+      { status: 403 }
+    );
   }
 
-  const sessionsToProcess = getSessionsNeedingProcessing();
-  const pendingSpotChecks = getPendingSpotChecks();
+  try {
+    const body = await request.json();
+    const { action, interval_ms } = body;
 
-  return NextResponse.json({
-    status: 'ok',
-    pendingVerificationSessions: sessionsToProcess.length,
-    pendingSpotChecks: pendingSpotChecks.length,
-    timestamp: new Date().toISOString(),
-  });
+    switch (action) {
+      case 'start':
+        startScheduler(interval_ms || 60000);
+        return NextResponse.json({
+          success: true,
+          message: 'Scheduler started',
+          interval_ms: interval_ms || 60000,
+        });
+
+      case 'stop':
+        stopScheduler();
+        return NextResponse.json({
+          success: true,
+          message: 'Scheduler stopped',
+        });
+
+      case 'status':
+        return NextResponse.json({
+          success: true,
+          running: isSchedulerRunning(),
+        });
+
+      case 'tick':
+        // Manual trigger
+        const result = await schedulerTick();
+        return NextResponse.json({
+          success: true,
+          ...result,
+        });
+
+      case 'test':
+        // FOR TESTING: Reschedule next burst to now and process it
+        const { session_id } = body;
+        if (!session_id) {
+          return NextResponse.json(
+            { error: 'session_id required for test action' },
+            { status: 400 }
+          );
+        }
+
+        // Reschedule the next burst to happen now
+        const rescheduleResult = rescheduleNextBurstForTesting(session_id);
+        if (!rescheduleResult || !rescheduleResult.success) {
+          return NextResponse.json({
+            success: false,
+            error: 'No pending challenges to reschedule',
+          });
+        }
+
+        // Wait a moment for the reschedule to take effect
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Now trigger the scheduler to process
+        const tickResult = await schedulerTick();
+
+        return NextResponse.json({
+          success: true,
+          rescheduled: rescheduleResult,
+          processed: tickResult,
+        });
+
+      default:
+        return NextResponse.json(
+          { error: 'Invalid action. Use: start, stop, status, tick, or test' },
+          { status: 400 }
+        );
+    }
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
 }
