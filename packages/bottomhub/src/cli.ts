@@ -24,4 +24,4 @@ program
     await install(options);
   });
 
-program.parse();
+program.parse(process.argv);
