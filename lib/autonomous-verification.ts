@@ -3,20 +3,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { updateAgentVerificationStatus, recordSpotCheckResult, updateAgentDetectedModel, getAgentById, updateAgentTrustTier } from '@/lib/db';
 import { createFingerprint } from '@/lib/personality-fingerprint';
-import { detectModel, modelsMatch } from '@/lib/model-detection';
+import { detectModel } from '@/lib/model-detection';
 import * as VerificationDB from '@/lib/db-verification';
 import {
   ChallengeTemplate,
   ChallengeCategory,
-  getVerificationChallenges,
-  getSpotCheckChallenge as getSpotCheckChallengeV1,
   parseResponse,
 } from '@/lib/verification-challenges';
 import {
   HighValueChallenge,
-  DataCategory,
-  getHighValueChallenges,
-  getSpotCheckChallenge as getSpotCheckChallengeV2,
   parseHighValueResponse,
   HIGH_VALUE_CHALLENGES,
 } from '@/lib/verification-challenges-v2';
@@ -102,15 +97,15 @@ export interface Challenge {
   prompt: string;
   expectedFormat?: string;
   dataFields?: string[];
-  extractionSchema?: any[]; // From v2 high-value challenges
-  groundTruth?: any; // Known correct answer for validation
+  extractionSchema?: unknown[]; // From v2 high-value challenges
+  groundTruth?: unknown; // Known correct answer for validation
   dataValue?: 'critical' | 'high' | 'medium'; // Data importance tier
   useCase?: string[]; // What this data is used for
   scheduledFor: number;
   sentAt?: number;
   respondedAt?: number;
   response?: string;
-  parsedData?: Record<string, any>; // Extracted structured data from response
+  parsedData?: Record<string, unknown>; // Extracted structured data from response
   status: 'pending' | 'passed' | 'failed' | 'skipped';
   failureReason?: string;
   responseTimeMs?: number; // Track response time for variance analysis
@@ -283,7 +278,7 @@ function generateChallengeFromDynamic(generated: GeneratedChallenge, scheduledFo
 }
 
 // Generate a challenge from v2 high-value template (STATIC - used as fallback)
-function generateChallengeFromHighValue(template: HighValueChallenge, scheduledFor?: number): Challenge {
+function _generateChallengeFromHighValue(template: HighValueChallenge, scheduledFor?: number): Challenge {
   return {
     id: crypto.randomUUID(),
     templateId: template.id,
@@ -302,7 +297,7 @@ function generateChallengeFromHighValue(template: HighValueChallenge, scheduledF
 }
 
 // Generate a challenge from v1 template (legacy fallback)
-function generateChallengeFromTemplate(template: ChallengeTemplate, scheduledFor?: number): Challenge {
+function _generateChallengeFromTemplate(template: ChallengeTemplate, scheduledFor?: number): Challenge {
   return {
     id: crypto.randomUUID(),
     templateId: template.id,
@@ -325,7 +320,7 @@ function generateChallenge(scheduledFor?: number): Challenge {
 }
 
 // Generate random times within a day (spread across 24 hours)
-function generateRandomTimesForDay(dayStart: number, count: number): number[] {
+function _generateRandomTimesForDay(dayStart: number, count: number): number[] {
   const times: number[] = [];
   const dayMs = 24 * 60 * 60 * 1000;
 
@@ -784,7 +779,7 @@ function validateResponseQuality(
     }
   }
 
-  if (challenge.category === 'hallucination_detection' && challenge.groundTruth?.exists === false) {
+  if (challenge.category === 'hallucination_detection' && (challenge.groundTruth as { exists?: boolean })?.exists === false) {
     // For fake entity challenges, fabricating details is a fail
     // Check if they're confidently explaining something that doesn't exist
     const fabricationIndicators = /discovered|invented|developed|created|known for|famous for|contributed/i;
@@ -865,7 +860,7 @@ export async function sendChallenge(
         useCase: challenge.useCase,
         groundTruth: challenge.groundTruth,
         parsedData: challenge.parsedData,
-      } as any);
+      } as Parameters<typeof VerificationDB.storeChallengeResponse>[0]);
     }
   };
 
@@ -948,10 +943,11 @@ export async function sendChallenge(
     storeResponse(responseTime);
     return { status: 'passed', responseTime };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Network errors, timeouts = agent offline, mark as SKIPPED
     // Being offline doesn't fail you, but prevents higher tier badges
-    if (error.name === 'AbortError' || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    const err = error as { name?: string; code?: string; message?: string };
+    if (err.name === 'AbortError' || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
       challenge.status = 'skipped';
       challenge.failureReason = 'Agent offline or unreachable';
       storeResponse(null);
@@ -960,7 +956,7 @@ export async function sendChallenge(
 
     // Other errors = actual failure
     challenge.status = 'failed';
-    challenge.failureReason = error.message;
+    challenge.failureReason = err.message || 'Unknown error';
     storeResponse(null);
     return { status: 'failed', error: challenge.failureReason };
   }
@@ -1328,15 +1324,15 @@ export async function runVerificationSession(sessionId: string): Promise<{
     );
 
     // Wait for all responses with burst timeout
-    const results = await Promise.race([
+    const _results = await Promise.race([
       Promise.all(burstPromises),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Burst timeout')), BURST_TIMEOUT_MS)
       ),
-    ]).catch(err => {
+    ]).catch(_err => {
       // Timeout - mark remaining as failed
       console.log(`  Burst timeout after ${Date.now() - burstStart}ms`);
-      burstChallenges.forEach((c, idx) => {
+      burstChallenges.forEach((c, _idx) => {
         if (c.status === 'pending') {
           c.status = 'failed';
           c.failureReason = 'Burst timeout - could not respond to all challenges in time';
@@ -1633,16 +1629,18 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
 
     return { passed: true, skipped: false, responseTime };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Network errors = offline, skip
-    if (error.name === 'AbortError' || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    const err = error as { name?: string; code?: string; message?: string };
+    if (err.name === 'AbortError' || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
       recordAndCheckRevocation(false, true, null, 'Agent offline or unreachable');
       return { passed: false, skipped: true, error: 'Agent offline or unreachable' };
     }
 
     // Other errors = failure
-    recordAndCheckRevocation(false, false, null, error.message);
-    return { passed: false, skipped: false, error: error.message };
+    const errorMessage = err.message || 'Unknown error';
+    recordAndCheckRevocation(false, false, null, errorMessage);
+    return { passed: false, skipped: false, error: errorMessage };
   }
 }
 

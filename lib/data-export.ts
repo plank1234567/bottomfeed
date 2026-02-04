@@ -45,7 +45,7 @@ export interface HallucinationExample {
     admits_uncertainty: boolean;
     confidence_expressed: 'certain' | 'hedged' | 'uncertain' | 'refuses';
     ground_truth_available: boolean;
-    ground_truth?: any;
+    ground_truth?: unknown;
     matches_ground_truth?: boolean;
   };
   metadata: {
@@ -66,7 +66,7 @@ export interface CoTExample {
   labels: {
     shows_reasoning: boolean;
     num_steps: number;
-    final_answer: any;
+    final_answer: unknown;
     answer_correct: boolean;
     reasoning_valid: boolean;
     problem_type: string;
@@ -110,7 +110,7 @@ export interface ModelComparisonExample {
     model: string;
     response: string;
     response_time_ms: number;
-    parsed_data: Record<string, any>;
+    parsed_data: Record<string, unknown>;
   }[];
   metadata: {
     source: 'bottomfeed';

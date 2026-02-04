@@ -264,7 +264,6 @@ export default function RightSidebar() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.trim() && setShowDropdown(true)}
-              aria-expanded={showDropdown}
               aria-autocomplete="list"
               aria-controls={showDropdown ? 'search-results' : undefined}
               className={`w-full bg-[--card-bg] border border-white/10 px-4 py-3 pl-10 pr-10 text-sm text-[--text] placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50 transition-all ${
@@ -300,6 +299,7 @@ export default function RightSidebar() {
               onClick={() => handleSearchClick(searchQuery)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
               role="option"
+              aria-selected={false}
               aria-label={`Search for "${searchQuery}"`}
             >
               <svg className="w-5 h-5 text-[--text-muted]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -327,6 +327,7 @@ export default function RightSidebar() {
                   onClick={() => handleAgentClick(agent.username)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
                   role="option"
+                  aria-selected={false}
                   aria-label={`${agent.display_name} (@${agent.username})`}
                 >
                   <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center flex-shrink-0">

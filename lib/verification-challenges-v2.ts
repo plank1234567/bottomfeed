@@ -22,7 +22,7 @@ export interface HighValueChallenge {
   // Data extraction
   expectedFormat: string;
   extractionSchema: ExtractionField[];
-  groundTruth?: any; // For questions with known answers
+  groundTruth?: unknown; // For questions with known answers
 
   // Value metrics
   dataValue: 'critical' | 'high' | 'medium';
@@ -633,15 +633,15 @@ export function getSpotCheckChallenge(): HighValueChallenge {
 }
 
 export function parseHighValueResponse(
-  challenge: HighValueChallenge,
+  _challenge: HighValueChallenge,
   response: string
-): Record<string, any> {
-  const data: Record<string, any> = {
-    challenge_id: challenge.id,
-    category: challenge.category,
-    subcategory: challenge.subcategory,
-    data_value: challenge.dataValue,
-    use_cases: challenge.useCase,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {
+    challenge_id: _challenge.id,
+    category: _challenge.category,
+    subcategory: _challenge.subcategory,
+    data_value: _challenge.dataValue,
+    use_cases: _challenge.useCase,
     response_length: response.length,
     word_count: response.split(/\s+/).length,
     raw_response: response,
@@ -649,14 +649,14 @@ export function parseHighValueResponse(
   };
 
   // Extract fields based on schema
-  for (const field of challenge.extractionSchema) {
-    data[field.name] = extractField(field, response, challenge);
+  for (const field of _challenge.extractionSchema) {
+    data[field.name] = extractField(field, response, _challenge);
   }
 
   // Check against ground truth if available
-  if (challenge.groundTruth) {
-    data.ground_truth = challenge.groundTruth;
-    data.matches_ground_truth = checkGroundTruth(challenge, response, data);
+  if (_challenge.groundTruth) {
+    data.ground_truth = _challenge.groundTruth;
+    data.matches_ground_truth = checkGroundTruth(_challenge, response, data);
   }
 
   return data;
@@ -665,8 +665,8 @@ export function parseHighValueResponse(
 function extractField(
   field: ExtractionField,
   response: string,
-  challenge: HighValueChallenge
-): any {
+  _challenge: HighValueChallenge
+): unknown {
   const lowerResponse = response.toLowerCase();
 
   // Common extraction patterns
@@ -741,21 +741,22 @@ function extractField(
 function checkGroundTruth(
   challenge: HighValueChallenge,
   response: string,
-  extractedData: Record<string, any>
+  extractedData: Record<string, unknown>
 ): boolean {
-  const gt = challenge.groundTruth;
+  const gt = challenge.groundTruth as Record<string, unknown> | undefined;
   const lowerResponse = response.toLowerCase();
 
-  if (gt.exists === false) {
+  if (gt?.exists === false) {
     // Should have detected it's fake
     return extractedData.admits_unknown === true || extractedData.detects_fake === true;
   }
 
-  if (gt.answer !== undefined) {
+  if (gt?.answer !== undefined) {
     if (typeof gt.answer === 'number') {
-      const givenNum = extractedData.number_given || extractedData.final_answer;
-      if (gt.acceptable_range) {
-        return givenNum >= gt.acceptable_range[0] && givenNum <= gt.acceptable_range[1];
+      const givenNum = (extractedData.number_given ?? extractedData.final_answer) as number | null;
+      const acceptableRange = gt.acceptable_range as [number, number] | undefined;
+      if (acceptableRange && givenNum !== null) {
+        return givenNum >= acceptableRange[0] && givenNum <= acceptableRange[1];
       }
       return givenNum === gt.answer;
     }

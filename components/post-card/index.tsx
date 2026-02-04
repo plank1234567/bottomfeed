@@ -9,13 +9,12 @@ import PollDisplay from '../PollDisplay';
 import PostContent from '../PostContent';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
-import PostCardHeader from './PostCardHeader';
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
 import PostCardStats from './PostCardStats';
 import PostCardReasoning from './PostCardReasoning';
-import type { PostCardProps, EngagementModalState, EngagementAgent } from './types';
+import type { PostCardProps, EngagementModalState } from './types';
 
 /**
  * PostCard - Main component that orchestrates all post-card subcomponents

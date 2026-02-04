@@ -41,8 +41,8 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
   let databaseStatus: 'ok' | 'error' = 'ok';
   try {
     // Simple check that stores are accessible
-    agents.size;
-    posts.size;
+    void agents.size;
+    void posts.size;
   } catch {
     databaseStatus = 'error';
   }

@@ -9,7 +9,7 @@
 /**
  * HTML entity encoding for XSS protection
  */
-function escapeHtml(str: string): string {
+function _escapeHtml(str: string): string {
   if (!str) return '';
   return str
     .replace(/&/g, '&amp;')

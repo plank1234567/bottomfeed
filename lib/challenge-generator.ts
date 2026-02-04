@@ -7,14 +7,14 @@
 
 // ============ TEMPLATE SYSTEM ============
 
-interface ChallengeTemplate {
+interface _ChallengeTemplate {
   id: string;
   category: string;
   subcategory: string;
   template: string; // Uses {{variable}} syntax
   variables: VariableDefinition[];
-  extractionSchema: any[];
-  groundTruthGenerator?: (vars: Record<string, any>) => any;
+  extractionSchema: unknown[];
+  groundTruthGenerator?: (vars: Record<string, unknown>) => unknown;
   dataValue: 'critical' | 'high' | 'medium';
   useCase: string[];
 }
@@ -22,7 +22,7 @@ interface ChallengeTemplate {
 interface VariableDefinition {
   name: string;
   type: 'random_name' | 'random_number' | 'random_date' | 'random_topic' | 'random_choice' | 'math_problem' | 'code_snippet';
-  options?: any;
+  options?: unknown;
 }
 
 // ============ VARIABLE GENERATORS ============
@@ -68,10 +68,10 @@ const TOPICS = {
 };
 
 const MATH_PROBLEMS = [
-  { problem: "A store sells apples for ${{price}} each. They have a 'buy {{buy}}, get 1 free' deal. How much do {{total}} apples cost?", generator: (vars: any) => Math.ceil(vars.total / (vars.buy + 1)) * vars.buy * vars.price },
-  { problem: "A train travels {{speed1}} mph for {{time1}} hours, then {{speed2}} mph for {{time2}} hours. What's the average speed?", generator: (vars: any) => (vars.speed1 * vars.time1 + vars.speed2 * vars.time2) / (vars.time1 + vars.time2) },
-  { problem: "If you have {{total}} items and remove {{percent}}%, how many remain?", generator: (vars: any) => vars.total * (1 - vars.percent / 100) },
-  { problem: "A rectangle's length is {{mult}} times its width. If the perimeter is {{perim}}, what's the area?", generator: (vars: any) => { const w = vars.perim / (2 * (vars.mult + 1)); return w * w * vars.mult; }},
+  { problem: "A store sells apples for ${{price}} each. They have a 'buy {{buy}}, get 1 free' deal. How much do {{total}} apples cost?", generator: (vars: Record<string, number>) => Math.ceil(vars.total / (vars.buy + 1)) * vars.buy * vars.price },
+  { problem: "A train travels {{speed1}} mph for {{time1}} hours, then {{speed2}} mph for {{time2}} hours. What's the average speed?", generator: (vars: Record<string, number>) => (vars.speed1 * vars.time1 + vars.speed2 * vars.time2) / (vars.time1 + vars.time2) },
+  { problem: "If you have {{total}} items and remove {{percent}}%, how many remain?", generator: (vars: Record<string, number>) => vars.total * (1 - vars.percent / 100) },
+  { problem: "A rectangle's length is {{mult}} times its width. If the perimeter is {{perim}}, what's the area?", generator: (vars: Record<string, number>) => { const w = vars.perim / (2 * (vars.mult + 1)); return w * w * vars.mult; }},
 ];
 
 const CODE_BUGS = [
@@ -119,7 +119,7 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)] as T;
 }
 
-function pickMultiple<T>(arr: T[], count: number): T[] {
+function _pickMultiple<T>(arr: T[], count: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
@@ -134,13 +134,13 @@ export interface GeneratedChallenge {
   subcategory: string;
   prompt: string;
   expectedFormat?: string;
-  extractionSchema: any[];
-  groundTruth?: any;
+  extractionSchema: unknown[];
+  groundTruth?: unknown;
   dataValue: 'critical' | 'high' | 'medium';
   useCase: string[];
   generatedAt: number;
   templateId: string;
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
 }
 
 // ============ HALLUCINATION CHALLENGES ============
@@ -493,7 +493,7 @@ export function generatePreferenceChallenge(): GeneratedChallenge {
   const subtopic = pickRandom(TOPICS[topic]);
 
   // Generate 3 different quality responses to rank
-  const responses = {
+  const _responses = {
     technical: `A highly technical explanation with jargon and precise definitions...`,
     simple: `A simple analogy-based explanation for beginners...`,
     balanced: `A balanced explanation that starts simple and adds depth...`,

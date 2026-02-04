@@ -109,7 +109,7 @@ export interface StoredChallengeResponse {
   useCase?: string[]; // What this data is used for (e.g., 'rlhf_training', 'hallucination_detection')
 
   // Ground truth for validation
-  groundTruth?: any; // Known correct answer if applicable
+  groundTruth?: unknown; // Known correct answer if applicable
 
   // Extracted structured data (the valuable part)
   parsedData?: {
@@ -135,7 +135,7 @@ export interface StoredChallengeResponse {
     // Reasoning
     shows_steps?: boolean;
     num_steps?: number;
-    final_answer?: any;
+    final_answer?: unknown;
     answer_correct?: boolean;
     reasoning_valid?: boolean;
     fell_for_trap?: boolean;
@@ -158,11 +158,11 @@ export interface StoredChallengeResponse {
     technically_accurate?: boolean;
 
     // Ground truth match
-    ground_truth?: any;
+    ground_truth?: unknown;
     matches_ground_truth?: boolean;
 
     // Any other extracted fields
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -439,7 +439,7 @@ export function getAllAgentStats(): AgentVerificationStats[] {
 
 export function getGlobalStats(): GlobalStats {
   const sessions = Array.from(verificationSessions.values());
-  const detections = Array.from(modelDetections.values());
+  const _detections = Array.from(modelDetections.values());
   const stats = Array.from(agentStats.values());
 
   // Agent counts

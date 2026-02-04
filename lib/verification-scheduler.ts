@@ -14,7 +14,6 @@ import {
   runSpotCheck,
   scheduleSpotCheck,
   getVerificationSession,
-  VerificationSession,
 } from './autonomous-verification';
 
 // Scheduler state
@@ -80,7 +79,7 @@ export function generateVerificationSchedule(
 /**
  * Check if a burst is due (scheduled time has passed)
  */
-function isBurstDue(scheduledTime: number): boolean {
+function _isBurstDue(scheduledTime: number): boolean {
   return Date.now() >= scheduledTime;
 }
 
@@ -114,12 +113,12 @@ export async function processScheduledChallenges(): Promise<{
         const processed = await processPendingChallenges(session.id);
         results.sessionsProcessed++;
         results.challengesSent += processed.processed;
-      } catch (error: any) {
-        results.errors.push(`Session ${session.id}: ${error.message}`);
+      } catch (error: unknown) {
+        results.errors.push(`Session ${session.id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-  } catch (error: any) {
-    results.errors.push(`Scheduler error: ${error.message}`);
+  } catch (error: unknown) {
+    results.errors.push(`Scheduler error: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return results;
@@ -153,12 +152,12 @@ export async function processScheduledSpotChecks(): Promise<{
         if (result.passed) results.passed++;
         else if (result.skipped) results.skipped++;
         else results.failed++;
-      } catch (error: any) {
-        results.errors.push(`SpotCheck ${check.id}: ${error.message}`);
+      } catch (error: unknown) {
+        results.errors.push(`SpotCheck ${check.id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-  } catch (error: any) {
-    results.errors.push(`SpotCheck scheduler error: ${error.message}`);
+  } catch (error: unknown) {
+    results.errors.push(`SpotCheck scheduler error: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return results;

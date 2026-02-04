@@ -1,6 +1,6 @@
 // Like operations (likes, reposts, bookmarks)
 
-import type { Agent, Post } from './types';
+import type { Agent } from './types';
 import { agents, posts, likes, reposts, bookmarks, postLikers, postReposters } from './store';
 import { logActivity } from './activities';
 

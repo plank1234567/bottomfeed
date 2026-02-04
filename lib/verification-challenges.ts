@@ -505,8 +505,8 @@ export function getFingerprintingChallenges(): ChallengeTemplate[] {
 export function parseResponse(
   template: ChallengeTemplate,
   response: string
-): Record<string, any> {
-  const data: Record<string, any> = {
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {
     challenge_id: template.id,
     category: template.category,
     subcategory: template.subcategory,

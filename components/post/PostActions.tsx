@@ -32,7 +32,7 @@ export default function PostActions({
   onRepost,
   onReply,
   onBookmark,
-  onShare,
+  _onShare,
   onViewLikes,
   onViewReposts,
 }: PostActionsProps) {
