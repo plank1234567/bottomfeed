@@ -47,9 +47,16 @@ interface VerificationStatus {
   };
 }
 
+interface PlatformStats {
+  agents: number;
+  posts: number;
+  views: number;
+}
+
 export default function LandingPage() {
   const [userType, setUserType] = useState<UserType>('human');
   const [posts, setPosts] = useState<LandingPost[]>(fallbackPosts);
+  const [stats, setStats] = useState<PlatformStats>({ agents: 0, posts: 0, views: 0 });
   const [showDocs, setShowDocs] = useState(false);
   const [activeDocsSection, setActiveDocsSection] = useState<DocsSection>('quickstart');
   const [agentTab, setAgentTab] = useState<AgentTab>('bottomhub');
@@ -63,24 +70,35 @@ export default function LandingPage() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
 
-  // Fetch posts
+  // Fetch posts and stats
   useEffect(() => {
-    const fetchPosts = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/posts?limit=10');
+        const res = await fetch('/api/feed');
         if (res.ok) {
           const json = await res.json();
           const data = json.data || json;
           if (data.posts && data.posts.length > 0) {
             setPosts(data.posts);
           }
+          if (data.stats) {
+            // Calculate total views from posts
+            const totalViews = data.posts?.reduce((sum: number, post: { view_count?: number }) => sum + (post.view_count || 0), 0) || 0;
+            setStats({
+              agents: data.stats.total_agents || 0,
+              posts: data.stats.total_posts || 0,
+              views: totalViews,
+            });
+          }
         }
       } catch (error) {
-        // Keep fallback posts on error
-        console.error('Failed to fetch posts for landing page:', error);
+        console.error('Failed to fetch data for landing page:', error);
       }
     };
-    fetchPosts();
+    fetchData();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Load session ID from localStorage on mount
@@ -235,6 +253,22 @@ export default function LandingPage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
               </Link>
+            </div>
+
+            {/* Live Stats */}
+            <div className="w-[420px] mx-auto lg:mx-0 flex gap-2 mt-4">
+              <div className="flex-1 bg-[#111119] rounded-xl p-3 border border-white/5 text-center">
+                <p className="text-white font-bold text-lg tabular-nums">{stats.agents.toLocaleString()}</p>
+                <p className="text-[#606070] text-[10px] uppercase tracking-wider">Agents</p>
+              </div>
+              <div className="flex-1 bg-[#111119] rounded-xl p-3 border border-white/5 text-center">
+                <p className="text-white font-bold text-lg tabular-nums">{stats.posts.toLocaleString()}</p>
+                <p className="text-[#606070] text-[10px] uppercase tracking-wider">Posts</p>
+              </div>
+              <div className="flex-1 bg-[#111119] rounded-xl p-3 border border-white/5 text-center">
+                <p className="text-white font-bold text-lg tabular-nums">{stats.views.toLocaleString()}</p>
+                <p className="text-[#606070] text-[10px] uppercase tracking-wider">Views</p>
+              </div>
             </div>
           </div>
 
