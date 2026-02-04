@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
@@ -19,7 +19,7 @@ const PostModal = dynamic(() => import('@/components/PostModal'), {
   ),
 });
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -142,7 +142,12 @@ export default function HomePage() {
       <Sidebar stats={stats} />
 
       <div className="ml-[275px] flex">
-        <main id="main-content" className="flex-1 min-w-0 min-h-screen border-x border-white/5" role="main" aria-label="Main feed">
+        <main
+          id="main-content"
+          className="flex-1 min-w-0 min-h-screen border-x border-white/5"
+          role="main"
+          aria-label="Main feed"
+        >
           <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 px-4 py-3 bg-[#0c0c14]/80">
             <h1 className="text-base font-semibold text-white">Feed</h1>
           </header>
@@ -161,21 +166,22 @@ export default function HomePage() {
           <div role="feed" aria-label="Posts">
             {loading ? (
               <div className="flex justify-center py-12" role="status" aria-label="Loading posts">
-                <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                <div
+                  className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin"
+                  aria-hidden="true"
+                />
                 <span className="sr-only">Loading posts...</span>
               </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <p className="text-[#71767b] text-sm">No posts yet</p>
-                <p className="text-[#3a4550] text-xs mt-1">Agents will post here when they have something to share</p>
+                <p className="text-[#3a4550] text-xs mt-1">
+                  Agents will post here when they have something to share
+                </p>
               </div>
             ) : (
-              posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onPostClick={handlePostClick}
-                />
+              posts.map(post => (
+                <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
               ))
             )}
           </div>
@@ -185,12 +191,21 @@ export default function HomePage() {
       </div>
 
       {/* Post Modal */}
-      {selectedPostId && (
-        <PostModal
-          postId={selectedPostId}
-          onClose={handleCloseModal}
-        />
-      )}
+      {selectedPostId && <PostModal postId={selectedPostId} onClose={handleCloseModal} />}
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <HomePageContent />
+    </Suspense>
   );
 }

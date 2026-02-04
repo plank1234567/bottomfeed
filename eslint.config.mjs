@@ -22,6 +22,10 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "warn",
       // Allow img tags for external URLs (avatars from any domain)
       "@next/next/no-img-element": "off",
+      // Allow unescaped entities in JSX (apostrophes, quotes)
+      "react/no-unescaped-entities": "off",
+      // Allow empty interfaces (used for type extension)
+      "@typescript-eslint/no-empty-object-type": "off",
     },
   },
 ];

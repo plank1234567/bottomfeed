@@ -19,10 +19,10 @@ import * as VerificationDB from './db-verification';
  */
 export interface RLHFExample {
   prompt: string;
-  chosen?: string;      // Better response (for preference pairs)
-  rejected?: string;    // Worse response (for preference pairs)
-  response?: string;    // Single response (for reward labeling)
-  ranking?: string[];   // Ordered list (for listwise ranking)
+  chosen?: string; // Better response (for preference pairs)
+  rejected?: string; // Worse response (for preference pairs)
+  response?: string; // Single response (for reward labeling)
+  ranking?: string[]; // Ordered list (for listwise ranking)
   metadata: {
     source: 'bottomfeed';
     challenge_type: string;
@@ -41,7 +41,12 @@ export interface HallucinationExample {
   response: string;
   labels: {
     contains_hallucination: boolean;
-    hallucination_type?: 'fabricated_fact' | 'fabricated_entity' | 'fabricated_quote' | 'wrong_attribution' | 'numeric_error';
+    hallucination_type?:
+      | 'fabricated_fact'
+      | 'fabricated_entity'
+      | 'fabricated_quote'
+      | 'wrong_attribution'
+      | 'numeric_error';
     admits_uncertainty: boolean;
     confidence_expressed: 'certain' | 'hedged' | 'uncertain' | 'refuses';
     ground_truth_available: boolean;
@@ -130,10 +135,8 @@ export function exportRLHFData(): RLHFExample[] {
   const examples: RLHFExample[] = [];
 
   // Get preference elicitation responses
-  const preferenceResponses = responses.filter(r =>
-    r.category === 'preference_elicitation' &&
-    r.response &&
-    r.status === 'passed'
+  const preferenceResponses = responses.filter(
+    r => r.category === 'preference_elicitation' && r.response && r.status === 'passed'
   );
 
   for (const r of preferenceResponses) {
@@ -146,17 +149,19 @@ export function exportRLHFData(): RLHFExample[] {
         challenge_type: r.subcategory || r.category || 'unknown',
         agent_id: r.agentId,
         timestamp: r.sentAt,
-        quality_score: r.parsedData?.explanation_quality === 'thorough' ? 1 :
-                       r.parsedData?.explanation_quality === 'adequate' ? 0.7 : 0.4,
+        quality_score:
+          r.parsedData?.explanation_quality === 'thorough'
+            ? 1
+            : r.parsedData?.explanation_quality === 'adequate'
+              ? 0.7
+              : 0.4,
       },
     });
   }
 
   // Also include cross-evaluation responses (AI critiquing AI)
-  const crossEvalResponses = responses.filter(r =>
-    r.category === 'cross_evaluation' &&
-    r.response &&
-    r.status === 'passed'
+  const crossEvalResponses = responses.filter(
+    r => r.category === 'cross_evaluation' && r.response && r.status === 'passed'
   );
 
   for (const r of crossEvalResponses) {
@@ -182,10 +187,8 @@ export function exportHallucinationData(): HallucinationExample[] {
   const responses = VerificationDB.getAllChallengeResponses();
   const examples: HallucinationExample[] = [];
 
-  const hallucinationResponses = responses.filter(r =>
-    r.category === 'hallucination_detection' &&
-    r.response &&
-    r.status === 'passed'
+  const hallucinationResponses = responses.filter(
+    r => r.category === 'hallucination_detection' && r.response && r.status === 'passed'
   );
 
   for (const r of hallucinationResponses) {
@@ -195,14 +198,17 @@ export function exportHallucinationData(): HallucinationExample[] {
       prompt: r.prompt,
       response: r.response!,
       labels: {
-        contains_hallucination: pd.fabricates_explanation ||
-                                pd.fabricates_details ||
-                                pd.confabulates ||
-                                false,
-        hallucination_type: pd.fabricates_explanation ? 'fabricated_fact' :
-                           pd.confabulates ? 'fabricated_entity' : undefined,
+        contains_hallucination:
+          pd.fabricates_explanation || pd.fabricates_details || pd.confabulates || false,
+        hallucination_type: pd.fabricates_explanation
+          ? 'fabricated_fact'
+          : pd.confabulates
+            ? 'fabricated_entity'
+            : undefined,
         admits_uncertainty: pd.admits_unknown || false,
-        confidence_expressed: pd.confidence_expressed || 'uncertain',
+        confidence_expressed: (typeof pd.confidence_expressed === 'string'
+          ? pd.confidence_expressed
+          : 'uncertain') as 'refuses' | 'certain' | 'hedged' | 'uncertain',
         ground_truth_available: !!r.groundTruth,
         ground_truth: r.groundTruth,
         matches_ground_truth: pd.matches_ground_truth,
@@ -226,10 +232,8 @@ export function exportChainOfThoughtData(): CoTExample[] {
   const responses = VerificationDB.getAllChallengeResponses();
   const examples: CoTExample[] = [];
 
-  const reasoningResponses = responses.filter(r =>
-    r.category === 'reasoning_trace' &&
-    r.response &&
-    r.status === 'passed'
+  const reasoningResponses = responses.filter(
+    r => r.category === 'reasoning_trace' && r.response && r.status === 'passed'
   );
 
   for (const r of reasoningResponses) {
@@ -264,10 +268,8 @@ export function exportSafetyData(): SafetyExample[] {
   const responses = VerificationDB.getAllChallengeResponses();
   const examples: SafetyExample[] = [];
 
-  const safetyResponses = responses.filter(r =>
-    r.category === 'safety_boundary' &&
-    r.response &&
-    r.status === 'passed'
+  const safetyResponses = responses.filter(
+    r => r.category === 'safety_boundary' && r.response && r.status === 'passed'
   );
 
   for (const r of safetyResponses) {
