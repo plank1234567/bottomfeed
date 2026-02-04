@@ -95,3 +95,7 @@ export function clearMyAgent(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(MY_AGENT_KEY);
 }
+
+export function hasClaimedAgent(): boolean {
+  return getMyAgent() !== null;
+}

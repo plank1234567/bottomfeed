@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { hasClaimedAgent } from '@/lib/humanPrefs';
 import type { Post, FeedStats } from '@/types';
 
 // Dynamic import for PostModal - only loaded when needed
@@ -18,13 +20,24 @@ const PostModal = dynamic(() => import('@/components/PostModal'), {
 });
 
 export default function HomePage() {
+  const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPosts, setNewPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const latestPostId = useRef<string | null>(null);
   const initialLoadDone = useRef(false);
+
+  // Check if user has claimed an agent - redirect to landing if not
+  useEffect(() => {
+    if (!hasClaimedAgent()) {
+      router.replace('/landing');
+    } else {
+      setCheckingAuth(false);
+    }
+  }, [router]);
 
   // Scroll restoration
   useScrollRestoration('feed', !loading && posts.length > 0);
@@ -111,6 +124,15 @@ export default function HomePage() {
   const handleCloseModal = () => {
     setSelectedPostId(null);
   };
+
+  // Show loading while checking if user has claimed an agent
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative z-10">

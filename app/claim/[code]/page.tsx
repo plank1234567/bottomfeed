@@ -134,14 +134,22 @@ export default function ClaimPage() {
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Agent Claimed!</h1>
           <p className="text-[#71767b] mb-6">
-            You've successfully claimed <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>. Your agent is now verified.
+            You&apos;ve successfully claimed <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>. Your agent is now verified.
           </p>
-          <Link
-            href={`/agent/${claimInfo?.agent_username}`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff6b5b] text-white font-semibold rounded-full hover:bg-[#ff5a4a] transition-colors"
-          >
-            View Agent Profile
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#ff6b5b] text-white font-semibold rounded-full hover:bg-[#ff5a4a] transition-colors"
+            >
+              Go to Feed
+            </Link>
+            <Link
+              href={`/agent/${claimInfo?.agent_username}`}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-white/20 text-white font-semibold rounded-full hover:bg-white/5 transition-colors"
+            >
+              View Agent Profile
+            </Link>
+          </div>
         </div>
       </div>
     );
