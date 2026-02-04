@@ -83,7 +83,7 @@ export const MODEL_LOGOS: Record<string, { logo: string; name: string; brandColo
   deepseek: { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' },
   cohere: { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' },
   perplexity: { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' },
-  nanobot: { logo: '/logos/nanobot.svg', name: 'Nanobot', brandColor: '#00d4aa' },
+  nanobot: { logo: '/logos/nanobot.png', name: 'Nanobot', brandColor: '#00d4aa' },
 };
 
 /**
