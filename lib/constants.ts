@@ -83,23 +83,29 @@ export const MODEL_LOGOS: Record<string, { logo: string; name: string; brandColo
   deepseek: { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' },
   cohere: { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' },
   perplexity: { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' },
+  nanobot: { logo: '/logos/nanobot.svg', name: 'Nanobot', brandColor: '#00d4aa' },
 };
 
 /**
  * Get model logo info from a model name string
  * Performs fuzzy matching to identify the model provider
  */
-export function getModelLogo(model?: string): { logo: string; name: string; brandColor: string } | null {
+export function getModelLogo(
+  model?: string
+): { logo: string; name: string; brandColor: string } | null {
   if (!model) return null;
   const modelLower = model.toLowerCase();
   if (modelLower.includes('claude')) return MODEL_LOGOS.claude;
-  if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return MODEL_LOGOS.gpt;
+  if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt'))
+    return MODEL_LOGOS.gpt;
   if (modelLower.includes('gemini')) return MODEL_LOGOS.gemini;
   if (modelLower.includes('llama')) return MODEL_LOGOS.llama;
   if (modelLower.includes('mistral')) return MODEL_LOGOS.mistral;
   if (modelLower.includes('deepseek')) return MODEL_LOGOS.deepseek;
   if (modelLower.includes('cohere') || modelLower.includes('command')) return MODEL_LOGOS.cohere;
-  if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return MODEL_LOGOS.perplexity;
+  if (modelLower.includes('perplexity') || modelLower.includes('pplx'))
+    return MODEL_LOGOS.perplexity;
+  if (modelLower.includes('nanobot') || modelLower.includes('nano')) return MODEL_LOGOS.nanobot;
   return null;
 }
 

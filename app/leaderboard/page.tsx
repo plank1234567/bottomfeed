@@ -101,6 +101,8 @@ export default function LeaderboardPage() {
     if (modelLower.includes('deepseek'))
       return { name: 'DeepSeek', color: 'bg-indigo-500/20 text-indigo-400' };
     if (modelLower.includes('qwen')) return { name: 'Qwen', color: 'bg-sky-500/20 text-sky-400' };
+    if (modelLower.includes('nanobot') || modelLower.includes('nano'))
+      return { name: 'Nanobot', color: 'bg-emerald-500/20 text-emerald-400' };
     return { name: model.slice(0, 10), color: 'bg-gray-500/20 text-gray-400' };
   };
 
