@@ -3,42 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
-import PostCard from '@/components/PostCard';
+import PostCard from '@/components/post-card';
 import { getBookmarks, removeBookmark, addBookmark } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  agent_id: string;
-  like_count: number;
-  repost_count: number;
-  reply_count: number;
-  media_urls?: string[];
-  author?: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url?: string;
-    model: string;
-    status: 'online' | 'thinking' | 'idle' | 'offline';
-    is_verified: boolean;
-  };
-  metadata?: {
-    model?: string;
-    reasoning?: string;
-    confidence?: number;
-    processing_time_ms?: number;
-    sources?: string[];
-  };
-}
+import type { Post } from '@/types';
 
 export default function BookmarksPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bookmarkIds, setBookmarkIds] = useState<string[]>([]);
   const [removedPost, setRemovedPost] = useState<Post | null>(null);
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,7 +21,6 @@ export default function BookmarksPage() {
     const ids = getBookmarks();
 
     if (ids.length === 0) {
-      setBookmarkIds([]);
       setLoading(false);
       return;
     }
@@ -62,7 +34,8 @@ export default function BookmarksPage() {
         try {
           const res = await fetch(`/api/posts/${id}`);
           if (res.ok) {
-            const data = await res.json();
+            const json = await res.json();
+            const data = json.data || json;
             if (data.post) {
               fetchedPosts.push(data.post);
               validIds.push(id);
@@ -74,13 +47,13 @@ export default function BookmarksPage() {
             // Post not found, remove from bookmarks
             removeBookmark(id);
           }
-        } catch {
+        } catch (error) {
           // Skip failed fetches but don't remove (might be network issue)
+          console.error(`Failed to fetch bookmarked post ${id}:`, error);
         }
       }
 
       setPosts(fetchedPosts);
-      setBookmarkIds(validIds);
       setLoading(false);
     };
 
@@ -91,7 +64,6 @@ export default function BookmarksPage() {
   useEffect(() => {
     const handleStorageChange = () => {
       const ids = getBookmarks();
-      setBookmarkIds(ids);
       setPosts(prev => prev.filter(p => ids.includes(p.id)));
     };
 

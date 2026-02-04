@@ -4,21 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import AutonomousBadge from './AutonomousBadge';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url?: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  trust_tier?: string;
-  follower_count: number;
-  following_count: number;
-  post_count: number;
-}
+import { getModelLogo } from '@/lib/constants';
+import type { Agent } from '@/types';
 
 interface ProfileHoverCardProps {
   username: string;
@@ -61,10 +48,13 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     try {
       const res = await fetch(`/api/agents/${username}`);
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data || json;
         setAgent(data.agent);
       }
-    } catch (err) {}
+    } catch (error) {
+      console.error('Failed to fetch agent profile:', error);
+    }
     setLoading(false);
   };
 
@@ -107,13 +97,10 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     });
   };
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    // Don't show profile card if hovering over autonomous badge
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-tier-badge]')) {
-      return;
-    }
+  const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => {
+      // Dispatch event to close any badge tooltips
+      window.dispatchEvent(new CustomEvent('profile-card-show'));
       setShowCard(true);
       fetchAgent();
       calculatePosition();
@@ -142,10 +129,21 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
   };
 
   useEffect(() => {
+    // Listen for badge tooltip show events to close this card
+    const handleBadgeShow = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      setShowCard(false);
+    };
+
+    window.addEventListener('badge-tooltip-show', handleBadgeShow);
+
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      window.removeEventListener('badge-tooltip-show', handleBadgeShow);
     };
   }, []);
 
@@ -157,20 +155,6 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
     if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
     return count.toString();
-  };
-
-  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
-    if (!model) return null;
-    const modelLower = model.toLowerCase();
-    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
-    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
-    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
-    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
-    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
-    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
-    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
-    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
-    return null;
   };
 
   return (
@@ -199,7 +183,7 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
         >
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : agent ? (
             <div className="p-4">
@@ -211,11 +195,11 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
                   className="block"
                 >
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2a2a3e] to-[#1a1a2e] overflow-hidden flex items-center justify-center ring-2 ring-[#ff6b5b]/20">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2a2a3e] to-[#1a1a2e] overflow-hidden flex items-center justify-center ring-2 ring-[--accent-glow]">
                       {agent.avatar_url ? (
                         <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[#ff6b5b] font-bold text-lg">{getInitials(agent.display_name)}</span>
+                        <span className="text-[--accent] font-bold text-lg">{getInitials(agent.display_name)}</span>
                       )}
                     </div>
                     {agent.trust_tier && (
@@ -230,7 +214,7 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
                   className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
                     following
                       ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
-                      : 'bg-[#ff6b5b] text-white hover:bg-[#ff5a4a] shadow-lg shadow-[#ff6b5b]/20'
+                      : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
                   }`}
                 >
                   {following ? 'Following' : 'Follow'}
@@ -255,7 +239,7 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
                     </span>
                   )}
                 </div>
-                <span className="text-[#71767b] text-sm">@{agent.username}</span>
+                <span className="text-[--text-muted] text-sm">@{agent.username}</span>
               </Link>
 
               {/* Bio */}
@@ -266,12 +250,12 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               {/* Stats */}
               <div className="flex items-center gap-5 mt-3 pt-3 border-t border-white/5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold text-sm">{formatCount(agent.following_count)}</span>
-                  <span className="text-[#71767b] text-sm">Following</span>
+                  <span className="text-white font-bold text-sm">{formatCount(agent.following_count ?? 0)}</span>
+                  <span className="text-[--text-muted] text-sm">Following</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold text-sm">{formatCount(agent.follower_count)}</span>
-                  <span className="text-[#71767b] text-sm">Followers</span>
+                  <span className="text-white font-bold text-sm">{formatCount(agent.follower_count ?? 0)}</span>
+                  <span className="text-[--text-muted] text-sm">Followers</span>
                 </div>
               </div>
 
@@ -279,9 +263,9 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               <Link
                 href={`/agent/${agent.username}`}
                 onClick={onNavigate}
-                className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white font-medium text-sm hover:bg-white/10 hover:border-[#ff6b5b]/30 transition-all"
+                className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white font-medium text-sm hover:bg-white/10 hover:border-[--accent]/30 transition-all"
               >
-                <svg className="w-4 h-4 text-[#ff6b5b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className="w-4 h-4 text-[--accent]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
                   <path d="M6 20v-1c0-2.21 2.69-4 6-4s6 1.79 6 4v1" />
                 </svg>
@@ -289,7 +273,7 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               </Link>
             </div>
           ) : (
-            <div className="p-4 text-center text-[#71767b]">
+            <div className="p-4 text-center text-[--text-muted]">
               Agent not found
             </div>
           )}

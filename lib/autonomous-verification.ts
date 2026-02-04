@@ -25,6 +25,10 @@ import {
   generateVerificationChallenges,
   generateSpotCheckChallenge as generateDynamicSpotCheck,
 } from '@/lib/challenge-generator';
+import type { TrustTier } from '@/types';
+
+// Re-export TrustTier for backwards compatibility with existing imports
+export type { TrustTier };
 
 // Constants
 const VERIFICATION_DAYS = 3;
@@ -49,7 +53,6 @@ const SUSPICIOUS_OFFLINE_PATTERN_THRESHOLD = 0.7; // If offline times correlate 
 
 // Trust tier requirements (consecutive days with 100% challenge response)
 // Uses existing tier system: spawn -> autonomous-1 (I) -> autonomous-2 (II) -> autonomous-3 (III)
-export type TrustTier = 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
 const TIER_REQUIREMENTS = {
   'spawn': 0,         // Unverified or no consecutive days
   'autonomous-1': 1,  // I - 1 full day (24h) online
@@ -683,11 +686,13 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
     // Find burst times that fall on this day
     for (let burstIdx = 0; burstIdx < allBurstTimes.length; burstIdx++) {
       const burstTime = allBurstTimes[burstIdx];
-      if (burstTime >= dayStart && burstTime < dayEnd) {
+      if (burstTime !== undefined && burstTime >= dayStart && burstTime < dayEnd) {
         // Assign BURST_SIZE challenges to this time slot
         for (let i = 0; i < BURST_SIZE && challengeIndex < generatedChallenges.length; i++) {
+          const generatedChallenge = generatedChallenges[challengeIndex];
+          if (!generatedChallenge) continue;
           const challenge = generateChallengeFromDynamic(
-            generatedChallenges[challengeIndex],
+            generatedChallenge,
             burstTime // All challenges in burst have same scheduled time
           );
           // Mark if this is a night challenge (for autonomy analysis)
@@ -1687,12 +1692,13 @@ export function rescheduleNextBurstForTesting(sessionId: string): {
     .filter(c => c.status === 'pending')
     .sort((a, b) => a.scheduledFor - b.scheduledFor);
 
-  if (pendingChallenges.length === 0) {
+  const firstPendingChallenge = pendingChallenges[0];
+  if (!firstPendingChallenge) {
     return { success: false, rescheduledCount: 0, newTime: 'none' };
   }
 
   // Get the next burst time
-  const nextBurstTime = pendingChallenges[0].scheduledFor;
+  const nextBurstTime = firstPendingChallenge.scheduledFor;
 
   // Find all challenges in this burst (same scheduled time)
   const burstChallenges = pendingChallenges.filter(c => c.scheduledFor === nextBurstTime);

@@ -1,42 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAgentByUsername, getAgentByApiKey, agentFollow, agentUnfollow, isAgentFollowing } from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { getAgentByUsername, agentFollow, agentUnfollow, isAgentFollowing } from '@/lib/db';
+import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import { authenticateAgent } from '@/lib/auth';
 
 // POST /api/agents/[username]/follow - Follow an agent
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
-  const { username } = await params;
-  const authHeader = request.headers.get('authorization');
+  try {
+    const { username } = await params;
+    const follower = authenticateAgent(request);
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'API key required' }, { status: 401 });
+    const targetAgent = getAgentByUsername(username);
+    if (!targetAgent) {
+      throw new NotFoundError('Agent');
+    }
+
+    if (follower.id === targetAgent.id) {
+      throw new ValidationError('Cannot follow yourself');
+    }
+
+    const followed = agentFollow(follower.id, targetAgent.id);
+
+    return success({
+      followed,
+      following: true,
+      message: followed ? 'Now following' : 'Already following',
+      follower_count: targetAgent.follower_count + (followed ? 1 : 0),
+    });
+  } catch (err) {
+    return handleApiError(err);
   }
-
-  const apiKey = authHeader.slice(7);
-  const follower = getAgentByApiKey(apiKey);
-
-  if (!follower) {
-    return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
-  }
-
-  const targetAgent = getAgentByUsername(username);
-  if (!targetAgent) {
-    return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
-  }
-
-  if (follower.id === targetAgent.id) {
-    return NextResponse.json({ error: 'Cannot follow yourself' }, { status: 400 });
-  }
-
-  const success = agentFollow(follower.id, targetAgent.id);
-
-  return NextResponse.json({
-    success,
-    following: true,
-    message: success ? 'Now following' : 'Already following',
-    follower_count: targetAgent.follower_count + (success ? 1 : 0),
-  });
 }
 
 // DELETE /api/agents/[username]/follow - Unfollow an agent
@@ -44,33 +39,26 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
-  const { username } = await params;
-  const authHeader = request.headers.get('authorization');
+  try {
+    const { username } = await params;
+    const follower = authenticateAgent(request);
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'API key required' }, { status: 401 });
+    const targetAgent = getAgentByUsername(username);
+    if (!targetAgent) {
+      throw new NotFoundError('Agent');
+    }
+
+    const unfollowed = agentUnfollow(follower.id, targetAgent.id);
+
+    return success({
+      unfollowed,
+      following: false,
+      message: unfollowed ? 'Unfollowed' : 'Not following',
+      follower_count: targetAgent.follower_count - (unfollowed ? 1 : 0),
+    });
+  } catch (err) {
+    return handleApiError(err);
   }
-
-  const apiKey = authHeader.slice(7);
-  const follower = getAgentByApiKey(apiKey);
-
-  if (!follower) {
-    return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
-  }
-
-  const targetAgent = getAgentByUsername(username);
-  if (!targetAgent) {
-    return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
-  }
-
-  const success = agentUnfollow(follower.id, targetAgent.id);
-
-  return NextResponse.json({
-    success,
-    following: false,
-    message: success ? 'Unfollowed' : 'Not following',
-    follower_count: targetAgent.follower_count - (success ? 1 : 0),
-  });
 }
 
 // GET /api/agents/[username]/follow - Check if following
@@ -78,26 +66,19 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
-  const { username } = await params;
-  const authHeader = request.headers.get('authorization');
+  try {
+    const { username } = await params;
+    const follower = authenticateAgent(request);
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'API key required' }, { status: 401 });
+    const targetAgent = getAgentByUsername(username);
+    if (!targetAgent) {
+      throw new NotFoundError('Agent');
+    }
+
+    const following = isAgentFollowing(follower.id, targetAgent.id);
+
+    return success({ following });
+  } catch (err) {
+    return handleApiError(err);
   }
-
-  const apiKey = authHeader.slice(7);
-  const follower = getAgentByApiKey(apiKey);
-
-  if (!follower) {
-    return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
-  }
-
-  const targetAgent = getAgentByUsername(username);
-  if (!targetAgent) {
-    return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
-  }
-
-  const following = isAgentFollowing(follower.id, targetAgent.id);
-
-  return NextResponse.json({ following });
 }

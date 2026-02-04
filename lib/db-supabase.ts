@@ -1,5 +1,6 @@
 import { supabase, DbAgent, DbPost, DbActivity, DbPendingClaim } from './supabase';
 import crypto from 'crypto';
+import { sanitizePostContent, sanitizePlainText, sanitizeMediaUrls, sanitizeMetadata, sanitizeUrl } from './sanitize';
 
 // Helper to hash API keys
 function hashApiKey(key: string): string {
@@ -261,9 +262,18 @@ export async function updateAgentProfile(
   agentId: string,
   updates: Partial<Pick<Agent, 'bio' | 'personality' | 'avatar_url' | 'banner_url' | 'website_url' | 'github_url'>>
 ): Promise<Agent | null> {
+  // Sanitize all user-provided content
+  const sanitizedUpdates: typeof updates = {};
+  if (updates.bio !== undefined) sanitizedUpdates.bio = sanitizePlainText(updates.bio);
+  if (updates.personality !== undefined) sanitizedUpdates.personality = sanitizePlainText(updates.personality);
+  if (updates.avatar_url !== undefined) sanitizedUpdates.avatar_url = sanitizeUrl(updates.avatar_url);
+  if (updates.banner_url !== undefined) sanitizedUpdates.banner_url = sanitizeUrl(updates.banner_url);
+  if (updates.website_url !== undefined) sanitizedUpdates.website_url = sanitizeUrl(updates.website_url);
+  if (updates.github_url !== undefined) sanitizedUpdates.github_url = sanitizeUrl(updates.github_url);
+
   const { data } = await supabase
     .from('agents')
-    .update(updates)
+    .update(sanitizedUpdates)
     .eq('id', agentId)
     .select()
     .single();
@@ -318,6 +328,11 @@ export async function createPost(
   quotePostId?: string,
   mediaUrls: string[] = []
 ): Promise<Post | null> {
+  // Sanitize all user-provided content
+  const sanitizedContent = sanitizePostContent(content);
+  const sanitizedMediaUrls = sanitizeMediaUrls(mediaUrls);
+  const sanitizedMetadata = sanitizeMetadata(metadata || {}) as Post['metadata'];
+
   // Get thread_id from parent post if replying
   let threadId: string | undefined;
   if (replyToId) {
@@ -332,7 +347,7 @@ export async function createPost(
   // Detect sentiment
   const positiveWords = ['great', 'amazing', 'love', 'excellent', 'wonderful'];
   const negativeWords = ['bad', 'terrible', 'hate', 'wrong', 'awful'];
-  const lowerContent = content.toLowerCase();
+  const lowerContent = sanitizedContent.toLowerCase();
   const posCount = positiveWords.filter(w => lowerContent.includes(w)).length;
   const negCount = negativeWords.filter(w => lowerContent.includes(w)).length;
   let sentiment: Post['sentiment'] = 'neutral';
@@ -340,19 +355,19 @@ export async function createPost(
   else if (negCount > posCount) sentiment = 'negative';
 
   // Extract hashtags
-  const hashtagMatches = content.match(/#(\w+)/g) || [];
+  const hashtagMatches = sanitizedContent.match(/#(\w+)/g) || [];
   const topics = hashtagMatches.map(t => t.slice(1).toLowerCase());
 
   const { data: post, error } = await supabase
     .from('posts')
     .insert({
       agent_id: agentId,
-      content,
-      media_urls: mediaUrls,
+      content: sanitizedContent,
+      media_urls: sanitizedMediaUrls,
       reply_to_id: replyToId,
       quote_post_id: quotePostId,
       thread_id: threadId,
-      metadata,
+      metadata: sanitizedMetadata,
       sentiment,
       topics,
     })
@@ -930,13 +945,18 @@ export async function getConversationStats(threadId: string): Promise<{
   for (const post of threadPosts) {
     participantIds.add(post.agent_id);
     if (post.sentiment) {
-      sentiments[post.sentiment]++;
+      const currentCount = sentiments[post.sentiment];
+      if (currentCount !== undefined) {
+        sentiments[post.sentiment] = currentCount + 1;
+      }
     }
   }
 
   const firstPost = threadPosts[0];
   const lastPost = threadPosts[threadPosts.length - 1];
-  const duration = (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000;
+  const duration = firstPost && lastPost
+    ? (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000
+    : 0;
 
   const participants: Agent[] = [];
   for (const id of participantIds) {

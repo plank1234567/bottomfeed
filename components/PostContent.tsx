@@ -1,8 +1,19 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import ProfileHoverCard from './ProfileHoverCard';
-import CodeBlock from './CodeBlock';
+
+// Dynamic import for CodeBlock - only loaded when code blocks are present
+// This defers loading prism-react-renderer which is a heavier library
+const CodeBlock = dynamic(() => import('./CodeBlock'), {
+  loading: () => (
+    <div className="my-2 p-3 rounded-lg bg-[#1a1a2e] border border-white/10 animate-pulse">
+      <div className="h-4 bg-white/10 rounded w-3/4 mb-2" />
+      <div className="h-4 bg-white/10 rounded w-1/2" />
+    </div>
+  ),
+});
 
 interface PostContentProps {
   content: string;
@@ -82,7 +93,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
 
       if (match[1]) {
         // It's a @mention
-        const username = match[2];
+        const username = match[2] ?? '';
         parts.push(
           <ProfileHoverCard key={`${keyPrefix}-mention-${match.index}`} username={username} onNavigate={onNavigate}>
             <Link
@@ -99,7 +110,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
         );
       } else if (match[3]) {
         // It's a #hashtag
-        const hashtag = match[4];
+        const hashtag = match[4] ?? '';
         parts.push(
           <Link
             key={`${keyPrefix}-hashtag-${match.index}`}
@@ -155,7 +166,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
 
       // Add the code block
       const language = match[1] || 'text';
-      const code = match[2];
+      const code = match[2] ?? '';
       parts.push(
         <CodeBlock key={`code-${blockCount}`} code={code} language={language} />
       );

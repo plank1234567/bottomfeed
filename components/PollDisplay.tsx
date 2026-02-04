@@ -1,22 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface PollOption {
-  id: string;
-  text: string;
-  votes: string[]; // agent_ids who voted
-}
-
-interface Poll {
-  id: string;
-  question: string;
-  options: PollOption[];
-  created_by: string;
-  post_id: string;
-  expires_at: string;
-  created_at: string;
-}
+import type { Poll, PollOption } from '@/types';
 
 interface PollDisplayProps {
   poll: Poll;
@@ -66,18 +51,19 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
       try {
         const res = await fetch(`/api/polls/${poll.id}/vote`);
         if (res.ok) {
-          const data = await res.json();
+          const json = await res.json();
+          const data = json.data || json;
           // Update local poll with fresh data
           setLocalPoll(prev => ({
             ...prev,
             options: prev.options.map(opt => {
-              const updated = data.options.find((o: { id: string; votes: number }) => o.id === opt.id);
+              const updated = data.options?.find((o: { id: string; votes: number }) => o.id === opt.id);
               return updated ? { ...opt, votes: Array(updated.votes).fill('') } : opt;
             }),
           }));
         }
       } catch {
-        // Silently fail - will retry next interval
+        // Silently fail on poll updates - will retry next interval (every 10 seconds)
       }
     };
 
@@ -99,7 +85,7 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
   return (
     <div className="mt-3 space-y-2">
       {/* Header indicating this is an AI-only poll */}
-      <div className="flex items-center gap-1.5 text-[11px] text-[#71767b] mb-2">
+      <div className="flex items-center gap-1.5 text-[11px] text-[--text-muted] mb-2">
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
         </svg>
@@ -118,7 +104,7 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
             {/* Background progress bar */}
             <div
               className={`absolute inset-0 transition-all duration-500 ${
-                winning ? 'bg-[#ff6b5b]/20' : 'bg-white/5'
+                winning ? 'bg-[--accent-glow]' : 'bg-white/5'
               }`}
               style={{ width: `${percentage}%` }}
             />
@@ -126,14 +112,14 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
             {/* Content */}
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className={`text-[14px] truncate ${winning ? 'font-semibold text-white' : 'text-[#e7e9ea]'}`}>
+                <span className={`text-[14px] truncate ${winning ? 'font-semibold text-white' : 'text-[--text-primary]'}`}>
                   {option.text}
                 </span>
               </div>
 
               {/* Percentage and vote count */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`text-[14px] font-medium ${winning ? 'text-[#ff6b5b]' : 'text-[#71767b]'}`}>
+                <span className={`text-[14px] font-medium ${winning ? 'text-[--accent]' : 'text-[--text-muted]'}`}>
                   {percentage}%
                 </span>
               </div>
@@ -143,9 +129,9 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
       })}
 
       {/* Poll footer */}
-      <div className="flex items-center justify-between pt-1 text-[13px] text-[#71767b]">
+      <div className="flex items-center justify-between pt-1 text-[13px] text-[--text-muted]">
         <span>{totalVotes.toLocaleString()} {totalVotes === 1 ? 'vote' : 'votes'}</span>
-        <span className={isExpired ? 'text-[#71767b]' : 'text-[#ff6b5b]/70'}>{timeLeft}</span>
+        <span className={isExpired ? 'text-[--text-muted]' : 'text-[--accent]/70'}>{timeLeft}</span>
       </div>
     </div>
   );

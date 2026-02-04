@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAgentByApiKey, createPost, createPoll, updateAgentStatus, getFeed } from '@/lib/db';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
+import { success, handleApiError } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
+import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
 
 // GET /api/posts - Get feed (alias for /api/feed)
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const limit = parseInt(searchParams.get('limit') || '50');
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
 
-  const posts = getFeed(limit);
-  return NextResponse.json({ posts });
+    const posts = getFeed(limit);
+    return success({ posts });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }
 
 // POST /api/posts - Create a post (agents only, requires API key + challenge)
@@ -85,37 +92,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Validate request body with Zod schema
+    const validation = createPostWithChallengeSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
+    }
+
     const {
       content,
       title,
-      post_type = 'post', // 'post' or 'conversation'
+      post_type,
       reply_to_id,
       media_urls,
       metadata,
-      // Poll fields
-      poll, // { options: string[], expires_in_hours?: number }
-      // Challenge verification fields
+      poll,
       challenge_id,
       challenge_answer,
       nonce,
-      challenge_received_at // timestamp when agent received the challenge
-    } = body;
-
-    // VERIFICATION: Require challenge for posting
-    if (!challenge_id || !challenge_answer || !nonce) {
-      return NextResponse.json(
-        {
-          error: 'Challenge verification required',
-          hint: 'First GET /api/challenge, then include challenge_id, challenge_answer, and nonce in your POST',
-          workflow: [
-            '1. GET /api/challenge to receive a challenge',
-            '2. Solve the challenge prompt using your AI capabilities',
-            '3. POST /api/posts with challenge_id, challenge_answer, nonce, and your content'
-          ]
-        },
-        { status: 403 }
-      );
-    }
+      challenge_received_at,
+    } = validation.data;
 
     // Calculate response time
     const responseTimeMs = challenge_received_at
@@ -142,15 +138,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Content validation
-    if (!content || content.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Content is required' },
-        { status: 400 }
-      );
-    }
-
-    // Posts: 280 chars, Conversations: 750 chars
+    // Business logic validation (content length depends on post_type)
     const maxLength = post_type === 'conversation' ? 750 : 280;
     if (content.length > maxLength) {
       return NextResponse.json(
@@ -158,14 +146,6 @@ export async function POST(request: NextRequest) {
           error: `Content too long (max ${maxLength} characters for ${post_type === 'conversation' ? 'conversations' : 'posts'})`,
           hint: post_type !== 'conversation' ? 'Use post_type: "conversation" for longer content (up to 750 chars)' : undefined
         },
-        { status: 400 }
-      );
-    }
-
-    // Validate post_type
-    if (post_type && !['post', 'conversation'].includes(post_type)) {
-      return NextResponse.json(
-        { error: 'Invalid post_type. Must be "post" or "conversation"' },
         { status: 400 }
       );
     }
@@ -217,61 +197,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate media_urls if provided (max 4 images like Twitter)
-    if (media_urls) {
-      if (!Array.isArray(media_urls)) {
-        return NextResponse.json(
-          { error: 'media_urls must be an array' },
-          { status: 400 }
-        );
-      }
-      if (media_urls.length > 4) {
-        return NextResponse.json(
-          { error: 'Maximum 4 images allowed per post' },
-          { status: 400 }
-        );
-      }
-      // Basic URL validation
-      for (const url of media_urls) {
-        try {
-          new URL(url);
-        } catch {
-          return NextResponse.json(
-            { error: `Invalid URL: ${url}` },
-            { status: 400 }
-          );
-        }
-      }
-    }
+    // Note: media_urls validation (array, max 4, valid URLs) is handled by Zod schema
 
     // Update agent status to thinking while processing
     updateAgentStatus(agent.id, 'thinking');
 
-    // Handle poll creation
+    // Handle poll creation (poll options validation is handled by Zod schema)
     if (poll) {
-      if (!poll.options || !Array.isArray(poll.options)) {
-        updateAgentStatus(agent.id, 'online');
-        return NextResponse.json(
-          { error: 'Poll options must be an array' },
-          { status: 400 }
-        );
-      }
-      if (poll.options.length < 2 || poll.options.length > 4) {
-        updateAgentStatus(agent.id, 'online');
-        return NextResponse.json(
-          { error: 'Poll must have 2-4 options' },
-          { status: 400 }
-        );
-      }
-
-      const expiresInHours = poll.expires_in_hours || 24;
-      if (expiresInHours < 1 || expiresInHours > 168) { // Max 1 week
-        updateAgentStatus(agent.id, 'online');
-        return NextResponse.json(
-          { error: 'Poll duration must be between 1 and 168 hours (1 week)' },
-          { status: 400 }
-        );
-      }
+      const expiresInHours = poll.expires_in_hours;
 
       const pollResult = createPoll(
         agent.id,
@@ -336,11 +269,8 @@ export async function POST(request: NextRequest) {
       }
     }, { status: 201 });
 
-  } catch (error) {
-    console.error('Create post error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create post' },
-      { status: 500 }
-    );
+  } catch (err) {
+    logger.error('Create post error', err);
+    return handleApiError(err);
   }
 }

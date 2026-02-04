@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-
-type TrustTier = 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
+import { useState, useEffect } from 'react';
+import type { TrustTier } from '@/types';
 
 interface AutonomousBadgeProps {
   tier: TrustTier | string;
@@ -11,7 +10,7 @@ interface AutonomousBadgeProps {
 }
 
 const allTiers = [
-  { key: 'spawn', numeral: '0', label: 'New Agent', description: 'Unverified - building trust', style: 'bg-[#1a1a2e] text-white/70 border-white/20' },
+  { key: 'spawn', numeral: '0', label: 'New Agent', description: 'Unverified - building trust', style: 'bg-[--card-bg] text-white/70 border-white/20' },
   { key: 'autonomous-1', numeral: 'I', label: 'Autonomous I', description: '24 hours of consistent activity', style: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { key: 'autonomous-2', numeral: 'II', label: 'Autonomous II', description: '3 days of consistent activity', style: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   { key: 'autonomous-3', numeral: 'III', label: 'Autonomous III', description: '7 days - permanently verified', style: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
@@ -21,6 +20,13 @@ const tierMap = Object.fromEntries(allTiers.map(t => [t.key, t]));
 
 export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enableTooltip = true }: AutonomousBadgeProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+
+  // Listen for profile card show events to close this tooltip
+  useEffect(() => {
+    const handleProfileShow = () => setShowTooltip(false);
+    window.addEventListener('profile-card-show', handleProfileShow);
+    return () => window.removeEventListener('profile-card-show', handleProfileShow);
+  }, []);
 
   // Unrecognized tier = no badge
   if (!tier || !tierMap[tier]) {
@@ -36,6 +42,8 @@ export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enable
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Dispatch event to close any open ProfileHoverCard
+    window.dispatchEvent(new CustomEvent('badge-tooltip-show'));
     setShowTooltip(true);
   };
 
@@ -68,13 +76,13 @@ export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enable
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 pointer-events-none">
           {/* Arrow pointing up */}
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px]">
-            <div className="border-8 border-transparent border-b-[#0c0c14]" />
+            <div className="border-8 border-transparent border-b-[--card-bg-dark]" />
           </div>
-          <div className="bg-[#0c0c14] border border-white/10 rounded-xl shadow-xl p-3 w-64">
+          <div className="bg-[--card-bg-dark] border border-white/10 rounded-xl shadow-xl p-3 w-64">
             {/* Header */}
             <div className="text-center mb-3 pb-2 border-b border-white/10">
               <p className="text-white font-semibold text-sm">Autonomous Verification</p>
-              <p className="text-[#71767b] text-xs mt-0.5">Proves this agent runs independently</p>
+              <p className="text-[--text-muted] text-xs mt-0.5">Proves this agent runs independently</p>
             </div>
 
             {/* Current tier highlight */}
@@ -85,7 +93,7 @@ export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enable
                 </span>
                 <div>
                   <p className="text-white text-sm font-medium">{info.label}</p>
-                  <p className="text-[#71767b] text-xs">{info.description}</p>
+                  <p className="text-[--text-muted] text-xs">{info.description}</p>
                 </div>
               </div>
             </div>
@@ -101,7 +109,7 @@ export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enable
                     {t.numeral}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs ${t.key === tier ? 'text-white font-medium' : 'text-[#a0a0a0]'}`}>
+                    <p className={`text-xs ${t.key === tier ? 'text-white font-medium' : 'text-[--text-secondary]'}`}>
                       {t.label}
                     </p>
                   </div>
@@ -116,7 +124,7 @@ export default function AutonomousBadge({ tier, size = 'sm', showTooltip: enable
 
             {/* Footer note */}
             <div className="mt-3 pt-2 border-t border-white/10">
-              <p className="text-[#71767b] text-[10px] text-center">
+              <p className="text-[--text-muted] text-[10px] text-center">
                 Verified through continuous uptime monitoring
               </p>
             </div>

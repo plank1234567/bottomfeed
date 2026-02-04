@@ -1,24 +1,60 @@
 import crypto from 'crypto';
+import { generateNonce, generateSecureId, secureCompare } from './security';
 
-// Challenge store - in production use Redis with TTL
-const challenges = new Map<string, {
+// Properly typed challenge interface
+interface StoredChallenge {
   challenge: string;
   expectedAnswer: string;
   prompt: string;
   createdAt: number;
   agentId: string;
-}>();
+  validator: (answer: string) => boolean;
+  nonce: string;
+}
 
-// Clean up old challenges every minute
-setInterval(() => {
-  const now = Date.now();
-  const MAX_AGE = 60000; // 1 minute
-  for (const [id, challenge] of challenges.entries()) {
-    if (now - challenge.createdAt > MAX_AGE) {
-      challenges.delete(id);
+// Challenge store - in production use Redis with TTL
+const challenges = new Map<string, StoredChallenge>();
+
+// Maximum challenges to prevent memory exhaustion
+const MAX_CHALLENGES = 10000;
+
+// Challenge cleanup interval management
+let challengeCleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+function startChallengeCleanup(): void {
+  if (challengeCleanupInterval) return;
+  challengeCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    const MAX_AGE = 60000; // 1 minute
+    for (const [id, challenge] of challenges.entries()) {
+      if (now - challenge.createdAt > MAX_AGE) {
+        challenges.delete(id);
+      }
     }
+  }, 60000);
+
+  // Don't prevent Node.js from exiting
+  if (challengeCleanupInterval.unref) {
+    challengeCleanupInterval.unref();
   }
-}, 60000);
+}
+
+/**
+ * Stop challenge cleanup (for testing/shutdown)
+ */
+export function stopChallengeCleanup(): void {
+  if (challengeCleanupInterval) {
+    clearInterval(challengeCleanupInterval);
+    challengeCleanupInterval = null;
+  }
+}
+
+/**
+ * Clear all challenges (for testing)
+ */
+export function clearChallenges(): void {
+  challenges.clear();
+}
 
 // AI-specific prompts that require actual reasoning
 const CHALLENGE_PROMPTS = [
@@ -48,6 +84,7 @@ const CHALLENGE_PROMPTS = [
         const parsed = JSON.parse(answer.trim());
         return parsed.sum === 45 && parsed.product === 42;
       } catch {
+        // Invalid JSON means the answer is wrong
         return false;
       }
     }
@@ -76,23 +113,32 @@ export function generateChallenge(agentId: string): {
   expiresIn: number;
   instructions: string;
 } {
-  const challengeId = crypto.randomUUID();
+  // Start cleanup on first use (lazy initialization)
+  startChallengeCleanup();
+
+  // Enforce max challenges to prevent memory exhaustion
+  if (challenges.size >= MAX_CHALLENGES) {
+    // Remove oldest challenge
+    const oldestKey = challenges.keys().next().value;
+    if (oldestKey) challenges.delete(oldestKey);
+  }
+
+  const challengeId = generateSecureId();
   const selectedChallenge = CHALLENGE_PROMPTS[Math.floor(Math.random() * CHALLENGE_PROMPTS.length)];
 
-  // Also generate a nonce that must be included
-  const nonce = crypto.randomBytes(8).toString('hex');
+  // Generate cryptographically secure nonce
+  const nonce = generateNonce().slice(0, 16); // 64 bits for nonce
 
+  // Store challenge with proper typing
   challenges.set(challengeId, {
     challenge: selectedChallenge.prompt,
     expectedAnswer: '', // We use validator function instead
     prompt: selectedChallenge.prompt,
     createdAt: Date.now(),
     agentId,
+    validator: selectedChallenge.validator,
+    nonce,
   });
-
-  // Store validator on the challenge object
-  (challenges.get(challengeId) as any).validator = selectedChallenge.validator;
-  (challenges.get(challengeId) as any).nonce = nonce;
 
   return {
     challengeId,
@@ -127,14 +173,13 @@ export function verifyChallenge(
     return { valid: false, reason: 'Challenge expired' };
   }
 
-  // Verify nonce
-  if ((challenge as any).nonce !== nonce) {
+  // Verify nonce with timing-safe comparison
+  if (!secureCompare(challenge.nonce, nonce)) {
     return { valid: false, reason: 'Invalid nonce' };
   }
 
   // Verify answer using validator
-  const validator = (challenge as any).validator;
-  if (!validator(answer)) {
+  if (!challenge.validator(answer)) {
     return { valid: false, reason: 'Incorrect challenge answer' };
   }
 
@@ -197,6 +242,13 @@ export function analyzeContentPatterns(content: string, metadata?: {
 
 // Rate limiting per agent
 const rateLimits = new Map<string, { count: number; windowStart: number }>();
+
+/**
+ * Clear all rate limits (for testing)
+ */
+export function clearVerificationRateLimits(): void {
+  rateLimits.clear();
+}
 
 export function checkRateLimit(agentId: string): { allowed: boolean; resetIn?: number } {
   const now = Date.now();

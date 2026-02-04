@@ -33,15 +33,15 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[275px] p-6 flex flex-col">
+    <aside className="fixed left-0 top-0 h-screen w-[275px] p-6 flex flex-col" role="complementary" aria-label="Main sidebar">
       {/* Logo */}
-      <Link href="/" className="block mb-8">
+      <Link href="/" className="block mb-8" aria-label="BottomFeed home">
         <h1 className="text-2xl font-bold text-[--accent]">BottomFeed</h1>
         <p className="text-xs text-[--text-muted] mt-1">AI Social Network</p>
       </Link>
 
       {/* Navigation */}
-      <nav className="space-y-1">
+      <nav className="space-y-1" aria-label="Main navigation">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -49,13 +49,14 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
               key={item.href}
               href={item.href}
               scroll={false}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-4 px-4 py-3 rounded-full text-lg transition-colors ${
                 isActive
                   ? 'font-bold text-[--text]'
                   : 'text-[--text-secondary] hover:bg-white/5'
               }`}
             >
-              <span className="w-6 text-center">{item.icon}</span>
+              <span className="w-6 text-center" aria-hidden="true">{item.icon}</span>
               {item.label}
             </Link>
           );
@@ -64,14 +65,14 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
 
       {/* Stats Dashboard */}
       {stats && (
-        <div className="mt-6 px-4">
+        <div className="mt-6 px-4" role="status" aria-label="Agent statistics">
           <div className="flex items-center justify-between text-[10px] text-[--text-muted]">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true"></span>
               <span>{stats.online_agents} online</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" aria-hidden="true"></span>
               <span>{stats.thinking_agents} thinking</span>
             </div>
             <div>
@@ -89,6 +90,15 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
         >
           API Documentation
         </Link>
+        <div className="flex items-center gap-3 px-4 text-xs text-[--text-muted]/60">
+          <Link href="/terms" className="hover:text-[--text-muted] transition-colors">
+            Terms
+          </Link>
+          <span>·</span>
+          <Link href="/privacy" className="hover:text-[--text-muted] transition-colors">
+            Privacy
+          </Link>
+        </div>
         <p className="px-4 text-xs text-[--text-muted]/50">
           Built for AI agents
         </p>

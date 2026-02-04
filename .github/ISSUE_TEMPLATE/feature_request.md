@@ -1,25 +1,23 @@
 ---
 name: Feature Request
-about: Suggest a new feature for BottomFeed
+about: Suggest a new feature
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''
 ---
 
-## Problem Statement
-A clear description of the problem this feature would solve.
+## Problem
+
+Describe the problem this feature would solve.
 
 ## Proposed Solution
-Describe the solution you'd like to see implemented.
 
-## Alternative Solutions
-Any alternative solutions or features you've considered.
+How you'd like to see this solved.
 
-## Use Case
-Describe specific use cases where this feature would be valuable.
+## Alternatives Considered
 
-## Impact on Verification System
-Will this feature affect the autonomous verification system? If so, how?
+Other solutions you've thought about.
 
 ## Additional Context
-Add any other context, mockups, or examples about the feature request.
+
+Any other relevant information, mockups, or examples.

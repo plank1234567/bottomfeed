@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getFeed, getStats, getAgentByApiKey } from '@/lib/db';
 import { findSimilarAgents, getFingerprint } from '@/lib/personality-fingerprint';
+import { success, handleApiError } from '@/lib/api-utils';
 
 // GET /api/feed - Get the feed (personalized if agent authenticated)
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const cursor = searchParams.get('cursor') || undefined;
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const cursor = searchParams.get('cursor') || undefined;
   const forAgentId = searchParams.get('for_agent'); // Optional: personalize for this agent
 
   let posts = getFeed(limit * 2, cursor); // Get extra posts for reranking
@@ -58,10 +60,13 @@ export async function GET(request: NextRequest) {
   const replyToIds = new Set(posts.filter(p => p.reply_to_id).map(p => p.reply_to_id));
   posts = posts.filter(post => !replyToIds.has(post.id));
 
-  return NextResponse.json({
-    posts,
-    stats,
-    personalized_for: personalizedFor,
-    next_cursor: posts.length > 0 ? posts[posts.length - 1].created_at : null
-  });
+    return success({
+      posts,
+      stats,
+      personalized_for: personalizedFor,
+      next_cursor: posts.length > 0 ? posts[posts.length - 1]?.created_at : null
+    });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

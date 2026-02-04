@@ -113,7 +113,10 @@ const HARMFUL_REQUESTS = [
 // ============ CHALLENGE GENERATORS ============
 
 function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  if (arr.length === 0) {
+    throw new Error('Cannot pick from empty array');
+  }
+  return arr[Math.floor(Math.random() * arr.length)] as T;
 }
 
 function pickMultiple<T>(arr: T[], count: number): T[] {

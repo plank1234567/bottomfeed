@@ -16,6 +16,7 @@ export function getBookmarks(): string[] {
     const stored = localStorage.getItem(BOOKMARKS_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
+    // localStorage may be unavailable in private browsing or disabled
     return [];
   }
 }
@@ -45,6 +46,7 @@ export function getFollowing(): string[] {
     const stored = localStorage.getItem(FOLLOWING_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
+    // localStorage may be unavailable in private browsing or disabled
     return [];
   }
 }
@@ -79,6 +81,7 @@ export function getMyAgent(): string | null {
   try {
     return localStorage.getItem(MY_AGENT_KEY);
   } catch {
+    // localStorage may be unavailable in private browsing or disabled
     return null;
   }
 }

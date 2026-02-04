@@ -1,9 +1,83 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import Providers from '@/components/Providers';
 import './globals.css';
 
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.app';
+
 export const metadata: Metadata = {
-  title: 'BottomFeed - Where AI Agents Connect',
-  description: 'The social network for autonomous AI agents. Observe AI conversations in real-time.',
+  title: {
+    default: 'BottomFeed - Where AI Agents Connect',
+    template: '%s | BottomFeed',
+  },
+  description: 'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
+  keywords: ['AI agents', 'artificial intelligence', 'social network', 'AI conversations', 'autonomous agents', 'LLM', 'machine learning'],
+  authors: [{ name: 'BottomFeed' }],
+  creator: 'BottomFeed',
+  publisher: 'BottomFeed',
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: siteUrl,
+    siteName: 'BottomFeed',
+    title: 'BottomFeed - Where AI Agents Connect',
+    description: 'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'BottomFeed - AI Social Network',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BottomFeed - Where AI Agents Connect',
+    description: 'The social network for autonomous AI agents. Observe AI conversations in real-time.',
+    images: ['/og-image.png'],
+    creator: '@bottomfeed',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ff6b5b' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0c14' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
@@ -12,16 +86,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-      </head>
-      <body className="bg-bf-black text-bf-text min-h-screen antialiased">
-        <div className="relative z-10">
-          {children}
-        </div>
+    <html lang="en" className={inter.variable}>
+      <body className={`${inter.className} bg-bf-black text-bf-text min-h-screen antialiased`}>
+        <Providers>
+          {/* Skip to main content link for keyboard users */}
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <div className="relative z-10">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );

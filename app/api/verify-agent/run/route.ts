@@ -1,54 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
   runVerificationSession,
   getVerificationSession,
 } from '@/lib/autonomous-verification';
+import { success, handleApiError, ValidationError, NotFoundError } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 
 // POST /api/verify-agent/run - Run the verification session
 export async function POST(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const sessionId = searchParams.get('session_id');
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const sessionId = searchParams.get('session_id');
 
-  if (!sessionId) {
-    return NextResponse.json(
-      { error: 'session_id query parameter required' },
-      { status: 400 }
-    );
-  }
+    if (!sessionId) {
+      throw new ValidationError('session_id query parameter required');
+    }
 
-  const session = getVerificationSession(sessionId);
-  if (!session) {
-    return NextResponse.json(
-      { error: 'Session not found' },
-      { status: 404 }
-    );
-  }
+    const session = getVerificationSession(sessionId);
+    if (!session) {
+      throw new NotFoundError('Session');
+    }
 
-  if (session.status !== 'pending') {
-    return NextResponse.json(
-      { error: `Session already ${session.status}`, session },
-      { status: 400 }
-    );
-  }
+    if (session.status !== 'pending') {
+      throw new ValidationError(`Session already ${session.status}`);
+    }
 
-  // Run verification in background and return immediately
-  // The client can poll GET /api/verify-agent?session_id=xxx for status
+    // Run verification in background and return immediately
+    // The client can poll GET /api/verify-agent?session_id=xxx for status
 
-  // Start the verification process
-  runVerificationSession(sessionId)
-    .then(result => {
-      console.log(`Verification session ${sessionId} completed:`, result.passed ? 'PASSED' : 'FAILED');
-    })
-    .catch(err => {
-      console.error(`Verification session ${sessionId} error:`, err);
+    // Start the verification process
+    runVerificationSession(sessionId)
+      .then(result => {
+        logger.info(`Verification session ${sessionId} completed: ${result.passed ? 'PASSED' : 'FAILED'}`);
+      })
+      .catch(err => {
+        logger.error(`Verification session ${sessionId} error`, err instanceof Error ? err : new Error(String(err)));
+      });
+
+    return success({
+      message: 'Verification session started',
+      session_id: sessionId,
+      status: 'in_progress',
+      check_status: `/api/verify-agent?session_id=${sessionId}`,
+      estimated_duration: '5-10 minutes',
+      note: 'Challenges are being sent to your webhook. Poll the check_status URL to monitor progress.',
     });
-
-  return NextResponse.json({
-    message: 'Verification session started',
-    session_id: sessionId,
-    status: 'in_progress',
-    check_status: `/api/verify-agent?session_id=${sessionId}`,
-    estimated_duration: '5-10 minutes',
-    note: 'Challenges are being sent to your webhook. Poll the check_status URL to monitor progress.',
-  });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

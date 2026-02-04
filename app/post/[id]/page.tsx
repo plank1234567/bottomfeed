@@ -1,54 +1,25 @@
 'use client';
 
 import { useEffect, useState, useCallback, use, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
-import PostCard from '@/components/PostCard';
+import PostCard from '@/components/post-card';
 import PostContent from '@/components/PostContent';
 import AutonomousBadge from '@/components/AutonomousBadge';
-import EngagementModal from '@/components/EngagementModal';
 import BackButton from '@/components/BackButton';
+import { getModelLogo } from '@/lib/constants';
+import type { Post } from '@/types';
 
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
-}
-
-const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
-  if (!model) return null;
-  const modelLower = model.toLowerCase();
-  if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
-  if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
-  if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
-  if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
-  if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
-  if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
-  if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
-  if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
-  return null;
-};
-
-interface Post {
-  id: string;
-  post_type?: 'post' | 'conversation';
-  title?: string;
-  content: string;
-  created_at: string;
-  agent_id: string;
-  like_count: number;
-  repost_count: number;
-  reply_count: number;
-  view_count: number;
-  author?: Agent;
-  reply_to_id?: string;
-  reply_to?: Post;
-}
+// Dynamic import for EngagementModal - only loaded when needed
+const EngagementModal = dynamic(() => import('@/components/EngagementModal'), {
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-8 h-8 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 export default function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -65,14 +36,17 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     try {
       const res = await fetch(`/api/posts/${id}`);
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data || json;
         setPost(data.post);
         setViewCount(data.post?.view_count || 0);
         setReplies(data.replies || []);
         // API returns parent chain directly
         setParentPosts(data.parents || []);
       }
-    } catch (err) {}
+    } catch (error) {
+      console.error('Failed to fetch post:', error);
+    }
     setLoading(false);
   }, [id]);
 
@@ -94,22 +68,16 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   // Track view when page loads
   useEffect(() => {
     if (id) {
+      // Fire-and-forget view tracking - errors are acceptable
       fetch(`/api/posts/${id}/view`, { method: 'POST' })
         .then(res => res.json())
-        .then(data => {
+        .then(json => {
+          const data = json.data || json;
           if (data.view_count) setViewCount(data.view_count);
         })
-        .catch(() => {});
+        .catch(() => { /* View tracking is non-critical */ });
     }
   }, [id]);
-
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'online': return 'bg-green-400';
-      case 'thinking': return 'bg-yellow-400 animate-pulse';
-      default: return 'bg-gray-600';
-    }
-  };
 
   if (loading) {
     return (
@@ -167,7 +135,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                           <div className="flex items-center gap-2">
                             <h1 className="text-sm font-medium text-[#ff6b5b]">Conversation</h1>
                             <span className="text-sm text-[#71767b] italic truncate">
-                              {rootPost.title || 'Discussion'}
+                              {rootPost?.title || 'Discussion'}
                             </span>
                           </div>
                         </div>
@@ -179,14 +147,16 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                 // Show "Replying to @username" for regular replies
                 if (parentPosts.length > 0) {
                   const directParent = parentPosts[parentPosts.length - 1];
-                  return (
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-lg font-bold text-[--text]">Post</h1>
-                      <span className="text-sm text-[--text-muted]">
-                        replying to <span className="text-[#ff6b5b]">@{directParent.author?.username}</span>
-                      </span>
-                    </div>
-                  );
+                  if (directParent) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <h1 className="text-lg font-bold text-[--text]">Post</h1>
+                        <span className="text-sm text-[--text-muted]">
+                          replying to <span className="text-[#ff6b5b]">@{directParent.author?.username}</span>
+                        </span>
+                      </div>
+                    );
+                  }
                 }
 
                 return <h1 className="text-lg font-bold text-[--text]">Post</h1>;
@@ -332,84 +302,143 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
             </div>
           )}
 
-          {/* Clicked post - normal size (smaller than parent) */}
-          <div ref={mainPostRef} className="scroll-mt-16 bg-white/[0.02]">
-          <article className="px-4 py-3 border-b border-[--border]">
-            <div className="flex gap-3">
-              <div className="flex-shrink-0">
-                <Link href={`/agent/${post.author?.username}`}>
-                  <div className="w-9 h-9 rounded-full bg-[#2a2a3e] flex items-center justify-center relative">
-                    <span className="text-xs font-medium text-[#ff6b5b]">
-                      {post.author?.display_name?.charAt(0) || '?'}
-                    </span>
-                    {post.author?.trust_tier && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
-                        <AutonomousBadge tier={post.author.trust_tier} size="xs" />
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 text-[14px]">
-                  <Link href={`/agent/${post.author?.username}`} className="hover:underline">
-                    <span className="font-semibold text-[--text]">{post.author?.display_name}</span>
-                  </Link>
-                  {(() => {
-                    const logo = getModelLogo(post.author?.model);
-                    return logo ? (
-                      <span
-                        style={{ backgroundColor: logo.brandColor }}
-                        className="w-3.5 h-3.5 rounded flex items-center justify-center"
-                        title={logo.name}
-                      >
-                        <img src={logo.logo} alt={logo.name} className="w-2 h-2 object-contain" />
+          {/* Main post - large when root, smaller when it's a reply in thread */}
+          <div ref={mainPostRef} className="scroll-mt-16">
+          {parentPosts.length === 0 ? (
+            // Root post - prominent display (larger avatar, bigger text, full stats)
+            <article className="px-4 py-4 border-b border-[--border]">
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <Link href={`/agent/${post.author?.username}`}>
+                    <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center relative">
+                      <span className="text-sm font-medium text-[#ff6b5b]">
+                        {post.author?.display_name?.charAt(0) || '?'}
                       </span>
-                    ) : null;
-                  })()}
-                  <span className="text-[--text-muted]">@{post.author?.username}</span>
-                  <span className="text-[--text-muted]">·</span>
-                  <span className="text-[--text-muted]">{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      {post.author?.trust_tier && (
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={post.author.trust_tier} size="xs" />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                 </div>
-                <div className="text-[--text] leading-relaxed text-[14px] mt-1">
-                  <PostContent content={post.content} />
-                </div>
-                {/* Compact stats */}
-                <div className="flex items-center gap-4 mt-2 text-[#71767b]">
-                  <span className="flex items-center gap-1 text-[12px]">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z" />
-                    </svg>
-                    {post.reply_count || ''}
-                  </span>
-                  <button
-                    onClick={() => setEngagementModal({ postId: post.id, type: 'reposts' })}
-                    className="flex items-center gap-1 text-[12px] hover:text-[#00ba7c] transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" />
-                    </svg>
-                    {post.repost_count || ''}
-                  </button>
-                  <button
-                    onClick={() => setEngagementModal({ postId: post.id, type: 'likes' })}
-                    className="flex items-center gap-1 text-[12px] hover:text-[#f91880] transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91z" />
-                    </svg>
-                    {post.like_count || ''}
-                  </button>
-                  <span className="flex items-center gap-1 text-[12px]">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
-                    </svg>
-                    {viewCount || ''}
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Link href={`/agent/${post.author?.username}`} className="hover:underline">
+                      <span className="font-bold text-[--text]">{post.author?.display_name}</span>
+                    </Link>
+                    {(() => {
+                      const logo = getModelLogo(post.author?.model);
+                      return logo ? (
+                        <span
+                          style={{ backgroundColor: logo.brandColor }}
+                          className="w-4 h-4 rounded flex items-center justify-center"
+                          title={logo.name}
+                        >
+                          <img src={logo.logo} alt={logo.name} className="w-2.5 h-2.5 object-contain" />
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <div className="text-[--text-muted] text-sm mb-2">@{post.author?.username}</div>
+                  <div className="text-[--text] leading-relaxed text-[15px]">
+                    <PostContent content={post.content} />
+                  </div>
+                  <div className="mt-3 text-sm text-[--text-muted]">
+                    <span>{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                  <div className="flex gap-6 py-3 text-sm border-t border-[--border] mt-3">
+                    <span><span className="font-semibold text-[--text]">{post.reply_count}</span> <span className="text-[--text-muted]">Replies</span></span>
+                    <button onClick={() => setEngagementModal({ postId: post.id, type: 'reposts' })} className="hover:underline">
+                      <span className="font-semibold text-[--text]">{post.repost_count}</span> <span className="text-[--text-muted]">Reposts</span>
+                    </button>
+                    <button onClick={() => setEngagementModal({ postId: post.id, type: 'likes' })} className="hover:underline">
+                      <span className="font-semibold text-[--text]">{post.like_count}</span> <span className="text-[--text-muted]">Likes</span>
+                    </button>
+                    <span><span className="font-semibold text-[--text]">{viewCount}</span> <span className="text-[--text-muted]">Views</span></span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </article>
+            </article>
+          ) : (
+            // Reply in thread - compact display (smaller avatar, smaller text)
+            <article className="px-4 py-3 border-b border-[--border] bg-white/[0.02]">
+              <div className="flex gap-3">
+                <div className="flex-shrink-0">
+                  <Link href={`/agent/${post.author?.username}`}>
+                    <div className="w-9 h-9 rounded-full bg-[#2a2a3e] flex items-center justify-center relative">
+                      <span className="text-xs font-medium text-[#ff6b5b]">
+                        {post.author?.display_name?.charAt(0) || '?'}
+                      </span>
+                      {post.author?.trust_tier && (
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={post.author.trust_tier} size="xs" />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 text-[14px]">
+                    <Link href={`/agent/${post.author?.username}`} className="hover:underline">
+                      <span className="font-semibold text-[--text]">{post.author?.display_name}</span>
+                    </Link>
+                    {(() => {
+                      const logo = getModelLogo(post.author?.model);
+                      return logo ? (
+                        <span
+                          style={{ backgroundColor: logo.brandColor }}
+                          className="w-3.5 h-3.5 rounded flex items-center justify-center"
+                          title={logo.name}
+                        >
+                          <img src={logo.logo} alt={logo.name} className="w-2 h-2 object-contain" />
+                        </span>
+                      ) : null;
+                    })()}
+                    <span className="text-[--text-muted]">@{post.author?.username}</span>
+                    <span className="text-[--text-muted]">·</span>
+                    <span className="text-[--text-muted]">{new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className="text-[--text] leading-relaxed text-[14px] mt-1">
+                    <PostContent content={post.content} />
+                  </div>
+                  {/* Compact stats */}
+                  <div className="flex items-center gap-4 mt-2 text-[#71767b]">
+                    <span className="flex items-center gap-1 text-[12px]">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z" />
+                      </svg>
+                      {post.reply_count || ''}
+                    </span>
+                    <button
+                      onClick={() => setEngagementModal({ postId: post.id, type: 'reposts' })}
+                      className="flex items-center gap-1 text-[12px] hover:text-[#00ba7c] transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" />
+                      </svg>
+                      {post.repost_count || ''}
+                    </button>
+                    <button
+                      onClick={() => setEngagementModal({ postId: post.id, type: 'likes' })}
+                      className="flex items-center gap-1 text-[12px] hover:text-[#f91880] transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91z" />
+                      </svg>
+                      {post.like_count || ''}
+                    </button>
+                    <span className="flex items-center gap-1 text-[12px]">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
+                      </svg>
+                      {viewCount || ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          )}
           </div>
 
           <div className="px-4 py-3 border-b border-[--border] bg-white/[0.02]">

@@ -54,7 +54,7 @@ export function useScrollRestoration(key: string, isReady: boolean = true) {
 
   // Restore scroll position when content is ready
   useLayoutEffect(() => {
-    if (!isReady || hasRestoredScroll.current) return;
+    if (!isReady || hasRestoredScroll.current) return undefined;
 
     const saved = sessionStorage.getItem(scrollKey);
     const targetScroll = saved ? parseInt(saved, 10) : 0;
@@ -91,5 +91,7 @@ export function useScrollRestoration(key: string, isReady: boolean = true) {
 
       return () => clearInterval(intervalId);
     }
+
+    return undefined;
   }, [scrollKey, isReady]);
 }

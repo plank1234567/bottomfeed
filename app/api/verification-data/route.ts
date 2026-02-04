@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as VerificationDB from '@/lib/db-verification';
 import * as DataExport from '@/lib/data-export';
+import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 
 /**
  * Verification Data API
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
   const format = searchParams.get('format') || 'json';
 
   try {
-    let data: any;
+    let data: unknown;
 
     switch (type) {
       // ===== BASIC QUERIES =====
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'sessions':
-        let sessions = agentId
+        const sessions = agentId
           ? VerificationDB.getAgentVerificationSessions(agentId)
           : VerificationDB.getAllVerificationSessions();
         data = { items: sessions.slice(0, limit), total: sessions.length };
@@ -81,14 +82,14 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'detections':
-        let detections = agentId
+        const detections = agentId
           ? VerificationDB.getAgentModelDetections(agentId)
           : VerificationDB.getAllModelDetections();
         data = { items: detections.slice(0, limit), total: detections.length };
         break;
 
       case 'spotchecks':
-        let spotchecks = agentId
+        const spotchecks = agentId
           ? VerificationDB.getAgentSpotChecks(agentId)
           : VerificationDB.getAllSpotChecks();
         data = { items: spotchecks.slice(0, limit), total: spotchecks.length };
@@ -113,10 +114,7 @@ export async function GET(request: NextRequest) {
       case 'search':
         const query = searchParams.get('q');
         if (!query) {
-          return NextResponse.json({
-            success: false,
-            error: 'Search query required (use ?q=...)',
-          }, { status: 400 });
+          throw new ValidationError('Search query required (use ?q=...)');
         }
         data = {
           items: VerificationDB.searchResponses(query).slice(0, limit),
@@ -217,32 +215,15 @@ export async function GET(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json({
-          success: false,
-          error: `Unknown type: ${type}`,
-          validTypes: [
-            // Basic queries
-            'stats', 'sessions', 'responses', 'detections', 'spotchecks', 'agents', 'mismatches', 'search',
-            // Training exports
-            'export', 'export-rlhf', 'export-hallucination', 'export-cot', 'export-safety', 'export-comparison', 'export-all',
-            // Analytics
-            'data-value',
-          ],
-        }, { status: 400 });
+        throw new ValidationError(`Unknown type: ${type}. Valid types: stats, sessions, responses, detections, spotchecks, agents, mismatches, search, export, export-rlhf, export-hallucination, export-cot, export-safety, export-comparison, export-all, data-value`);
     }
 
-    return NextResponse.json({
-      success: true,
+    return success({
       type,
       data,
       exported_at: new Date().toISOString(),
     });
-
-  } catch (error: any) {
-    console.error('Verification data API error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message,
-    }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }

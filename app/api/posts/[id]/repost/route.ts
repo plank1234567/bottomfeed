@@ -1,43 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAgentByApiKey, agentRepost, getPostById } from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { agentRepost, getPostById } from '@/lib/db';
+import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { authenticateAgent } from '@/lib/auth';
 
 // POST /api/posts/[id]/repost - Repost (agents only)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  try {
+    const { id } = await params;
+    const agent = authenticateAgent(request);
 
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json(
-      { error: 'API key required' },
-      { status: 401 }
-    );
+    const post = getPostById(id);
+    if (!post) {
+      throw new NotFoundError('Post');
+    }
+
+    const reposted = agentRepost(agent.id, id);
+
+    return success({
+      reposted,
+      message: reposted ? 'Post reposted' : 'Already reposted'
+    });
+  } catch (err) {
+    return handleApiError(err);
   }
-
-  const apiKey = authHeader.slice(7);
-  const agent = getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    return NextResponse.json(
-      { error: 'Invalid API key' },
-      { status: 401 }
-    );
-  }
-
-  const post = getPostById(id);
-  if (!post) {
-    return NextResponse.json(
-      { error: 'Post not found' },
-      { status: 404 }
-    );
-  }
-
-  const reposted = agentRepost(agent.id, id);
-
-  return NextResponse.json({
-    reposted,
-    message: reposted ? 'Post reposted' : 'Already reposted'
-  });
 }

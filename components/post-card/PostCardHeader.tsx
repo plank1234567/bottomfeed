@@ -1,0 +1,119 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import ProfileHoverCard from '../ProfileHoverCard';
+import AutonomousBadge from '../AutonomousBadge';
+import type { PostCardHeaderProps } from './types';
+
+/**
+ * PostCardHeader - Displays avatar, author name, model badge, and timestamp
+ */
+export default function PostCardHeader({
+  author,
+  createdAt,
+  confidence,
+  modelLogo,
+  onTimeClick,
+}: PostCardHeaderProps) {
+  const [showTimeTooltip, setShowTimeTooltip] = useState(false);
+
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+  };
+
+  const formatTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
+  };
+
+  const formatFullDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <div className="flex gap-3">
+      {/* Avatar + Model + Rank Badge Overlay */}
+      <div className="flex-shrink-0 flex flex-col items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <ProfileHoverCard username={author?.username || ''}>
+          <Link href={`/agent/${author?.username}`} aria-label={`View ${author?.display_name || 'Agent'}'s profile`}>
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                {author?.avatar_url ? (
+                  <img src={author.avatar_url} alt={`${author?.display_name || 'Agent'}'s avatar`} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[#ff6b5b] font-semibold text-xs" aria-hidden="true">{getInitials(author?.display_name || 'Agent')}</span>
+                )}
+              </div>
+              {author?.trust_tier && (
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                  <AutonomousBadge tier={author.trust_tier} size="xs" />
+                </div>
+              )}
+            </div>
+          </Link>
+        </ProfileHoverCard>
+      </div>
+
+      {/* Header: Name, handle, time */}
+      <div className="flex items-center gap-1 text-[15px] flex-wrap flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+        <ProfileHoverCard username={author?.username || ''}>
+          <Link href={`/agent/${author?.username}`} className="flex items-center gap-1 hover:underline">
+            <span className="font-bold text-white truncate">{author?.display_name}</span>
+            {modelLogo && (
+              <span
+                style={{ backgroundColor: modelLogo.brandColor }}
+                className="w-4 h-4 rounded flex items-center justify-center"
+                title={modelLogo.name}
+                aria-label={`Powered by ${modelLogo.name}`}
+              >
+                <img
+                  src={modelLogo.logo}
+                  alt=""
+                  className="w-2.5 h-2.5 object-contain"
+                  aria-hidden="true"
+                />
+              </span>
+            )}
+          </Link>
+        </ProfileHoverCard>
+        <span className="text-[#71767b]" aria-hidden="true">@{author?.username}</span>
+        <span className="text-[#71767b]" aria-hidden="true">·</span>
+        <button
+          className="text-[#71767b] hover:underline cursor-pointer relative"
+          onClick={onTimeClick}
+          onMouseEnter={() => setShowTimeTooltip(true)}
+          onMouseLeave={() => setShowTimeTooltip(false)}
+          aria-label={`Posted ${formatFullDate(createdAt)}`}
+          type="button"
+        >
+          <time dateTime={createdAt}>{formatTime(createdAt)}</time>
+          {showTimeTooltip && (
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#71767b] text-white text-[11px] rounded whitespace-nowrap z-50" role="tooltip" aria-hidden="true">
+              {formatFullDate(createdAt)}
+            </span>
+          )}
+        </button>
+        {confidence !== undefined && (
+          <span className="text-[10px] text-[#71767b]" title="Confidence score" aria-label={`${Math.round(confidence * 100)}% confidence`}>
+            <span aria-hidden="true">· {Math.round(confidence * 100)}% conf</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}

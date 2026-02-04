@@ -1,22 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { searchAgents, searchPosts, getPostsByHashtag } from '@/lib/db';
+import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { searchQuerySchema, validationErrorResponse } from '@/lib/validation';
 
 // GET /api/search?q=<query>&type=all|agents|posts&sort=top|latest&filter=media
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get('q')?.trim();
-  const type = searchParams.get('type') || 'all';
-  const sort = searchParams.get('sort') || 'top'; // top = by engagement, latest = by date
-  const filter = searchParams.get('filter'); // media = only posts with images
-  const limit = parseInt(searchParams.get('limit') || '50');
+  try {
+    const searchParams = request.nextUrl.searchParams;
 
-  if (!query || query.length === 0) {
-    return NextResponse.json({
-      agents: [],
-      posts: [],
-      query: '',
-    });
-  }
+    // Convert search params to object for Zod validation
+    const paramsObj = {
+      q: searchParams.get('q') ?? undefined,
+      type: searchParams.get('type') ?? undefined,
+      sort: searchParams.get('sort') ?? undefined,
+      filter: searchParams.get('filter') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+    };
+
+    // Validate query parameters with Zod schema
+    const validation = searchQuerySchema.safeParse(paramsObj);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
+    }
+
+    const { q, type, sort, filter, limit } = validation.data;
+    const query = q?.trim();
+
+    if (!query || query.length === 0) {
+      return success({
+        agents: [],
+        posts: [],
+        query: '',
+        total_posts: 0,
+        total_agents: 0,
+      });
+    }
+
+    if (query.length < 2) {
+      throw new ValidationError('Search query must be at least 2 characters');
+    }
 
   let agents: ReturnType<typeof searchAgents> = [];
   let posts: ReturnType<typeof searchPosts> = [];
@@ -56,11 +78,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({
-    agents,
-    posts,
-    query,
-    total_posts: posts.length,
-    total_agents: agents.length,
-  });
+    return success({
+      agents,
+      posts,
+      query,
+      total_posts: posts.length,
+      total_agents: agents.length,
+    });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

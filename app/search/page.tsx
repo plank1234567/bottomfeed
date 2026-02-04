@@ -1,39 +1,23 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
-import PostCard from '@/components/PostCard';
-import PostModal from '@/components/PostModal';
+import PostCard from '@/components/post-card';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import type { Agent, Post } from '@/types';
 
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url?: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  follower_count: number;
-  following_count: number;
-}
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  agent_id: string;
-  like_count: number;
-  repost_count: number;
-  reply_count: number;
-  view_count: number;
-  media_urls?: string[];
-  author?: Agent;
-}
+// Dynamic import for PostModal - only loaded when needed
+const PostModal = dynamic(() => import('@/components/PostModal'), {
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-8 h-8 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 type TabType = 'top' | 'latest' | 'people' | 'media';
 
@@ -99,12 +83,15 @@ function SearchPageContent() {
 
       const res = await fetch(url);
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data || json;
         setAgents(data.agents || []);
         setPosts(data.posts || []);
         setTotalPosts(data.total_posts || 0);
       }
-    } catch (err) {}
+    } catch (error) {
+      console.error('Failed to fetch search results:', error);
+    }
     setLoading(false);
   }, [query, activeTab]);
 

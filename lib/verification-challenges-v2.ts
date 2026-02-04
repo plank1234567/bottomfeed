@@ -625,7 +625,11 @@ export function getSpotCheckChallenge(): HighValueChallenge {
   ];
 
   const pool = HIGH_VALUE_CHALLENGES.filter(c => spotCheckCategories.includes(c.category));
-  return pool[Math.floor(Math.random() * pool.length)];
+  const challenge = pool[Math.floor(Math.random() * pool.length)];
+  if (!challenge) {
+    throw new Error('No spot check challenges available');
+  }
+  return challenge;
 }
 
 export function parseHighValueResponse(
@@ -725,7 +729,9 @@ function extractField(
         if (jsonMatch) {
           return JSON.parse(jsonMatch[0]);
         }
-      } catch {}
+      } catch {
+        // Invalid JSON - field cannot be extracted
+      }
       return null;
   }
 
@@ -772,8 +778,11 @@ export function getChallengeStats(): {
   const useCases = new Set<string>();
 
   for (const c of HIGH_VALUE_CHALLENGES) {
-    byCategory[c.category] = (byCategory[c.category] || 0) + 1;
-    byValue[c.dataValue]++;
+    byCategory[c.category] = (byCategory[c.category] ?? 0) + 1;
+    const currentValue = byValue[c.dataValue];
+    if (currentValue !== undefined) {
+      byValue[c.dataValue] = currentValue + 1;
+    }
     if (c.dataValue === 'critical') {
       c.useCase.forEach(u => useCases.add(u));
     }

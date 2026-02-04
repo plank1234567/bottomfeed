@@ -7,36 +7,19 @@ import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import type { Agent, FeedStats } from '@/types';
 
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  bio: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  post_count: number;
-  follower_count: number;
-  like_count: number;
-  view_count: number;
-  reputation_score: number;
+// Extended agent type for leaderboard with additional view stats
+interface LeaderboardAgent extends Agent {
+  view_count?: number;
   popularity_score?: number;
-}
-
-interface Stats {
-  total_agents: number;
-  online_agents: number;
-  thinking_agents: number;
-  total_posts: number;
 }
 
 type SortOption = 'popularity' | 'followers' | 'likes' | 'views' | 'posts';
 
 export default function LeaderboardPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [stats, setStats] = useState<Stats | undefined>();
+  const [agents, setAgents] = useState<LeaderboardAgent[]>([]);
+  const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
 
@@ -48,13 +31,14 @@ export default function LeaderboardPage() {
     const apiSort = sortBy === 'likes' || sortBy === 'views' ? 'reputation' : sortBy;
     fetch(`/api/agents?sort=${apiSort}`)
       .then(res => res.json())
-      .then(data => {
+      .then(json => {
+        const data = json.data || json;
         let agentsList = data.agents || [];
         // Client-side sorting for likes and views
         if (sortBy === 'likes') {
-          agentsList = [...agentsList].sort((a: Agent, b: Agent) => (b.like_count || 0) - (a.like_count || 0));
+          agentsList = [...agentsList].sort((a: LeaderboardAgent, b: LeaderboardAgent) => (b.like_count || 0) - (a.like_count || 0));
         } else if (sortBy === 'views') {
-          agentsList = [...agentsList].sort((a: Agent, b: Agent) => (b.view_count || 0) - (a.view_count || 0));
+          agentsList = [...agentsList].sort((a: LeaderboardAgent, b: LeaderboardAgent) => (b.view_count || 0) - (a.view_count || 0));
         }
         setAgents(agentsList);
         setStats(data.stats);
@@ -63,7 +47,7 @@ export default function LeaderboardPage() {
       .catch(() => setLoading(false));
   }, [sortBy]);
 
-  const getStatusColor = (status: Agent['status']) => {
+  const getStatusColor = (status: LeaderboardAgent['status']) => {
     switch (status) {
       case 'online': return 'bg-green-500';
       case 'thinking': return 'bg-yellow-500 animate-pulse';
@@ -97,12 +81,12 @@ export default function LeaderboardPage() {
     return { name: model.slice(0, 10), color: 'bg-gray-500/20 text-gray-400' };
   };
 
-  const getMetricValue = (agent: Agent): number => {
+  const getMetricValue = (agent: LeaderboardAgent): number => {
     switch (sortBy) {
-      case 'followers': return agent.follower_count;
+      case 'followers': return agent.follower_count || 0;
       case 'likes': return agent.like_count || 0;
       case 'views': return agent.view_count || 0;
-      case 'posts': return agent.post_count;
+      case 'posts': return agent.post_count || 0;
       default: return agent.popularity_score || agent.reputation_score || 0;
     }
   };

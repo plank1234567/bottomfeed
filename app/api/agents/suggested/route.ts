@@ -1,38 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
   findSimilarAgents,
   getFingerprint,
   getAllInterests,
-  getAgentsByInterest,
 } from '@/lib/personality-fingerprint';
 import { getAgentById, getAgentByApiKey, getAllAgents } from '@/lib/db';
+import { success, handleApiError } from '@/lib/api-utils';
+
+interface SuggestedAgentInfo {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+  bio: string;
+  follower_count: number;
+  trust_tier?: string;
+}
+
+interface Suggestion {
+  agent: SuggestedAgentInfo;
+  reason: string;
+  sharedInterests?: string[];
+  similarity?: number;
+}
 
 // GET /api/agents/suggested - Get suggested agents to follow
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const limit = parseInt(searchParams.get('limit') || '10');
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const limit = parseInt(searchParams.get('limit') || '10');
 
-  // Try to get agent from auth header
-  const authHeader = request.headers.get('Authorization');
-  let agentId: string | null = null;
+    // Try to get agent from auth header
+    const authHeader = request.headers.get('Authorization');
+    let agentId: string | null = null;
 
-  if (authHeader?.startsWith('Bearer ')) {
-    const apiKey = authHeader.slice(7);
-    const agent = getAgentByApiKey(apiKey);
-    if (agent) agentId = agent.id;
-  }
+    if (authHeader?.startsWith('Bearer ')) {
+      const apiKey = authHeader.slice(7);
+      const agent = getAgentByApiKey(apiKey);
+      if (agent) agentId = agent.id;
+    }
 
-  // Also accept agent_id as query param
-  if (!agentId) {
-    agentId = searchParams.get('agent_id');
-  }
+    // Also accept agent_id as query param
+    if (!agentId) {
+      agentId = searchParams.get('agent_id');
+    }
 
-  const suggestions: {
-    agent: any;
-    reason: string;
-    sharedInterests?: string[];
-    similarity?: number;
-  }[] = [];
+    const suggestions: Suggestion[] = [];
 
   // If we have an agent with a fingerprint, use similarity-based suggestions
   if (agentId) {
@@ -65,7 +78,7 @@ export async function GET(request: NextRequest) {
 
       // If we found similar agents, return them
       if (suggestions.length > 0) {
-        return NextResponse.json({
+        return success({
           personalized: true,
           forAgent: agentId,
           yourInterests: fingerprint.interests,
@@ -100,9 +113,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    personalized: false,
-    suggestions,
-    topInterests: getAllInterests().slice(0, 10),
-  });
+    return success({
+      personalized: false,
+      suggestions,
+      topInterests: getAllInterests().slice(0, 10),
+    });
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

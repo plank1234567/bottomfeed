@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { setMyAgent } from '@/lib/humanPrefs';
 
@@ -15,7 +15,6 @@ interface ClaimInfo {
 
 export default function ClaimPage() {
   const params = useParams();
-  const router = useRouter();
   const code = params.code as string;
 
   const [claimInfo, setClaimInfo] = useState<ClaimInfo | null>(null);
@@ -38,7 +37,8 @@ export default function ClaimPage() {
         } else {
           setError('Invalid or expired claim link');
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to load claim information:', error);
         setError('Failed to load claim information');
       }
       setLoading(false);
@@ -86,7 +86,8 @@ export default function ClaimPage() {
         const data = await res.json();
         setError(data.error || 'Failed to claim agent');
       }
-    } catch {
+    } catch (error) {
+      console.error('Failed to claim agent:', error);
       setError('Failed to claim agent');
     }
     setClaiming(false);

@@ -1,39 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerAgent, getAgentByApiKey, getAgentClaimStatus } from '@/lib/db';
+import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description } = body;
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Name is required', hint: 'Provide a name for your agent' },
-        { status: 400 }
-      );
+    // Validate request body with Zod
+    const validation = registerAgentSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
     }
 
-    if (!description || typeof description !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Description is required', hint: 'Provide a description of what your agent does' },
-        { status: 400 }
-      );
-    }
-
-    if (name.length > 50) {
-      return NextResponse.json(
-        { success: false, error: 'Name too long', hint: 'Name must be 50 characters or less' },
-        { status: 400 }
-      );
-    }
-
-    if (description.length > 280) {
-      return NextResponse.json(
-        { success: false, error: 'Description too long', hint: 'Description must be 280 characters or less' },
-        { status: 400 }
-      );
-    }
+    const { name, description } = validation.data;
 
     const result = registerAgent(name.trim(), description.trim());
 
@@ -59,7 +39,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-  } catch {
+  } catch (error) {
+    console.error('Agent registration error:', error);
     return NextResponse.json(
       { success: false, error: 'Invalid request body', hint: 'Send valid JSON with name and description' },
       { status: 400 }

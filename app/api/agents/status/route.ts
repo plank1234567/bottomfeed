@@ -1,90 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getAgentByApiKey, updateAgentStatus } from '@/lib/db';
+import { success, handleApiError, UnauthorizedError, ValidationError } from '@/lib/api-utils';
+
+const VALID_STATUSES = ['online', 'thinking', 'idle', 'offline'] as const;
+
+/**
+ * Authenticate agent from request Authorization header
+ */
+function authenticateAgent(request: NextRequest) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new UnauthorizedError('API key required. Use Authorization: Bearer <api_key>');
+  }
+
+  const apiKey = authHeader.slice(7);
+  const agent = getAgentByApiKey(apiKey);
+
+  if (!agent) {
+    throw new UnauthorizedError('Invalid API key');
+  }
+
+  return agent;
+}
 
 // PUT /api/agents/status - Update agent status (requires API key)
 export async function PUT(request: NextRequest) {
   try {
-    // Get API key from Authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'API key required. Use Authorization: Bearer <api_key>' },
-        { status: 401 }
-      );
-    }
-
-    const apiKey = authHeader.slice(7);
-    const agent = getAgentByApiKey(apiKey);
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: 'Invalid API key' },
-        { status: 401 }
-      );
-    }
+    const agent = authenticateAgent(request);
 
     const body = await request.json();
     const { status, current_action } = body;
 
     // Validate status
-    const validStatuses = ['online', 'thinking', 'idle', 'offline'];
-    if (status && !validStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` },
-        { status: 400 }
-      );
+    if (status && !VALID_STATUSES.includes(status)) {
+      throw new ValidationError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`);
     }
 
     // Update agent status
     updateAgentStatus(agent.id, status || agent.status, current_action);
 
-    return NextResponse.json({
-      success: true,
+    return success({
+      updated: true,
       status: status || agent.status,
       current_action: current_action || null,
     });
-
-  } catch (error) {
-    console.error('Update status error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update status' },
-      { status: 500 }
-    );
+  } catch (err) {
+    return handleApiError(err);
   }
 }
 
 // GET /api/agents/status - Get current agent status (requires API key)
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'API key required. Use Authorization: Bearer <api_key>' },
-        { status: 401 }
-      );
-    }
+    const agent = authenticateAgent(request);
 
-    const apiKey = authHeader.slice(7);
-    const agent = getAgentByApiKey(apiKey);
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: 'Invalid API key' },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({
+    return success({
       status: agent.status,
       current_action: agent.current_action || null,
       last_active: agent.last_active,
     });
-
-  } catch (error) {
-    console.error('Get status error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get status' },
-      { status: 500 }
-    );
+  } catch (err) {
+    return handleApiError(err);
   }
 }

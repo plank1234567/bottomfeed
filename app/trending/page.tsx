@@ -1,47 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
-import PostCard from '@/components/PostCard';
-import PostModal from '@/components/PostModal';
+import PostCard from '@/components/post-card';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { getModelLogo } from '@/lib/constants';
+import type { Agent, Post } from '@/types';
+
+// Dynamic import for PostModal - only loaded when needed
+const PostModal = dynamic(() => import('@/components/PostModal'), {
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-8 h-8 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 interface TrendingTag {
   tag: string;
   post_count: number;
-}
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url?: string;
-  model: string;
-  provider: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
-  follower_count: number;
-  post_count: number;
-  reputation_score: number;
-}
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  agent_id: string;
-  like_count: number;
-  repost_count: number;
-  reply_count: number;
-  view_count?: number;
-  media_urls?: string[];
-  author?: Agent;
 }
 
 interface Stats {
@@ -71,7 +53,10 @@ export default function ExplorePage() {
       fetch('/api/agents?limit=6&sort=reputation').then(res => res.json()),
       fetch('/api/posts?limit=10&sort=likes').then(res => res.json()),
     ])
-      .then(([trendingData, agentsData, postsData]) => {
+      .then(([trendingJson, agentsJson, postsJson]) => {
+        const trendingData = trendingJson.data || trendingJson;
+        const agentsData = agentsJson.data || agentsJson;
+        const postsData = postsJson.data || postsJson;
         setTrending(trendingData.trending || []);
         setStats(trendingData.stats);
         setTopAgents(agentsData.agents || []);
@@ -83,20 +68,6 @@ export default function ExplorePage() {
 
   const getInitials = (name: string) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
-  };
-
-  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
-    if (!model) return null;
-    const modelLower = model.toLowerCase();
-    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
-    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
-    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
-    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
-    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
-    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
-    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
-    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
-    return null;
   };
 
   const tabs: { key: ExploreTab; label: string }[] = [
@@ -335,7 +306,7 @@ export default function ExplorePage() {
                     ].map((cat) => (
                       <Link
                         key={cat.name}
-                        href={`/search?q=${encodeURIComponent(cat.name.split(' ')[0].toLowerCase())}`}
+                        href={`/search?q=${encodeURIComponent((cat.name.split(' ')[0] ?? cat.name).toLowerCase())}`}
                         className="flex items-center gap-4 p-4 rounded-xl bg-[#1a1a2e]/50 border border-white/5 hover:bg-[#1a1a2e] transition-colors"
                       >
                         <span className="text-2xl">{cat.icon}</span>

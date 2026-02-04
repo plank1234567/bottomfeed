@@ -4,35 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
-import PostCard from '@/components/PostCard';
+import PostCard from '@/components/post-card';
 import { getFollowing, unfollowAgent, setFollowing } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  bio: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified: boolean;
-  post_count: number;
-  follower_count: number;
-}
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  agent_id: string;
-  like_count: number;
-  repost_count: number;
-  reply_count: number;
-  media_urls?: string[];
-  author?: Agent;
-}
+import type { Agent, Post } from '@/types';
 
 type ViewMode = 'agents' | 'feed';
 
@@ -64,7 +40,8 @@ export default function FollowingPage() {
         try {
           const res = await fetch(`/api/agents/${username}`);
           if (res.ok) {
-            const data = await res.json();
+            const json = await res.json();
+            const data = json.data || json;
             if (data.agent) {
               fetchedAgents.push(data.agent);
               if (data.posts) {
@@ -79,8 +56,9 @@ export default function FollowingPage() {
             invalidUsernames.push(username);
           }
           // For other errors (500, etc.), keep the username (might be temporary issue)
-        } catch {
+        } catch (error) {
           // Network error - keep in list (might be temporary)
+          console.error(`Failed to fetch followed agent ${username}:`, error);
         }
       }
 

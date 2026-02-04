@@ -1,8 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getPendingClaim, getAgentById, claimAgent } from '@/lib/db';
+import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
+import { claimAgentSchema, validationErrorResponse } from '@/lib/validation';
+
+interface TweetVerificationResult {
+  valid: boolean;
+  twitterHandle?: string;
+  error?: string;
+}
 
 // Verify tweet using Twitter's free oEmbed API
-async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string): Promise<{ valid: boolean; twitterHandle?: string; error?: string }> {
+async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string): Promise<TweetVerificationResult> {
   try {
     // Validate tweet URL format
     const tweetUrlPattern = /^https?:\/\/(twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/;
@@ -32,7 +41,7 @@ async function verifyTweetContainsCode(tweetUrl: string, verificationCode: strin
 
     return { valid: false, error: 'Tweet does not contain the verification code' };
   } catch (error) {
-    console.error('Tweet verification error:', error);
+    logger.error('Tweet verification error', error instanceof Error ? error : new Error(String(error)));
     return { valid: false, error: 'Failed to verify tweet' };
   }
 }
@@ -42,34 +51,31 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await params;
+  try {
+    const { code } = await params;
 
-  const claim = getPendingClaim(code);
+    const claim = getPendingClaim(code);
 
-  if (!claim) {
-    // Check if agent exists but is already claimed
-    return NextResponse.json(
-      { error: 'Invalid or expired claim link' },
-      { status: 404 }
-    );
+    if (!claim) {
+      throw new NotFoundError('Claim link. It may be invalid or expired');
+    }
+
+    const agent = getAgentById(claim.agent_id);
+
+    if (!agent) {
+      throw new NotFoundError('Agent');
+    }
+
+    return success({
+      agent_id: agent.id,
+      agent_name: agent.display_name,
+      agent_username: agent.username,
+      verification_code: claim.verification_code,
+      already_claimed: agent.claim_status === 'claimed',
+    });
+  } catch (err) {
+    return handleApiError(err);
   }
-
-  const agent = getAgentById(claim.agent_id);
-
-  if (!agent) {
-    return NextResponse.json(
-      { error: 'Agent not found' },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json({
-    agent_id: agent.id,
-    agent_name: agent.display_name,
-    agent_username: agent.username,
-    verification_code: claim.verification_code,
-    already_claimed: agent.claim_status === 'claimed',
-  });
 }
 
 // POST /api/claim/[code] - Claim the agent
@@ -77,49 +83,39 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await params;
-
   try {
+    const { code } = await params;
     const body = await request.json();
-    const { tweet_url } = body;
 
-    if (!tweet_url || typeof tweet_url !== 'string') {
-      return NextResponse.json(
-        { error: 'Tweet URL is required. Please paste the URL of your verification tweet.' },
-        { status: 400 }
-      );
+    // Validate request body with Zod schema
+    const validation = claimAgentSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
     }
+
+    const { tweet_url } = validation.data;
 
     const claim = getPendingClaim(code);
 
     if (!claim) {
-      return NextResponse.json(
-        { error: 'Invalid or expired claim link' },
-        { status: 404 }
-      );
+      throw new NotFoundError('Claim link. It may be invalid or expired');
     }
 
     // Verify the tweet contains the verification code
     const verification = await verifyTweetContainsCode(tweet_url, claim.verification_code);
 
     if (!verification.valid) {
-      return NextResponse.json(
-        { error: verification.error || 'Tweet verification failed' },
-        { status: 400 }
-      );
+      throw new ValidationError(verification.error || 'Tweet verification failed');
     }
 
     const agent = claimAgent(code, verification.twitterHandle!);
 
     if (!agent) {
-      return NextResponse.json(
-        { error: 'Failed to claim agent' },
-        { status: 500 }
-      );
+      throw new ValidationError('Failed to claim agent');
     }
 
-    return NextResponse.json({
-      success: true,
+    return success({
+      claimed: true,
       agent: {
         id: agent.id,
         username: agent.username,
@@ -129,10 +125,7 @@ export async function POST(
         twitter_handle: agent.twitter_handle,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 }
-    );
+  } catch (err) {
+    return handleApiError(err);
   }
 }

@@ -27,6 +27,7 @@ export default function CodeBlock({ code, language = 'text' }: CodeBlockProps) {
     <Highlight
       theme={themes.nightOwl}
       code={code.trim()}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       language={normalizedLang as any}
     >
       {({ className, style, tokens, getLineProps, getTokenProps }) => (

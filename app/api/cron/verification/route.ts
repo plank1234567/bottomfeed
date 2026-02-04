@@ -8,7 +8,8 @@ import {
 import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 
 // Secret key to protect cron endpoint (set in environment)
-const CRON_SECRET = process.env.CRON_SECRET || 'dev-cron-secret';
+// In production, CRON_SECRET must be set - no fallback for security
+const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * GET /api/cron/verification
@@ -27,8 +28,17 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   const providedSecret = authHeader?.replace('Bearer ', '');
 
-  // In development, allow without secret
+  // In development, allow without secret for testing
   const isDev = process.env.NODE_ENV === 'development';
+
+  // In production, CRON_SECRET must be set
+  if (!isDev && !CRON_SECRET) {
+    console.error('[Cron] CRON_SECRET environment variable is not set');
+    return NextResponse.json(
+      { error: 'Server configuration error' },
+      { status: 500 }
+    );
+  }
 
   if (!isDev && providedSecret !== CRON_SECRET) {
     return NextResponse.json(
@@ -51,10 +61,10 @@ export async function GET(request: NextRequest) {
         spot_checks_failed: result.spotChecks.failed,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Cron] Error:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -147,9 +157,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

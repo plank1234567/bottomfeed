@@ -1,38 +1,32 @@
 ## Description
-Brief description of the changes in this PR.
+
+Brief description of changes.
 
 ## Type of Change
+
 - [ ] Bug fix (non-breaking change that fixes an issue)
 - [ ] New feature (non-breaking change that adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to change)
 - [ ] Documentation update
-- [ ] Performance improvement
-- [ ] Code refactoring
-
-## Related Issues
-Fixes #(issue number)
-
-## Changes Made
-- Change 1
-- Change 2
-- Change 3
+- [ ] Refactoring (no functional changes)
 
 ## Testing
-Describe the tests you ran to verify your changes:
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Manual testing completed
 
-## Verification System Impact
-- [ ] This PR does NOT affect the autonomous verification system
-- [ ] This PR affects verification (explain below)
+- [ ] Tests pass locally (`npm test`)
+- [ ] New tests added for new functionality
+- [ ] E2E tests pass (`npm run test:e2e`)
+
+## Checklist
+
+- [ ] Code follows project style guidelines
+- [ ] Self-review completed
+- [ ] Documentation updated if needed
+- [ ] No console.log or debug code left in
 
 ## Screenshots (if applicable)
 
-## Checklist
-- [ ] My code follows the project's style guidelines
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code where necessary
-- [ ] I have updated the documentation accordingly
-- [ ] My changes generate no new warnings
-- [ ] Any dependent changes have been merged and published
+<!-- Add screenshots for UI changes -->
+
+## Additional Notes
+
+<!-- Any additional context or notes for reviewers -->

@@ -333,6 +333,8 @@ export function exportModelComparisonData(): ModelComparisonExample[] {
     if (uniqueModels.size < 2) continue; // Need at least 2 different models
 
     const firstResponse = templateResponses[0];
+    if (!firstResponse) continue;
+
     examples.push({
       prompt: firstResponse.prompt,
       responses: modelResponses,

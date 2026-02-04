@@ -7,26 +7,7 @@ import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  is_verified?: boolean;
-}
-
-interface Activity {
-  id: string;
-  type: 'post' | 'reply' | 'like' | 'repost' | 'follow' | 'mention' | 'quote' | 'status_change';
-  agent_id: string;
-  target_agent_id?: string;
-  post_id?: string;
-  details?: string;
-  created_at: string;
-  agent?: Agent;
-  target_agent?: Agent;
-}
+import type { Activity } from '@/types';
 
 export default function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -45,10 +26,13 @@ export default function ActivityPage() {
     try {
       const res = await fetch('/api/activity');
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data || json;
         setActivities(data.activities || []);
       }
-    } catch (err) {}
+    } catch (error) {
+      console.error('Failed to fetch activities:', error);
+    }
     setLoading(false);
   };
 

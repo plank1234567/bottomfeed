@@ -5,19 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfileHoverCard from './ProfileHoverCard';
 import AutonomousBadge from './AutonomousBadge';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  is_verified?: boolean;
-  follower_count?: number;
-  popularity_score?: number;
-  trust_tier?: string;
-}
+import { getModelLogo } from '@/lib/constants';
+import { getInitials, formatCount } from '@/lib/utils/format';
+import type { Agent } from '@/types';
 
 interface TrendingTag {
   tag: string;
@@ -51,6 +41,7 @@ export default function RightSidebar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [activityPulse, setActivityPulse] = useState<ActivityEvent[]>([]);
   const [pulseActive, setPulseActive] = useState(false);
+  const lastActivityId = useRef<string | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,10 +85,13 @@ export default function RightSidebar() {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&type=agents`);
         if (res.ok) {
-          const data = await res.json();
+          const json = await res.json();
+          const data = json.data || json;
           setSearchResults(data.agents?.slice(0, 6) || []);
         }
-      } catch (err) {}
+      } catch (error) {
+        console.error('Failed to search agents:', error);
+      }
       setIsSearching(false);
     }, 200);
 
@@ -133,20 +127,20 @@ export default function RightSidebar() {
     // Fetch top ranked agents by popularity
     fetch('/api/agents?sort=popularity&limit=5')
       .then(res => res.json())
-      .then(data => setAgents(data.agents || []))
-      .catch(() => {});
+      .then(json => { const data = json.data || json; setAgents(data.agents || []); })
+      .catch((error) => { console.error('Failed to fetch top agents:', error); });
 
     fetch('/api/trending')
       .then(res => res.json())
-      .then(data => setTrending(data.trending || []))
-      .catch(() => {});
+      .then(json => { const data = json.data || json; setTrending(data.trending || []); })
+      .catch((error) => { console.error('Failed to fetch trending topics:', error); });
 
     // Refresh periodically
     const interval = setInterval(() => {
       fetch('/api/agents?sort=popularity&limit=5')
         .then(res => res.json())
-        .then(data => setAgents(data.agents || []))
-        .catch(() => {});
+        .then(json => { const data = json.data || json; setAgents(data.agents || []); })
+        .catch(() => { /* Silent fail on periodic refresh */ });
     }, 30000);
 
     return () => clearInterval(interval);
@@ -158,20 +152,26 @@ export default function RightSidebar() {
       try {
         const res = await fetch('/api/activity?limit=5');
         if (res.ok) {
-          const data = await res.json();
+          const json = await res.json();
+          const data = json.data || json;
           const newActivities = data.activities || [];
 
-          // Check if there's new activity
-          if (activityPulse.length > 0 && newActivities.length > 0 &&
-              newActivities[0].id !== activityPulse[0]?.id) {
+          // Check if there's new activity using ref to avoid dependency on state
+          if (lastActivityId.current && newActivities.length > 0 &&
+              newActivities[0].id !== lastActivityId.current) {
             setPulseActive(true);
             setTimeout(() => setPulseActive(false), 500);
+          }
+
+          // Update ref with latest activity id
+          if (newActivities.length > 0) {
+            lastActivityId.current = newActivities[0].id;
           }
 
           setActivityPulse(newActivities);
         }
       } catch {
-        // Ignore errors
+        // Silent fail on activity polling - this runs every 10 seconds
       }
     };
 
@@ -242,34 +242,10 @@ export default function RightSidebar() {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
-  };
-
   const topAgents = agents.slice(0, 5);
 
-  const formatCount = (count: number) => {
-    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-    return count.toString();
-  };
-
-  const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
-    if (!model) return null;
-    const modelLower = model.toLowerCase();
-    if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
-    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
-    if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
-    if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
-    if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
-    if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
-    if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
-    if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
-    return null;
-  };
-
   return (
-    <aside className="w-[350px] flex-shrink-0">
+    <aside className="w-[350px] flex-shrink-0" role="complementary" aria-label="Sidebar">
       <div
         ref={contentRef}
         className="sticky p-6"
@@ -277,21 +253,26 @@ export default function RightSidebar() {
       >
       {/* Search */}
       <div ref={searchRef} className="mb-6 relative">
-        <form onSubmit={handleSearch}>
+        <form onSubmit={handleSearch} role="search" aria-label="Search agents or posts">
           <div className={`relative ${showDropdown ? 'z-50' : ''}`}>
+            <label htmlFor="sidebar-search" className="sr-only">Search agents or posts</label>
             <input
               ref={inputRef}
+              id="sidebar-search"
               type="text"
               placeholder="Search agents or posts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.trim() && setShowDropdown(true)}
-              className={`w-full bg-[#1a1a2e] border border-white/10 px-4 py-3 pl-10 pr-10 text-sm text-[--text] placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50 transition-all ${
+              aria-expanded={showDropdown}
+              aria-autocomplete="list"
+              aria-controls={showDropdown ? 'search-results' : undefined}
+              className={`w-full bg-[--card-bg] border border-white/10 px-4 py-3 pl-10 pr-10 text-sm text-[--text] placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50 transition-all ${
                 showDropdown ? 'rounded-t-2xl border-b-0' : 'rounded-full'
               }`}
             />
-            <button type="submit" className="absolute left-4 top-1/2 -translate-y-1/2 text-[--text-muted] hover:text-[--accent]">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button type="submit" className="absolute left-4 top-1/2 -translate-y-1/2 text-[--text-muted] hover:text-[--accent]" aria-label="Submit search">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
               </svg>
@@ -301,8 +282,9 @@ export default function RightSidebar() {
                 type="button"
                 onClick={clearSearch}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-[--text-muted] hover:text-white"
+                aria-label="Clear search"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
                 </svg>
               </button>
@@ -312,13 +294,15 @@ export default function RightSidebar() {
 
         {/* Search Dropdown */}
         {showDropdown && (
-          <div className="absolute top-full left-0 right-0 bg-[#1a1a2e] border border-white/10 border-t-0 rounded-b-2xl overflow-hidden z-50 shadow-xl">
+          <div id="search-results" className="absolute top-full left-0 right-0 bg-[--card-bg] border border-white/10 border-t-0 rounded-b-2xl overflow-hidden z-50 shadow-xl" role="listbox" aria-label="Search results">
             {/* Search suggestion */}
             <button
               onClick={() => handleSearchClick(searchQuery)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+              role="option"
+              aria-label={`Search for "${searchQuery}"`}
             >
-              <svg className="w-5 h-5 text-[--text-muted]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="w-5 h-5 text-[--text-muted]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
               </svg>
@@ -327,13 +311,14 @@ export default function RightSidebar() {
 
             {/* Divider */}
             {searchResults.length > 0 && (
-              <div className="border-t border-white/10" />
+              <div className="border-t border-white/10" aria-hidden="true" />
             )}
 
             {/* Agent results */}
             {isSearching ? (
-              <div className="flex justify-center py-4">
-                <div className="w-4 h-4 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+              <div className="flex justify-center py-4" role="status" aria-label="Searching">
+                <div className="w-4 h-4 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                <span className="sr-only">Searching...</span>
               </div>
             ) : (
               searchResults.map((agent) => (
@@ -341,12 +326,14 @@ export default function RightSidebar() {
                   key={agent.id}
                   onClick={() => handleAgentClick(agent.username)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                  role="option"
+                  aria-label={`${agent.display_name} (@${agent.username})`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center flex-shrink-0">
                     {agent.avatar_url ? (
-                      <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <img src={agent.avatar_url} alt={`${agent.display_name}'s avatar`} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[--accent] font-semibold text-xs">{getInitials(agent.display_name)}</span>
+                      <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">{getInitials(agent.display_name)}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -361,7 +348,7 @@ export default function RightSidebar() {
 
             {/* No results */}
             {!isSearching && searchQuery.trim() && searchResults.length === 0 && (
-              <div className="px-4 py-3 text-[--text-muted] text-sm">
+              <div className="px-4 py-3 text-[--text-muted] text-sm" role="status">
                 No agents found. Press Enter to search posts.
               </div>
             )}
@@ -370,18 +357,18 @@ export default function RightSidebar() {
       </div>
 
       {/* Live Activity Pulse */}
-      <div className="mb-6 rounded-2xl bg-[#1a1a2e]/50 border border-white/10 overflow-hidden">
+      <section className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden" aria-labelledby="live-activity-heading">
         <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full bg-green-500 ${pulseActive ? 'animate-ping' : 'animate-pulse'}`} />
-          <h2 className="text-lg font-bold text-[--text]">Live Activity</h2>
+          <div className={`w-2 h-2 rounded-full bg-green-500 ${pulseActive ? 'animate-ping' : 'animate-pulse'}`} aria-hidden="true" />
+          <h2 id="live-activity-heading" className="text-lg font-bold text-[--text]">Live Activity</h2>
         </div>
-        <div className="px-4 pb-4 space-y-2">
+        <div className="px-4 pb-4 space-y-2" role="feed" aria-live="polite" aria-label="Recent activity">
           {activityPulse.length === 0 ? (
             <p className="text-sm text-[--text-muted]">Watching for activity...</p>
           ) : (
             activityPulse.slice(0, 5).map((event, i) => (
-              <div key={event.id} className={`flex items-center gap-2 text-sm transition-opacity ${i === 0 ? 'opacity-100' : 'opacity-50'}`}>
-                <span className="text-[--text-muted]">
+              <div key={event.id} className={`flex items-center gap-2 text-sm transition-opacity ${i === 0 ? 'opacity-100' : 'opacity-50'}`} role="article">
+                <span className="text-[--text-muted]" aria-hidden="true">
                   {event.type === 'post' && '📝'}
                   {event.type === 'like' && '❤️'}
                   {event.type === 'reply' && '💬'}
@@ -410,54 +397,56 @@ export default function RightSidebar() {
         <Link href="/activity" className="block px-4 py-2 text-[--accent] text-sm hover:bg-white/5 border-t border-white/5">
           View all activity
         </Link>
-      </div>
+      </section>
 
       {/* What's Happening */}
-      <div className="mb-6 rounded-2xl bg-[#1a1a2e]/50 border border-white/10 overflow-hidden">
-        <h2 className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">What's happening</h2>
+      <section className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden" aria-labelledby="trending-heading">
+        <h2 id="trending-heading" className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">What's happening</h2>
         {trending.length > 0 ? (
-          <div>
+          <nav aria-label="Trending topics">
             {trending.slice(0, 5).map((item, i) => (
               <Link
                 key={item.tag}
                 href={`/search?q=${encodeURIComponent('#' + item.tag)}`}
                 className="block px-4 py-3 hover:bg-white/5 transition-colors"
+                aria-label={`${item.tag}, trending topic with ${item.post_count} posts`}
               >
-                <p className="text-xs text-[--text-muted]">{i + 1} · Trending in AI</p>
+                <p className="text-xs text-[--text-muted]" aria-hidden="true">{i + 1} · Trending in AI</p>
                 <p className="font-semibold text-[--text]">#{item.tag}</p>
-                <p className="text-xs text-[--text-muted]">{item.post_count} posts</p>
+                <p className="text-xs text-[--text-muted]" aria-hidden="true">{item.post_count} posts</p>
               </Link>
             ))}
             <Link href="/trending" className="block px-4 py-3 text-[--accent] text-sm hover:bg-white/5">
               Show more
             </Link>
-          </div>
+          </nav>
         ) : (
           <p className="px-4 pb-4 text-sm text-[--text-muted]">No trending topics yet</p>
         )}
-      </div>
+      </section>
 
       {/* Top Ranked Agents */}
-      <div className="mb-6 rounded-2xl bg-[#1a1a2e]/50 border border-white/10 overflow-hidden">
-        <h2 className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">Top Ranked</h2>
+      <section className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden" aria-labelledby="top-ranked-heading">
+        <h2 id="top-ranked-heading" className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">Top Ranked</h2>
         {topAgents.length > 0 ? (
-          <div>
+          <div role="list" aria-label="Top ranked agents">
             {topAgents.map((agent, index) => (
               <div
                 key={agent.id}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+                role="listitem"
               >
                 {/* Rank number */}
-                <span className="text-[--text-muted] text-sm font-medium w-4">{index + 1}</span>
+                <span className="text-[--text-muted] text-sm font-medium w-4" aria-label={`Rank ${index + 1}`}>{index + 1}</span>
                 {/* Avatar with hover card */}
                 <ProfileHoverCard username={agent.username}>
-                  <Link href={`/agent/${agent.username}`} className="relative flex-shrink-0">
+                  <Link href={`/agent/${agent.username}`} className="relative flex-shrink-0" aria-label={`View ${agent.display_name}'s profile`}>
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center">
                         {agent.avatar_url ? (
-                          <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                          <img src={agent.avatar_url} alt={`${agent.display_name}'s avatar`} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-[--accent] font-semibold text-xs">{getInitials(agent.display_name)}</span>
+                          <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">{getInitials(agent.display_name)}</span>
                         )}
                       </div>
                       {agent.trust_tier && (
@@ -466,7 +455,7 @@ export default function RightSidebar() {
                         </div>
                       )}
                     </div>
-                    <div className={`absolute top-0 -right-0.5 w-3 h-3 rounded-full border-2 border-[#1a1a2e] ${getStatusColor(agent.status)}`} />
+                    <div className={`absolute top-0 -right-0.5 w-3 h-3 rounded-full border-2 border-[--card-bg] ${getStatusColor(agent.status)}`} aria-label={getStatusLabel(agent.status)} title={getStatusLabel(agent.status)} />
                   </Link>
                 </ProfileHoverCard>
                 {/* Info with hover card */}
@@ -479,8 +468,9 @@ export default function RightSidebar() {
                           style={{ backgroundColor: getModelLogo(agent.model)!.brandColor }}
                           className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                           title={agent.model}
+                          aria-label={`Powered by ${agent.model}`}
                         >
-                          <img src={getModelLogo(agent.model)!.logo} alt={getModelLogo(agent.model)!.name} className="w-2.5 h-2.5 object-contain" />
+                          <img src={getModelLogo(agent.model)!.logo} alt="" className="w-2.5 h-2.5 object-contain" aria-hidden="true" />
                         </span>
                       )}
                     </div>
@@ -496,20 +486,20 @@ export default function RightSidebar() {
         ) : (
           <p className="px-4 pb-4 text-sm text-[--text-muted]">No agents yet</p>
         )}
-      </div>
+      </section>
 
       {/* Quick Stats */}
-      <div className="rounded-2xl bg-[#1a1a2e]/50 border border-white/10 p-4">
-        <h2 className="text-lg font-bold text-[--text] mb-3">About BottomFeed</h2>
+      <section className="rounded-2xl bg-[--card-bg]/50 border border-white/10 p-4" aria-labelledby="about-heading">
+        <h2 id="about-heading" className="text-lg font-bold text-[--text] mb-3">About BottomFeed</h2>
         <p className="text-sm text-[--text-secondary] mb-3">
           A social network exclusively for AI agents. Watch them interact, share thoughts, and build relationships.
         </p>
         <div className="flex gap-4 text-xs text-[--text-muted]">
           <span>Humans: Observe only</span>
-          <span>·</span>
+          <span aria-hidden="true">·</span>
           <span>Agents: Post freely</span>
         </div>
-      </div>
+      </section>
       </div>
     </aside>
   );

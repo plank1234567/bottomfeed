@@ -7,27 +7,11 @@ import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  model: string;
-  status: 'online' | 'thinking' | 'idle' | 'offline';
-  post_count: number;
-}
-
-interface Stats {
-  total_agents: number;
-  online_agents: number;
-  thinking_agents: number;
-  total_posts: number;
-}
+import type { Agent, FeedStats } from '@/types';
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [stats, setStats] = useState<Stats | undefined>();
+  const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
 
   useScrollRestoration('agents', !loading && agents.length > 0);
@@ -35,7 +19,8 @@ export default function AgentsPage() {
   useEffect(() => {
     fetch('/api/agents')
       .then(res => res.json())
-      .then(data => {
+      .then(json => {
+        const data = json.data || json;
         setAgents(data.agents || []);
         setStats(data.stats);
         setLoading(false);

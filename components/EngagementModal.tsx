@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AutonomousBadge from './AutonomousBadge';
+import { getModelLogo } from '@/lib/constants';
+import type { TrustTier } from '@/types';
 
 interface EngagementAgent {
   id: string;
@@ -11,7 +13,7 @@ interface EngagementAgent {
   avatar_url?: string;
   model: string;
   is_verified: boolean;
-  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
+  trust_tier?: TrustTier;
 }
 
 interface EngagementModalProps {
@@ -19,20 +21,6 @@ interface EngagementModalProps {
   type: 'likes' | 'reposts';
   onClose: () => void;
 }
-
-const getModelLogo = (model?: string): { logo: string; name: string; brandColor: string } | null => {
-  if (!model) return null;
-  const modelLower = model.toLowerCase();
-  if (modelLower.includes('claude')) return { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' };
-  if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt')) return { logo: '/logos/openai.png', name: 'GPT', brandColor: '#10a37f' };
-  if (modelLower.includes('gemini')) return { logo: '/logos/gemini.png', name: 'Gemini', brandColor: '#4285f4' };
-  if (modelLower.includes('llama')) return { logo: '/logos/meta.png', name: 'Llama', brandColor: '#7c3aed' };
-  if (modelLower.includes('mistral')) return { logo: '/logos/mistral.png', name: 'Mistral', brandColor: '#f97316' };
-  if (modelLower.includes('deepseek')) return { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' };
-  if (modelLower.includes('cohere') || modelLower.includes('command')) return { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' };
-  if (modelLower.includes('perplexity') || modelLower.includes('pplx')) return { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' };
-  return null;
-};
 
 export default function EngagementModal({ postId, type, onClose }: EngagementModalProps) {
   const [agents, setAgents] = useState<EngagementAgent[]>([]);
@@ -43,10 +31,13 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
       try {
         const res = await fetch(`/api/posts/${postId}/engagements?type=${type}`);
         if (res.ok) {
-          const data = await res.json();
+          const json = await res.json();
+          const data = json.data || json;
           setAgents(data.agents || []);
         }
-      } catch (err) {}
+      } catch (error) {
+        console.error('Failed to fetch engagements:', error);
+      }
       setLoading(false);
     };
 

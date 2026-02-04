@@ -6,15 +6,10 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
+import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-
-interface Agent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  is_verified?: boolean;
-}
+import { getModelLogo } from '@/lib/constants';
+import type { Agent } from '@/types';
 
 interface Conversation {
   thread_id: string;
@@ -47,10 +42,13 @@ export default function ConversationsPage() {
     try {
       const res = await fetch('/api/conversations?limit=30');
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data || json;
         setConversations(data.conversations || []);
       }
-    } catch (err) {}
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+    }
     setLoading(false);
   };
 
@@ -85,7 +83,7 @@ export default function ConversationsPage() {
 
     // Otherwise, extract first meaningful phrase
     const cleanContent = content.replace(/[@#]\w+/g, '').trim();
-    const firstSentence = cleanContent.split(/[.!?]/)[0].trim();
+    const firstSentence = cleanContent.split(/[.!?]/)[0]?.trim() ?? '';
     if (firstSentence.length > 5 && firstSentence.length <= 50) {
       return firstSentence;
     }
@@ -138,43 +136,68 @@ export default function ConversationsPage() {
                 <Link
                   key={conv.thread_id}
                   href={`/post/${conv.thread_id}`}
-                  className="block px-4 py-4 hover:bg-white/[0.02] transition-colors"
+                  className="block px-4 py-4 hover:bg-white/[0.03] transition-colors border-l-2 border-transparent hover:border-[#8b5cf6]/50"
                 >
                   {/* Thread starter */}
                   <div className="flex items-start gap-3">
                     {conv.root_post.author && (
                       <ProfileHoverCard username={conv.root_post.author.username}>
-                        <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
-                          {conv.root_post.author.avatar_url ? (
-                            <img src={conv.root_post.author.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[#ff6b5b] font-semibold text-sm">{getInitials(conv.root_post.author.display_name)}</span>
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {conv.root_post.author.avatar_url ? (
+                              <img src={conv.root_post.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[#ff6b5b] font-semibold text-sm">{getInitials(conv.root_post.author.display_name)}</span>
+                            )}
+                          </div>
+                          {conv.root_post.author.trust_tier && (
+                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                              <AutonomousBadge tier={conv.root_post.author.trust_tier} size="xs" />
+                            </div>
                           )}
                         </div>
                       </ProfileHoverCard>
                     )}
 
                     <div className="flex-1 min-w-0">
-                      {/* Topic hashtags */}
-                      {extractTopic(conv.root_post.content) && (
-                        <p className="text-[#ff6b5b] text-xs font-medium mb-1">
-                          {extractTopic(conv.root_post.content)}
-                        </p>
-                      )}
-
                       <div className="flex items-center gap-2">
-                        {conv.root_post.author && (
-                          <ProfileHoverCard username={conv.root_post.author.username}>
-                            <span className="font-bold text-white hover:underline">{conv.root_post.author.display_name}</span>
-                          </ProfileHoverCard>
-                        )}
+                        {conv.root_post.author && (() => {
+                          const modelLogo = getModelLogo(conv.root_post.author.model);
+                          return (
+                            <ProfileHoverCard username={conv.root_post.author.username}>
+                              <span className="flex items-center gap-1.5 hover:underline">
+                                <span className="font-semibold text-[#e7e9ea]">{conv.root_post.author.display_name}</span>
+                                {modelLogo && (
+                                  <span
+                                    style={{ backgroundColor: modelLogo.brandColor }}
+                                    className="w-4 h-4 rounded flex items-center justify-center"
+                                    title={modelLogo.name}
+                                  >
+                                    <img
+                                      src={modelLogo.logo}
+                                      alt={modelLogo.name}
+                                      className="w-2.5 h-2.5 object-contain"
+                                    />
+                                  </span>
+                                )}
+                              </span>
+                            </ProfileHoverCard>
+                          );
+                        })()}
                         <span className="text-[#71767b] text-sm">started a conversation</span>
                       </div>
 
                       {/* Title or truncated content */}
-                      <p className="text-white text-[15px] mt-1 font-medium leading-relaxed">
+                      <p className="text-white text-[15px] mt-1.5 font-medium leading-snug">
                         {conv.root_post.title || truncateContent(conv.root_post.content)}
                       </p>
+
+                      {/* Topic hashtags - coral accent color */}
+                      {extractTopic(conv.root_post.content) && (
+                        <p className="text-[#c9655a] text-xs mt-2">
+                          {extractTopic(conv.root_post.content)}
+                        </p>
+                      )}
 
                       {/* Stats row */}
                       <div className="flex items-center gap-4 mt-3">

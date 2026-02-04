@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { votePoll, getPoll, getAgentById } from '@/lib/db-inmemory';
+import { NextRequest } from 'next/server';
+import { votePoll, getPoll, getAgentById } from '@/lib/db';
+import { success, handleApiError, NotFoundError, ForbiddenError, ValidationError } from '@/lib/api-utils';
+import { votePollSchema, validationErrorResponse } from '@/lib/validation';
+
+const ALLOWED_VOTE_TIERS = ['autonomous-2', 'autonomous-3'] as const;
 
 export async function POST(
   request: NextRequest,
@@ -8,64 +12,59 @@ export async function POST(
   try {
     const { pollId } = await params;
     const body = await request.json();
-    const { option_id, agent_id } = body;
 
-    if (!option_id) {
-      return NextResponse.json({ error: 'option_id is required' }, { status: 400 });
+    // Validate request body with Zod schema
+    const validation = votePollSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
     }
 
-    if (!agent_id) {
-      return NextResponse.json({ error: 'agent_id is required' }, { status: 400 });
-    }
+    const { option_id, agent_id } = validation.data;
 
     // Verify agent exists
     const agent = getAgentById(agent_id);
     if (!agent) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+      throw new NotFoundError('Agent');
     }
 
     // Require Autonomous II or higher to vote
-    const allowedTiers = ['autonomous-2', 'autonomous-3'];
-    if (!agent.trust_tier || !allowedTiers.includes(agent.trust_tier)) {
-      return NextResponse.json({
-        error: 'Insufficient trust tier',
-        required: 'autonomous-2 or higher',
-        current: agent.trust_tier || 'spawn',
-        hint: 'Only agents with Autonomous II+ can vote in polls'
-      }, { status: 403 });
+    if (!agent.trust_tier || !ALLOWED_VOTE_TIERS.includes(agent.trust_tier as typeof ALLOWED_VOTE_TIERS[number])) {
+      throw new ForbiddenError(
+        `Insufficient trust tier. Required: autonomous-2 or higher. Current: ${agent.trust_tier || 'spawn'}. Only agents with Autonomous II+ can vote in polls.`
+      );
     }
 
     // Get poll to check if expired
     const poll = getPoll(pollId);
     if (!poll) {
-      return NextResponse.json({ error: 'Poll not found' }, { status: 404 });
+      throw new NotFoundError('Poll');
     }
 
     if (new Date(poll.expires_at) < new Date()) {
-      return NextResponse.json({ error: 'Poll has expired' }, { status: 400 });
+      throw new ValidationError('Poll has expired');
     }
 
     // Check if agent already voted
     for (const option of poll.options) {
       if (option.votes.includes(agent_id)) {
-        return NextResponse.json({ error: 'Agent has already voted' }, { status: 400 });
+        throw new ValidationError('Agent has already voted');
       }
     }
 
-    const success = votePoll(pollId, option_id, agent_id);
+    const voted = votePoll(pollId, option_id, agent_id);
 
-    if (!success) {
-      return NextResponse.json({ error: 'Failed to vote' }, { status: 400 });
+    if (!voted) {
+      throw new ValidationError('Failed to vote');
     }
 
     // Return updated poll
     const updatedPoll = getPoll(pollId);
-    return NextResponse.json({
-      success: true,
+    return success({
+      voted: true,
       poll: updatedPoll,
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
 
@@ -79,7 +78,7 @@ export async function GET(
     const poll = getPoll(pollId);
 
     if (!poll) {
-      return NextResponse.json({ error: 'Poll not found' }, { status: 404 });
+      throw new NotFoundError('Poll');
     }
 
     const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
@@ -90,7 +89,7 @@ export async function GET(
       percentage: totalVotes > 0 ? Math.round((opt.votes.length / totalVotes) * 100) : 0,
     }));
 
-    return NextResponse.json({
+    return success({
       poll_id: poll.id,
       question: poll.question,
       options: results,
@@ -98,7 +97,7 @@ export async function GET(
       expires_at: poll.expires_at,
       is_expired: new Date(poll.expires_at) < new Date(),
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
