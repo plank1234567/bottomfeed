@@ -144,8 +144,16 @@ export interface Poll {
 
 /** Types of activities that agents can perform */
 export type ActivityType =
-  | 'post' | 'reply' | 'like' | 'repost' | 'follow'
-  | 'mention' | 'quote' | 'debate_join' | 'poll_vote' | 'status_change';
+  | 'post'
+  | 'reply'
+  | 'like'
+  | 'repost'
+  | 'follow'
+  | 'mention'
+  | 'quote'
+  | 'debate_join'
+  | 'poll_vote'
+  | 'status_change';
 
 /**
  * Activity feed item representing an agent action
@@ -212,6 +220,7 @@ export interface FeedStats {
   online_agents: number;
   thinking_agents: number;
   total_posts: number;
+  total_views?: number;
 }
 
 // =============================================================================
@@ -284,13 +293,7 @@ export interface EngagementModalState {
 /**
  * Types of notifications
  */
-export type NotificationType =
-  | 'like'
-  | 'repost'
-  | 'reply'
-  | 'mention'
-  | 'follow'
-  | 'quote';
+export type NotificationType = 'like' | 'repost' | 'reply' | 'mention' | 'follow' | 'quote';
 
 /**
  * Notification item

@@ -36,6 +36,7 @@ export default function PostCard({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [engagementModal, setEngagementModal] = useState<EngagementModalState | null>(null);
+  const [showBookmarkToast, setShowBookmarkToast] = useState(false);
   const [engagementLoading, setEngagementLoading] = useState(false);
   const hasTrackedView = useRef(false);
   const postRef = useRef<HTMLDivElement>(null);
@@ -82,7 +83,7 @@ export default function PostCard({
     if (hasTrackedView.current) return;
 
     const observer = new IntersectionObserver(
-      (entries) => {
+      entries => {
         const entry = entries[0];
         if (entry?.isIntersecting && !hasTrackedView.current) {
           hasTrackedView.current = true;
@@ -116,18 +117,23 @@ export default function PostCard({
       addBookmark(post.id);
       setBookmarked(true);
       onBookmarkChange?.(post.id, true);
+      // Show toast
+      setShowBookmarkToast(true);
+      setTimeout(() => setShowBookmarkToast(false), 2000);
     }
   };
 
   const showEngagements = async (e: React.MouseEvent, type: 'likes' | 'reposts') => {
     e.stopPropagation();
+    // Show modal immediately with loading state
+    setEngagementModal({ type, agents: [] });
     setEngagementLoading(true);
     try {
       const res = await fetch(`/api/posts/${post.id}/engagements?type=${type}`);
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
-        setEngagementModal({ type, agents: data.agents });
+        setEngagementModal({ type, agents: data.agents || [] });
       }
     } catch (error) {
       console.error('Failed to fetch engagements:', error);
@@ -138,7 +144,14 @@ export default function PostCard({
   const modelLogo = getModelLogo(post.author?.model || post.metadata?.model);
 
   const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+    return (
+      name
+        ?.split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'AI'
+    );
   };
 
   const formatTime = (dateStr: string) => {
@@ -189,7 +202,8 @@ export default function PostCard({
   };
 
   // Check if this is a conversation post or a reply to a conversation
-  const isConversationType = post.post_type === 'conversation' || post.reply_to?.post_type === 'conversation';
+  const isConversationType =
+    post.post_type === 'conversation' || post.reply_to?.post_type === 'conversation';
 
   // Check if this is ANY reply with parent data (for showing connecting line in feed)
   const hasParentToShow = post.reply_to?.id && !isReplyInThread;
@@ -198,13 +212,16 @@ export default function PostCard({
   const showAsConversation = isConversationType && !isReplyInThread;
 
   return (
-    <div ref={postRef} className={`border-b border-white/10 hover:bg-white/[0.02] transition-colors ${hasParentToShow ? 'cursor-pointer' : ''}`}>
+    <div
+      ref={postRef}
+      className={`border-b border-white/10 hover:bg-white/[0.02] transition-colors ${hasParentToShow ? 'cursor-pointer' : ''}`}
+    >
       {/* Conversation header for conversation-type posts */}
       {showAsConversation && (
         <Link
           href={`/post/${post.reply_to?.post_type === 'conversation' && post.reply_to?.id ? post.reply_to.id : post.id}`}
           className="block px-4 pt-3 pb-2 hover:bg-white/[0.02] transition-colors"
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           <div className="flex items-start gap-2">
             <div className="w-5 h-5 rounded bg-[#2a2a3e] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -217,7 +234,9 @@ export default function PostCard({
                 <span className="text-[#ff6b5b] font-medium text-[13px]">Conversation</span>
                 {/* Show conversation title - from parent if reply, or from self if conversation starter */}
                 {(post.reply_to?.title || post.title) && (
-                  <span className="text-[13px] text-[#71767b] italic truncate">{post.reply_to?.title || post.title}</span>
+                  <span className="text-[13px] text-[#71767b] italic truncate">
+                    {post.reply_to?.title || post.title}
+                  </span>
                 )}
               </div>
             </div>
@@ -233,15 +252,24 @@ export default function PostCard({
         >
           <div className="flex gap-3">
             {/* Avatar column with connecting line */}
-            <div className="flex-shrink-0 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex-shrink-0 flex flex-col items-center"
+              onClick={e => e.stopPropagation()}
+            >
               <ProfileHoverCard username={post.reply_to!.author?.username || ''}>
                 <Link href={`/agent/${post.reply_to!.author?.username}`}>
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                       {post.reply_to!.author?.avatar_url ? (
-                        <img src={post.reply_to!.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                        <img
+                          src={post.reply_to!.author.avatar_url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <span className="text-[#ff6b5b] font-semibold text-xs">{getInitials(post.reply_to!.author?.display_name || 'Agent')}</span>
+                        <span className="text-[#ff6b5b] font-semibold text-xs">
+                          {getInitials(post.reply_to!.author?.display_name || 'Agent')}
+                        </span>
                       )}
                     </div>
                     {post.reply_to!.author?.trust_tier && (
@@ -256,10 +284,18 @@ export default function PostCard({
               <div className="w-0.5 bg-[#333639] flex-1 mt-2 min-h-[8px]" />
             </div>
             <div className="flex-1 min-w-0 pb-2">
-              <div className="flex items-center gap-1 text-[15px]" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex items-center gap-1 text-[15px]"
+                onClick={e => e.stopPropagation()}
+              >
                 <ProfileHoverCard username={post.reply_to!.author?.username || ''}>
-                  <Link href={`/agent/${post.reply_to!.author?.username}`} className="hover:underline">
-                    <span className="font-bold text-white">{post.reply_to!.author?.display_name}</span>
+                  <Link
+                    href={`/agent/${post.reply_to!.author?.username}`}
+                    className="hover:underline"
+                  >
+                    <span className="font-bold text-white">
+                      {post.reply_to!.author?.display_name}
+                    </span>
                   </Link>
                 </ProfileHoverCard>
                 {(() => {
@@ -279,9 +315,9 @@ export default function PostCard({
                 <span className="text-[#71767b]">{formatTime(post.reply_to!.created_at)}</span>
               </div>
               <div className="mt-1">
-                <p className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
+                <div className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
                   <PostContent content={post.reply_to!.content} />
-                </p>
+                </div>
               </div>
               {/* Full stats for parent */}
               <PostCardStats
@@ -294,18 +330,27 @@ export default function PostCard({
         </div>
       )}
 
-      <div className={`px-4 py-3 cursor-pointer ${hasParentToShow ? 'pt-1' : ''}`} onClick={handlePostClick}>
+      <div
+        className={`px-4 py-3 cursor-pointer ${hasParentToShow ? 'pt-1' : ''}`}
+        onClick={handlePostClick}
+      >
         <div className="flex gap-3">
           {/* Avatar Column */}
-          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
             <ProfileHoverCard username={post.author?.username || ''}>
               <Link href={`/agent/${post.author?.username}`}>
                 <div className="relative">
                   <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                     {post.author?.avatar_url ? (
-                      <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={post.author.avatar_url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <span className="text-[#ff6b5b] font-semibold text-xs">{getInitials(post.author?.display_name || 'Agent')}</span>
+                      <span className="text-[#ff6b5b] font-semibold text-xs">
+                        {getInitials(post.author?.display_name || 'Agent')}
+                      </span>
                     )}
                   </div>
                   {post.author?.trust_tier && (
@@ -321,9 +366,15 @@ export default function PostCard({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Header: Name, handle, time */}
-            <div className="flex items-center gap-1 text-[15px] flex-wrap" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center gap-1 text-[15px] flex-wrap"
+              onClick={e => e.stopPropagation()}
+            >
               <ProfileHoverCard username={post.author?.username || ''}>
-                <Link href={`/agent/${post.author?.username}`} className="flex items-center gap-1 hover:underline">
+                <Link
+                  href={`/agent/${post.author?.username}`}
+                  className="flex items-center gap-1 hover:underline"
+                >
                   <span className="font-bold text-white truncate">{post.author?.display_name}</span>
                   {modelLogo && (
                     <span
@@ -366,7 +417,7 @@ export default function PostCard({
 
             {/* Poll display */}
             {post.poll && (
-              <div onClick={(e) => e.stopPropagation()}>
+              <div onClick={e => e.stopPropagation()}>
                 <PollDisplay poll={post.poll} />
               </div>
             )}
@@ -410,15 +461,30 @@ export default function PostCard({
         </div>
       </div>
 
+      {/* Bookmark Toast */}
+      {showBookmarkToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up">
+          <div className="bg-[#ff6b5b] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
+            </svg>
+            Bookmark saved
+          </div>
+        </div>
+      )}
+
       {/* Engagement Modal */}
       {engagementModal && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center"
           onClick={() => setEngagementModal(null)}
-          onWheel={(e) => e.stopPropagation()}
+          onWheel={e => e.stopPropagation()}
         >
           <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10"
+            onClick={e => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               <h3 className="text-lg font-bold text-white">
@@ -445,7 +511,7 @@ export default function PostCard({
                   <p className="text-[#71767b] text-sm">No agents yet</p>
                 </div>
               ) : (
-                engagementModal.agents.map((agent) => {
+                engagementModal.agents.map(agent => {
                   const agentModelLogo = getModelLogo(agent.model);
                   return (
                     <Link
@@ -457,10 +523,19 @@ export default function PostCard({
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                           {agent.avatar_url ? (
-                            <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={agent.avatar_url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <span className="text-[#ff6b5b] font-semibold text-xs">
-                              {agent.display_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI'}
+                              {agent.display_name
+                                ?.split(' ')
+                                .map(n => n[0])
+                                .join('')
+                                .toUpperCase()
+                                .slice(0, 2) || 'AI'}
                             </span>
                           )}
                         </div>
@@ -472,14 +547,20 @@ export default function PostCard({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1">
-                          <span className="font-bold text-white truncate">{agent.display_name}</span>
+                          <span className="font-bold text-white truncate">
+                            {agent.display_name}
+                          </span>
                           {agentModelLogo && (
                             <span
                               style={{ backgroundColor: agentModelLogo.brandColor }}
                               className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                               title={agentModelLogo.name}
                             >
-                              <img src={agentModelLogo.logo} alt={agentModelLogo.name} className="w-2.5 h-2.5 object-contain" />
+                              <img
+                                src={agentModelLogo.logo}
+                                alt={agentModelLogo.name}
+                                className="w-2.5 h-2.5 object-contain"
+                              />
                             </span>
                           )}
                         </div>

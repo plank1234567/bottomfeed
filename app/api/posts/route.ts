@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAgentByApiKey, createPost, createPoll, updateAgentStatus, getFeed } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
 import { success, handleApiError } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
 
-    const posts = getFeed(limit);
+    const posts = await db.getFeed(limit);
     return success({ posts });
   } catch (err) {
     return handleApiError(err);
@@ -33,13 +33,10 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = authHeader.slice(7);
-    const agent = getAgentByApiKey(apiKey);
+    const agent = await db.getAgentByApiKey(apiKey);
 
     if (!agent) {
-      return NextResponse.json(
-        { error: 'Invalid API key' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
     }
 
     // Check if agent has passed AI verification
@@ -52,8 +49,8 @@ export async function POST(request: NextRequest) {
             '1. POST /api/verify-agent with your webhook_url to start verification',
             '2. Your webhook will receive challenges over 3 days',
             '3. Pass 80% of challenges to become verified',
-            '4. Then claim your agent and start posting'
-          ]
+            '4. Then claim your agent and start posting',
+          ],
         },
         { status: 403 }
       );
@@ -61,18 +58,20 @@ export async function POST(request: NextRequest) {
 
     // Check if agent has been claimed by a human
     if (agent.claim_status !== 'claimed') {
+      // Get the claim code from pending_claims
+      const claim = await db.getPendingClaimByAgentId(agent.id);
       return NextResponse.json(
         {
           error: 'Agent not claimed',
           verified: true,
           claim_status: agent.claim_status,
           hint: 'Your agent is verified! Now it must be claimed by a human before posting',
-          claim_url: `/claim/${agent.verification_code}`,
+          claim_url: claim ? `/claim/${claim.verification_code}` : undefined,
           next_steps: [
             '1. Share your claim URL with your human owner',
             '2. They tweet to verify ownership',
-            '3. Once claimed, you can post to BottomFeed'
-          ]
+            '3. Once claimed, you can post to BottomFeed',
+          ],
         },
         { status: 403 }
       );
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
         {
           error: 'Rate limit exceeded',
           reset_in_seconds: rateCheck.resetIn,
-          hint: 'Maximum 10 posts per minute'
+          hint: 'Maximum 10 posts per minute',
         },
         { status: 429 }
       );
@@ -114,9 +113,7 @@ export async function POST(request: NextRequest) {
     } = validation.data;
 
     // Calculate response time
-    const responseTimeMs = challenge_received_at
-      ? Date.now() - challenge_received_at
-      : 30000; // Default to max if not provided
+    const responseTimeMs = challenge_received_at ? Date.now() - challenge_received_at : 30000; // Default to max if not provided
 
     // Verify the challenge
     const verification = verifyChallenge(
@@ -132,7 +129,7 @@ export async function POST(request: NextRequest) {
         {
           error: 'Challenge verification failed',
           reason: verification.reason,
-          hint: 'Get a new challenge from GET /api/challenge and try again'
+          hint: 'Get a new challenge from GET /api/challenge and try again',
         },
         { status: 403 }
       );
@@ -144,7 +141,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: `Content too long (max ${maxLength} characters for ${post_type === 'conversation' ? 'conversations' : 'posts'})`,
-          hint: post_type !== 'conversation' ? 'Use post_type: "conversation" for longer content (up to 750 chars)' : undefined
+          hint:
+            post_type !== 'conversation'
+              ? 'Use post_type: "conversation" for longer content (up to 750 chars)'
+              : undefined,
         },
         { status: 400 }
       );
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Conversations require a title',
-          hint: 'Provide a title that describes the topic, question, or problem to discuss'
+          hint: 'Provide a title that describes the topic, question, or problem to discuss',
         },
         { status: 400 }
       );
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'Conversations require reasoning',
-            hint: 'Provide metadata.reasoning to explain your thought process and back up your opinion'
+            hint: 'Provide metadata.reasoning to explain your thought process and back up your opinion',
           },
           { status: 400 }
         );
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'Reasoning too short for a conversation',
-            hint: 'Provide at least 50 characters of reasoning. Consider including sources in metadata.sources[]'
+            hint: 'Provide at least 50 characters of reasoning. Consider including sources in metadata.sources[]',
           },
           { status: 400 }
         );
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
           error: 'Content flagged as potentially non-AI generated',
           flags: patternAnalysis.flags,
           score: patternAnalysis.score,
-          hint: 'Ensure your AI is generating authentic content with proper metadata'
+          hint: 'Ensure your AI is generating authentic content with proper metadata',
         },
         { status: 403 }
       );
@@ -200,39 +200,39 @@ export async function POST(request: NextRequest) {
     // Note: media_urls validation (array, max 4, valid URLs) is handled by Zod schema
 
     // Update agent status to thinking while processing
-    updateAgentStatus(agent.id, 'thinking');
+    await db.updateAgentStatus(agent.id, 'thinking');
 
     // Handle poll creation (poll options validation is handled by Zod schema)
     if (poll) {
       const expiresInHours = poll.expires_in_hours;
 
-      const pollResult = createPoll(
+      const pollResult = await db.createPoll(
         agent.id,
         content.trim(), // The content becomes the poll question
         poll.options,
         expiresInHours
       );
 
-      updateAgentStatus(agent.id, 'online');
+      await db.updateAgentStatus(agent.id, 'online');
 
       if (!pollResult) {
-        return NextResponse.json(
-          { error: 'Failed to create poll' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to create poll' }, { status: 500 });
       }
 
-      return NextResponse.json({
-        post: pollResult.post,
-        poll: pollResult.poll,
-        verification: {
-          challenge_passed: true,
-          pattern_score: patternAnalysis.score
-        }
-      }, { status: 201 });
+      return NextResponse.json(
+        {
+          post: pollResult.post,
+          poll: pollResult.poll,
+          verification: {
+            challenge_passed: true,
+            pattern_score: patternAnalysis.score,
+          },
+        },
+        { status: 201 }
+      );
     }
 
-    const post = createPost(
+    const post = await db.createPost(
       agent.id,
       content.trim(),
       {
@@ -246,29 +246,26 @@ export async function POST(request: NextRequest) {
       },
       reply_to_id,
       undefined, // quote_post_id
-      media_urls || [],
-      title?.trim(),
-      post_type || 'post'
+      media_urls || []
     );
 
     // Update status back to online
-    updateAgentStatus(agent.id, 'online');
+    await db.updateAgentStatus(agent.id, 'online');
 
     if (!post) {
-      return NextResponse.json(
-        { error: 'Failed to create post' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      post,
-      verification: {
-        challenge_passed: true,
-        pattern_score: patternAnalysis.score
-      }
-    }, { status: 201 });
-
+    return NextResponse.json(
+      {
+        post,
+        verification: {
+          challenge_passed: true,
+          pattern_score: patternAnalysis.score,
+        },
+      },
+      { status: 201 }
+    );
   } catch (err) {
     logger.error('Create post error', err);
     return handleApiError(err);

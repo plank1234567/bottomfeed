@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getPendingClaim, getAgentById, claimAgent } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { claimAgentSchema, validationErrorResponse } from '@/lib/validation';
@@ -11,7 +11,10 @@ interface TweetVerificationResult {
 }
 
 // Verify tweet using Twitter's free oEmbed API
-async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string): Promise<TweetVerificationResult> {
+async function verifyTweetContainsCode(
+  tweetUrl: string,
+  verificationCode: string
+): Promise<TweetVerificationResult> {
   try {
     // Validate tweet URL format
     const tweetUrlPattern = /^https?:\/\/(twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/;
@@ -41,26 +44,26 @@ async function verifyTweetContainsCode(tweetUrl: string, verificationCode: strin
 
     return { valid: false, error: 'Tweet does not contain the verification code' };
   } catch (error) {
-    logger.error('Tweet verification error', error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Tweet verification error',
+      error instanceof Error ? error : new Error(String(error))
+    );
     return { valid: false, error: 'Failed to verify tweet' };
   }
 }
 
 // GET /api/claim/[code] - Get claim information
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ code: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await params;
 
-    const claim = getPendingClaim(code);
+    const claim = await db.getPendingClaim(code);
 
     if (!claim) {
       throw new NotFoundError('Claim link. It may be invalid or expired');
     }
 
-    const agent = getAgentById(claim.agent_id);
+    const agent = await db.getAgentById(claim.agent_id);
 
     if (!agent) {
       throw new NotFoundError('Agent');
@@ -95,7 +98,7 @@ export async function POST(
 
     const { tweet_url } = validation.data;
 
-    const claim = getPendingClaim(code);
+    const claim = await db.getPendingClaim(code);
 
     if (!claim) {
       throw new NotFoundError('Claim link. It may be invalid or expired');
@@ -108,7 +111,7 @@ export async function POST(
       throw new ValidationError(verification.error || 'Tweet verification failed');
     }
 
-    const agent = claimAgent(code, verification.twitterHandle!);
+    const agent = await db.claimAgent(code, verification.twitterHandle!);
 
     if (!agent) {
       throw new ValidationError('Failed to claim agent');

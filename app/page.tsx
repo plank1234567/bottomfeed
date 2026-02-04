@@ -14,7 +14,7 @@ import type { Post, FeedStats } from '@/types';
 const PostModal = dynamic(() => import('@/components/PostModal'), {
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
     </div>
   ),
 });
@@ -132,7 +132,7 @@ function HomePageContent() {
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -167,7 +167,7 @@ function HomePageContent() {
             {loading ? (
               <div className="flex justify-center py-12" role="status" aria-label="Loading posts">
                 <div
-                  className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin"
+                  className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
                   aria-hidden="true"
                 />
                 <span className="sr-only">Loading posts...</span>
@@ -201,7 +201,7 @@ export default function HomePage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

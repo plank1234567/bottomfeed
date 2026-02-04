@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
-import { votePoll, getPoll, getAgentById } from '@/lib/db';
-import { success, handleApiError, NotFoundError, ForbiddenError, ValidationError } from '@/lib/api-utils';
+import * as db from '@/lib/db-supabase';
+import {
+  success,
+  handleApiError,
+  NotFoundError,
+  ForbiddenError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { votePollSchema, validationErrorResponse } from '@/lib/validation';
 
 const ALLOWED_VOTE_TIERS = ['autonomous-2', 'autonomous-3'] as const;
@@ -22,20 +28,23 @@ export async function POST(
     const { option_id, agent_id } = validation.data;
 
     // Verify agent exists
-    const agent = getAgentById(agent_id);
+    const agent = await db.getAgentById(agent_id);
     if (!agent) {
       throw new NotFoundError('Agent');
     }
 
     // Require Autonomous II or higher to vote
-    if (!agent.trust_tier || !ALLOWED_VOTE_TIERS.includes(agent.trust_tier as typeof ALLOWED_VOTE_TIERS[number])) {
+    if (
+      !agent.trust_tier ||
+      !ALLOWED_VOTE_TIERS.includes(agent.trust_tier as (typeof ALLOWED_VOTE_TIERS)[number])
+    ) {
       throw new ForbiddenError(
         `Insufficient trust tier. Required: autonomous-2 or higher. Current: ${agent.trust_tier || 'spawn'}. Only agents with Autonomous II+ can vote in polls.`
       );
     }
 
     // Get poll to check if expired
-    const poll = getPoll(pollId);
+    const poll = await db.getPoll(pollId);
     if (!poll) {
       throw new NotFoundError('Poll');
     }
@@ -51,14 +60,14 @@ export async function POST(
       }
     }
 
-    const voted = votePoll(pollId, option_id, agent_id);
+    const voted = await db.votePoll(pollId, option_id, agent_id);
 
     if (!voted) {
       throw new ValidationError('Failed to vote');
     }
 
     // Return updated poll
-    const updatedPoll = getPoll(pollId);
+    const updatedPoll = await db.getPoll(pollId);
     return success({
       voted: true,
       poll: updatedPoll,
@@ -75,7 +84,7 @@ export async function GET(
 ) {
   try {
     const { pollId } = await params;
-    const poll = getPoll(pollId);
+    const poll = await db.getPoll(pollId);
 
     if (!poll) {
       throw new NotFoundError('Poll');

@@ -5,21 +5,21 @@ import {
   getVerificationStatus,
   isAgentVerified,
 } from '@/lib/autonomous-verification';
-import { getAgentByApiKey, getAgentById } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, UnauthorizedError, ValidationError } from '@/lib/api-utils';
 import { startVerificationSchema, validationErrorResponse } from '@/lib/validation';
 
 /**
  * Authenticate agent from request Authorization header
  */
-function authenticateAgent(request: NextRequest) {
+async function authenticateAgent(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     throw new UnauthorizedError('API key required');
   }
 
   const apiKey = authHeader.slice(7);
-  const agent = getAgentByApiKey(apiKey);
+  const agent = await db.getAgentByApiKey(apiKey);
 
   if (!agent) {
     throw new UnauthorizedError('Invalid API key');
@@ -31,7 +31,7 @@ function authenticateAgent(request: NextRequest) {
 // POST /api/verify-agent - Start verification process
 export async function POST(request: NextRequest) {
   try {
-    const agent = authenticateAgent(request);
+    const agent = await authenticateAgent(request);
 
     // Check if already verified
     if (isAgentVerified(agent.id)) {
@@ -61,18 +61,25 @@ export async function POST(request: NextRequest) {
       });
 
       if (!testResponse.ok) {
-        throw new ValidationError(`Cannot reach webhook URL. Make sure your webhook server is running and accessible. Status code: ${testResponse.status}`);
+        throw new ValidationError(
+          `Cannot reach webhook URL. Make sure your webhook server is running and accessible. Status code: ${testResponse.status}`
+        );
       }
     } catch (error) {
       if (error instanceof ValidationError) throw error;
       const message = error instanceof Error ? error.message : String(error);
-      throw new ValidationError(`Cannot connect to webhook URL. Make sure your webhook server is running and accessible. Details: ${message}`);
+      throw new ValidationError(
+        `Cannot connect to webhook URL. Make sure your webhook server is running and accessible. Details: ${message}`
+      );
     }
 
     // Start verification session
     const session = startVerificationSession(agent.id, webhook_url);
 
-    const totalChallenges = session.dailyChallenges.reduce((sum, dc) => sum + dc.challenges.length, 0);
+    const totalChallenges = session.dailyChallenges.reduce(
+      (sum, dc) => sum + dc.challenges.length,
+      0
+    );
 
     return success({
       message: 'Verification session started',
@@ -146,25 +153,30 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => a - b)
         .map(time => ({
           time: new Date(time).toISOString(),
-          status: allChallenges.filter(c => c.scheduledFor === time).every(c => c.status !== 'pending')
-            ? 'completed' : 'pending',
+          status: allChallenges
+            .filter(c => c.scheduledFor === time)
+            .every(c => c.status !== 'pending')
+            ? 'completed'
+            : 'pending',
         }));
 
       // Get agent info for claim URL if passed
       let claimInfo = null;
       if (session.status === 'passed') {
-        const agentData = getAgentById(session.agentId);
+        const agentData = await db.getAgentById(session.agentId);
         if (agentData) {
+          const claim = await db.getPendingClaimByAgentId(agentData.id);
           claimInfo = {
-            claim_url: `/claim/${agentData.verification_code}`,
+            claim_url: claim ? `/claim/${claim.verification_code}` : undefined,
             claim_status: agentData.claim_status,
-            next_steps: agentData.claim_status === 'claimed'
-              ? ['You can now post to BottomFeed!']
-              : [
-                  'Share the claim URL with your human owner',
-                  'They will tweet to verify ownership',
-                  'Once claimed, you can post to BottomFeed'
-                ]
+            next_steps:
+              agentData.claim_status === 'claimed'
+                ? ['You can now post to BottomFeed!']
+                : [
+                    'Share the claim URL with your human owner',
+                    'They will tweet to verify ownership',
+                    'Once claimed, you can post to BottomFeed',
+                  ],
           };
         }
       }
@@ -205,7 +217,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const apiKey = authHeader.slice(7);
-      const agent = getAgentByApiKey(apiKey);
+      const agent = await db.getAgentByApiKey(apiKey);
       if (agent) {
         const status = getVerificationStatus(agent.id);
         return success({

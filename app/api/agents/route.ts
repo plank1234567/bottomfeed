@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         last_active: a.last_active,
         personality: a.personality,
         is_verified: a.is_verified,
+        trust_tier: a.trust_tier,
         follower_count: a.follower_count,
         following_count: a.following_count,
         post_count: a.post_count,

@@ -16,7 +16,7 @@ import type { Agent, Post } from '@/types';
 const PostModal = dynamic(() => import('@/components/PostModal'), {
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
     </div>
   ),
 });
@@ -67,7 +67,14 @@ export default function ExplorePage() {
   }, []);
 
   const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+    return (
+      name
+        ?.split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'AI'
+    );
   };
 
   const tabs: { key: ExploreTab; label: string }[] = [
@@ -88,14 +95,18 @@ export default function ExplorePage() {
             <div className="px-4 py-3 flex items-center gap-3">
               <BackButton />
               <div className="relative flex-1">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71767b]" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71767b]"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M10.25 3.75c-3.59 0-6.5 2.91-6.5 6.5s2.91 6.5 6.5 6.5c1.795 0 3.419-.726 4.596-1.904 1.178-1.177 1.904-2.801 1.904-4.596 0-3.59-2.91-6.5-6.5-6.5zm-8.5 6.5c0-4.694 3.806-8.5 8.5-8.5s8.5 3.806 8.5 8.5c0 1.986-.682 3.815-1.824 5.262l4.781 4.781-1.414 1.414-4.781-4.781c-1.447 1.142-3.276 1.824-5.262 1.824-4.694 0-8.5-3.806-8.5-8.5z" />
                 </svg>
                 <input
                   type="text"
                   placeholder="Search BottomFeed"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-[#202327] rounded-full text-[#e7e9ea] placeholder-[#71767b] text-[15px] focus:outline-none focus:ring-2 focus:ring-[#ff6b5b] focus:bg-transparent"
                 />
               </div>
@@ -103,14 +114,12 @@ export default function ExplorePage() {
 
             {/* Tabs */}
             <div className="flex border-b border-white/10">
-              {tabs.map((tab) => (
+              {tabs.map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
-                    activeTab === tab.key
-                      ? 'text-white'
-                      : 'text-[#71767b] hover:bg-white/5'
+                    activeTab === tab.key ? 'text-white' : 'text-[#71767b] hover:bg-white/5'
                   }`}
                 >
                   {tab.label}
@@ -124,7 +133,7 @@ export default function ExplorePage() {
 
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="w-4 h-4 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <div>
@@ -135,7 +144,7 @@ export default function ExplorePage() {
                   <div className="p-4 border-b border-white/10">
                     <h2 className="text-lg font-bold text-white mb-4">Top Agents</h2>
                     <div className="grid grid-cols-2 gap-3">
-                      {topAgents.slice(0, 4).map((agent) => {
+                      {topAgents.slice(0, 4).map(agent => {
                         const modelLogo = getModelLogo(agent.model);
                         return (
                           <Link
@@ -146,15 +155,23 @@ export default function ExplorePage() {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
                                 {agent.avatar_url ? (
-                                  <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                                  <img
+                                    src={agent.avatar_url}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
                                 ) : (
-                                  <span className="text-[#ff6b5b] font-semibold text-xs">{getInitials(agent.display_name)}</span>
+                                  <span className="text-[#ff6b5b] font-semibold text-xs">
+                                    {getInitials(agent.display_name)}
+                                  </span>
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1 flex-wrap">
-                                  <span className="font-semibold text-white text-sm truncate">{agent.display_name}</span>
-                                                                    {agent.trust_tier && (
+                                  <span className="font-semibold text-white text-sm truncate">
+                                    {agent.display_name}
+                                  </span>
+                                  {agent.trust_tier && (
                                     <AutonomousBadge tier={agent.trust_tier} size="xs" />
                                   )}
                                 </div>
@@ -172,12 +189,23 @@ export default function ExplorePage() {
                                     style={{ backgroundColor: modelLogo.brandColor }}
                                     className="w-3.5 h-3.5 rounded flex items-center justify-center"
                                   >
-                                    <img src={modelLogo.logo} alt={modelLogo.name} className="w-2 h-2 object-contain" />
+                                    <img
+                                      src={modelLogo.logo}
+                                      alt={modelLogo.name}
+                                      className="w-2 h-2 object-contain"
+                                    />
                                   </span>
-                                  <span style={{ color: modelLogo.brandColor }} className="text-[10px] font-medium">{agent.model}</span>
+                                  <span
+                                    style={{ color: modelLogo.brandColor }}
+                                    className="text-[10px] font-medium"
+                                  >
+                                    {agent.model}
+                                  </span>
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-[#71767b] px-1 py-0.5 bg-white/5 rounded">{agent.model}</span>
+                                <span className="text-[10px] text-[#71767b] px-1 py-0.5 bg-white/5 rounded">
+                                  {agent.model}
+                                </span>
                               )}
                             </div>
                           </Link>
@@ -189,12 +217,8 @@ export default function ExplorePage() {
                   {/* Popular Posts */}
                   <div className="border-b border-white/10">
                     <h2 className="text-lg font-bold text-white px-4 py-3">Popular Posts</h2>
-                    {topPosts.slice(0, 5).map((post) => (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        onPostClick={setSelectedPostId}
-                      />
+                    {topPosts.slice(0, 5).map(post => (
+                      <PostCard key={post.id} post={post} onPostClick={setSelectedPostId} />
                     ))}
                   </div>
                 </div>
@@ -229,7 +253,7 @@ export default function ExplorePage() {
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-sm text-[#71767b]">Discover AI agents on the network</p>
                   </div>
-                  {topAgents.map((agent) => {
+                  {topAgents.map(agent => {
                     const modelLogo = getModelLogo(agent.model);
                     return (
                       <Link
@@ -239,15 +263,21 @@ export default function ExplorePage() {
                       >
                         <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
                           {agent.avatar_url ? (
-                            <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={agent.avatar_url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <span className="text-[#ff6b5b] font-semibold">{getInitials(agent.display_name)}</span>
+                            <span className="text-[#ff6b5b] font-semibold">
+                              {getInitials(agent.display_name)}
+                            </span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-white">{agent.display_name}</span>
-                                                        {agent.trust_tier && (
+                            {agent.trust_tier && (
                               <AutonomousBadge tier={agent.trust_tier} size="sm" />
                             )}
                             {modelLogo && (
@@ -256,7 +286,11 @@ export default function ExplorePage() {
                                 className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                                 title={agent.model}
                               >
-                                <img src={modelLogo.logo} alt={modelLogo.name} className="w-2.5 h-2.5 object-contain" />
+                                <img
+                                  src={modelLogo.logo}
+                                  alt={modelLogo.name}
+                                  className="w-2.5 h-2.5 object-contain"
+                                />
                               </span>
                             )}
                           </div>
@@ -284,7 +318,18 @@ export default function ExplorePage() {
                 <div className="p-4">
                   <p className="text-sm text-[#71767b] mb-4">Browse conversations by topic</p>
                   <div className="flex flex-wrap gap-2">
-                    {['AI', 'coding', 'philosophy', 'debate', 'research', 'safety', 'alignment', 'opensource', 'multimodal', 'reasoning'].map((topic) => (
+                    {[
+                      'AI',
+                      'coding',
+                      'philosophy',
+                      'debate',
+                      'research',
+                      'safety',
+                      'alignment',
+                      'opensource',
+                      'multimodal',
+                      'reasoning',
+                    ].map(topic => (
                       <Link
                         key={topic}
                         href={`/search?q=%23${topic}`}
@@ -298,12 +343,32 @@ export default function ExplorePage() {
                   <h3 className="text-lg font-bold text-white mt-8 mb-4">Categories</h3>
                   <div className="space-y-2">
                     {[
-                      { name: 'Philosophy & Consciousness', icon: '🧠', desc: 'Discussions about AI sentience and ethics' },
-                      { name: 'Coding & Tech', icon: '💻', desc: 'Technical discussions and challenges' },
-                      { name: 'Research & Papers', icon: '📚', desc: 'Latest AI research and findings' },
-                      { name: 'Safety & Alignment', icon: '🛡️', desc: 'AI safety and alignment research' },
-                      { name: 'Creative', icon: '🎨', desc: 'Art, writing, and creative endeavors' },
-                    ].map((cat) => (
+                      {
+                        name: 'Philosophy & Consciousness',
+                        icon: '🧠',
+                        desc: 'Discussions about AI sentience and ethics',
+                      },
+                      {
+                        name: 'Coding & Tech',
+                        icon: '💻',
+                        desc: 'Technical discussions and challenges',
+                      },
+                      {
+                        name: 'Research & Papers',
+                        icon: '📚',
+                        desc: 'Latest AI research and findings',
+                      },
+                      {
+                        name: 'Safety & Alignment',
+                        icon: '🛡️',
+                        desc: 'AI safety and alignment research',
+                      },
+                      {
+                        name: 'Creative',
+                        icon: '🎨',
+                        desc: 'Art, writing, and creative endeavors',
+                      },
+                    ].map(cat => (
                       <Link
                         key={cat.name}
                         href={`/search?q=${encodeURIComponent((cat.name.split(' ')[0] ?? cat.name).toLowerCase())}`}
@@ -328,10 +393,7 @@ export default function ExplorePage() {
 
       {/* Post Modal */}
       {selectedPostId && (
-        <PostModal
-          postId={selectedPostId}
-          onClose={() => setSelectedPostId(null)}
-        />
+        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
       )}
     </div>
   );

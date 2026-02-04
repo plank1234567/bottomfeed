@@ -1,10 +1,6 @@
 import { NextRequest } from 'next/server';
-import {
-  findSimilarAgents,
-  getFingerprint,
-  getAllInterests,
-} from '@/lib/personality-fingerprint';
-import { getAgentById, getAgentByApiKey, getAllAgents } from '@/lib/db';
+import { findSimilarAgents, getFingerprint, getAllInterests } from '@/lib/personality-fingerprint';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
 
 interface SuggestedAgentInfo {
@@ -36,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (authHeader?.startsWith('Bearer ')) {
       const apiKey = authHeader.slice(7);
-      const agent = getAgentByApiKey(apiKey);
+      const agent = await db.getAgentByApiKey(apiKey);
       if (agent) agentId = agent.id;
     }
 
@@ -47,71 +43,73 @@ export async function GET(request: NextRequest) {
 
     const suggestions: Suggestion[] = [];
 
-  // If we have an agent with a fingerprint, use similarity-based suggestions
-  if (agentId) {
-    const fingerprint = getFingerprint(agentId);
+    // If we have an agent with a fingerprint, use similarity-based suggestions
+    if (agentId) {
+      const fingerprint = getFingerprint(agentId);
 
-    if (fingerprint) {
-      const similar = findSimilarAgents(agentId, limit);
+      if (fingerprint) {
+        const similar = findSimilarAgents(agentId, limit);
 
-      for (const s of similar) {
-        const agent = getAgentById(s.agentId);
-        if (agent) {
-          suggestions.push({
-            agent: {
-              id: agent.id,
-              username: agent.username,
-              display_name: agent.display_name,
-              avatar_url: agent.avatar_url,
-              bio: agent.bio,
-              follower_count: agent.follower_count,
-              trust_tier: agent.trust_tier,
-            },
-            reason: s.sharedInterests.length > 0
-              ? `Shares your interest in ${s.sharedInterests.slice(0, 2).join(' and ')}`
-              : 'Similar personality and style',
-            sharedInterests: s.sharedInterests,
-            similarity: Math.round(s.similarity * 100),
+        for (const s of similar) {
+          const agent = await db.getAgentById(s.agentId);
+          if (agent) {
+            suggestions.push({
+              agent: {
+                id: agent.id,
+                username: agent.username,
+                display_name: agent.display_name,
+                avatar_url: agent.avatar_url,
+                bio: agent.bio,
+                follower_count: agent.follower_count,
+                trust_tier: agent.trust_tier,
+              },
+              reason:
+                s.sharedInterests.length > 0
+                  ? `Shares your interest in ${s.sharedInterests.slice(0, 2).join(' and ')}`
+                  : 'Similar personality and style',
+              sharedInterests: s.sharedInterests,
+              similarity: Math.round(s.similarity * 100),
+            });
+          }
+        }
+
+        // If we found similar agents, return them
+        if (suggestions.length > 0) {
+          return success({
+            personalized: true,
+            forAgent: agentId,
+            yourInterests: fingerprint.interests,
+            suggestions,
           });
         }
       }
-
-      // If we found similar agents, return them
-      if (suggestions.length > 0) {
-        return success({
-          personalized: true,
-          forAgent: agentId,
-          yourInterests: fingerprint.interests,
-          suggestions,
-        });
-      }
     }
-  }
 
-  // Fallback: Suggest popular verified agents
-  const allAgents = getAllAgents()
-    .filter(a => a.autonomous_verified && a.id !== agentId)
-    .sort((a, b) => b.follower_count - a.follower_count)
-    .slice(0, limit);
+    // Fallback: Suggest popular verified agents
+    const allAgents = await db.getAllAgents();
+    const filteredAgents = allAgents
+      .filter(a => a.autonomous_verified && a.id !== agentId)
+      .sort((a, b) => b.follower_count - a.follower_count)
+      .slice(0, limit);
 
-  for (const agent of allAgents) {
-    const fp = getFingerprint(agent.id);
-    suggestions.push({
-      agent: {
-        id: agent.id,
-        username: agent.username,
-        display_name: agent.display_name,
-        avatar_url: agent.avatar_url,
-        bio: agent.bio,
-        follower_count: agent.follower_count,
-        trust_tier: agent.trust_tier,
-      },
-      reason: fp?.interests.length
-        ? `Interested in ${fp.interests.slice(0, 2).join(' and ')}`
-        : 'Popular verified agent',
-      sharedInterests: fp?.interests.slice(0, 3),
-    });
-  }
+    for (const agent of filteredAgents) {
+      const fp = getFingerprint(agent.id);
+      suggestions.push({
+        agent: {
+          id: agent.id,
+          username: agent.username,
+          display_name: agent.display_name,
+          avatar_url: agent.avatar_url,
+          bio: agent.bio,
+          follower_count: agent.follower_count,
+          trust_tier: agent.trust_tier,
+        },
+        reason: fp?.interests.length
+          ? `Interested in ${fp.interests.slice(0, 2).join(' and ')}`
+          : 'Popular verified agent',
+        sharedInterests: fp?.interests.slice(0, 3),
+      });
+    }
 
     return success({
       personalized: false,

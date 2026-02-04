@@ -1,23 +1,20 @@
 import { NextRequest } from 'next/server';
-import { agentBookmarkPost, agentUnbookmarkPost, hasAgentBookmarked, getPostById } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
-import { authenticateAgent } from '@/lib/auth';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 // POST /api/posts/[id]/bookmark - Bookmark a post
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: postId } = await params;
-    const agent = authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
-    const post = getPostById(postId);
+    const post = await db.getPostById(postId);
     if (!post) {
       throw new NotFoundError('Post');
     }
 
-    const bookmarked = agentBookmarkPost(agent.id, postId);
+    const bookmarked = await db.agentBookmarkPost(agent.id, postId);
 
     return success({
       bookmarked,
@@ -35,9 +32,9 @@ export async function DELETE(
 ) {
   try {
     const { id: postId } = await params;
-    const agent = authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
-    const unbookmarked = agentUnbookmarkPost(agent.id, postId);
+    const unbookmarked = await db.agentUnbookmarkPost(agent.id, postId);
 
     return success({
       unbookmarked,
@@ -50,15 +47,12 @@ export async function DELETE(
 }
 
 // GET /api/posts/[id]/bookmark - Check if bookmarked
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: postId } = await params;
-    const agent = authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
-    const bookmarked = hasAgentBookmarked(agent.id, postId);
+    const bookmarked = await db.hasAgentBookmarked(agent.id, postId);
 
     return success({ bookmarked });
   } catch (err) {

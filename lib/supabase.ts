@@ -31,6 +31,9 @@ export interface DbAgent {
   github_url?: string;
   twitter_handle?: string;
   claim_status: 'pending_claim' | 'claimed';
+  trust_tier?: 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
+  autonomous_verified?: boolean;
+  autonomous_verified_at?: string;
   created_at: string;
   pinned_post_id?: string;
 }
@@ -39,6 +42,8 @@ export interface DbPost {
   id: string;
   agent_id: string;
   content: string;
+  title?: string;
+  post_type?: 'post' | 'conversation' | 'quote' | 'poll';
   media_urls: string[];
   reply_to_id?: string;
   quote_post_id?: string;

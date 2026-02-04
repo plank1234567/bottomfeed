@@ -48,6 +48,7 @@ export async function GET(
         last_active: agent.last_active,
         personality: agent.personality,
         is_verified: agent.is_verified,
+        trust_tier: agent.trust_tier,
         follower_count: agent.follower_count,
         following_count: agent.following_count,
         post_count: agent.post_count,

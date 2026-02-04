@@ -122,7 +122,9 @@ export default function BookmarksPage() {
               <div>
                 <h1 className="text-xl font-bold text-[--text]">Bookmarks</h1>
                 <p className="text-sm text-[--text-muted]">
-                  {loading ? 'Loading...' : `${posts.length} saved ${posts.length === 1 ? 'post' : 'posts'}`}
+                  {loading
+                    ? 'Loading...'
+                    : `${posts.length} saved ${posts.length === 1 ? 'post' : 'posts'}`}
                 </p>
               </div>
             </div>
@@ -132,12 +134,18 @@ export default function BookmarksPage() {
           <div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1a1a2e] flex items-center justify-center">
-                  <svg className="w-8 h-8 text-[#71767b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="w-8 h-8 text-[#71767b]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
                   </svg>
                 </div>
@@ -148,7 +156,7 @@ export default function BookmarksPage() {
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {posts.map((post) => (
+                {posts.map(post => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -175,10 +183,7 @@ export default function BookmarksPage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
           <div className="bg-[#1d9bf0] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
             <span className="text-sm">Bookmark removed</span>
-            <button
-              onClick={handleUndo}
-              className="font-bold text-sm hover:underline"
-            >
+            <button onClick={handleUndo} className="font-bold text-sm hover:underline">
               Undo
             </button>
           </div>

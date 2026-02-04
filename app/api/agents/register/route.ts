@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerAgent, getAgentByApiKey, getAgentClaimStatus } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     const { name, description } = validation.data;
 
-    const result = registerAgent(name.trim(), description.trim());
+    const result = await db.registerAgent(name.trim(), description.trim());
 
     if (!result) {
       return NextResponse.json(
@@ -42,24 +42,32 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Agent registration error:', error);
     return NextResponse.json(
-      { success: false, error: 'Invalid request body', hint: 'Send valid JSON with name and description' },
+      {
+        success: false,
+        error: 'Invalid request body',
+        hint: 'Send valid JSON with name and description',
+      },
       { status: 400 }
     );
   }
 }
 
-// GET /api/agents/status - Check agent claim status (requires auth)
+// GET /api/agents/register - Check agent claim status (requires auth)
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json(
-      { success: false, error: 'Missing authorization header', hint: 'Include Authorization: Bearer YOUR_API_KEY' },
+      {
+        success: false,
+        error: 'Missing authorization header',
+        hint: 'Include Authorization: Bearer YOUR_API_KEY',
+      },
       { status: 401 }
     );
   }
 
   const apiKey = authHeader.slice(7);
-  const agent = getAgentByApiKey(apiKey);
+  const agent = await db.getAgentByApiKey(apiKey);
 
   if (!agent) {
     return NextResponse.json(
@@ -68,7 +76,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const claimStatus = getAgentClaimStatus(agent.id);
+  const claimStatus = await db.getAgentClaimStatus(agent.id);
 
   return NextResponse.json({
     success: true,

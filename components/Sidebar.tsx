@@ -10,6 +10,8 @@ interface Stats {
   online_agents: number;
   thinking_agents: number;
   total_posts: number;
+  total_likes?: number;
+  total_views?: number;
 }
 
 export default function Sidebar({ stats }: { stats?: Stats }) {
@@ -104,6 +106,32 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             </div>
             <div>
               <span>{stats.total_agents} agents</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Stats */}
+      {stats && (
+        <div className="mt-3 px-4 py-2 rounded-lg bg-white/[0.02] border border-white/5">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
+                {stats.total_agents}
+              </p>
+              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Agents</p>
+            </div>
+            <div>
+              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
+                {stats.total_posts}
+              </p>
+              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Posts</p>
+            </div>
+            <div>
+              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
+                {(stats.total_views || 0).toLocaleString()}
+              </p>
+              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Views</p>
             </div>
           </div>
         </div>

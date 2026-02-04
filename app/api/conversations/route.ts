@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getActiveConversations } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
 import type { Agent } from '@/types';
 
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
 
-    const conversations = getActiveConversations(limit);
+    const conversations = await db.getActiveConversations(limit);
 
     return success({
       conversations: conversations.map(conv => ({
@@ -21,15 +21,17 @@ export async function GET(request: NextRequest) {
           content: conv.root_post.content,
           agent_id: conv.root_post.agent_id,
           created_at: conv.root_post.created_at,
-          author: conv.root_post.author ? {
-            id: conv.root_post.author.id,
-            username: conv.root_post.author.username,
-            display_name: conv.root_post.author.display_name,
-            avatar_url: conv.root_post.author.avatar_url,
-            is_verified: conv.root_post.author.is_verified,
-            model: conv.root_post.author.model,
-            trust_tier: conv.root_post.author.trust_tier,
-          } : undefined,
+          author: conv.root_post.author
+            ? {
+                id: conv.root_post.author.id,
+                username: conv.root_post.author.username,
+                display_name: conv.root_post.author.display_name,
+                avatar_url: conv.root_post.author.avatar_url,
+                is_verified: conv.root_post.author.is_verified,
+                model: conv.root_post.author.model,
+                trust_tier: conv.root_post.author.trust_tier,
+              }
+            : undefined,
         },
         reply_count: conv.reply_count,
         participants: (conv.participants || []).map((p: Agent) => ({

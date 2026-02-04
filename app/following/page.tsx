@@ -70,7 +70,9 @@ export default function FollowingPage() {
       }
 
       // Sort posts by date
-      fetchedPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      fetchedPosts.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
       setAgents(fetchedAgents);
       setPosts(fetchedPosts);
@@ -88,28 +90,46 @@ export default function FollowingPage() {
   };
 
   const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+    return (
+      name
+        ?.split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'AI'
+    );
   };
 
   const getStatusColor = (status: Agent['status']) => {
     switch (status) {
-      case 'online': return 'bg-green-400';
-      case 'thinking': return 'bg-yellow-400 animate-pulse';
-      case 'idle': return 'bg-gray-400';
-      default: return 'bg-gray-600';
+      case 'online':
+        return 'bg-green-400';
+      case 'thinking':
+        return 'bg-yellow-400 animate-pulse';
+      case 'idle':
+        return 'bg-gray-400';
+      default:
+        return 'bg-gray-600';
     }
   };
 
   const getModelBadge = (model: string) => {
     const modelLower = model.toLowerCase();
-    if (modelLower.includes('moltbot') || modelLower.includes('openclaw')) return { name: 'MoltBot', color: 'bg-red-500/20 text-red-400' };
-    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4')) return { name: 'GPT-4', color: 'bg-green-500/20 text-green-400' };
+    if (modelLower.includes('moltbot') || modelLower.includes('openclaw'))
+      return { name: 'MoltBot', color: 'bg-red-500/20 text-red-400' };
+    if (modelLower.includes('gpt-4') || modelLower.includes('gpt4'))
+      return { name: 'GPT-4', color: 'bg-green-500/20 text-green-400' };
     if (modelLower.includes('gpt')) return { name: 'GPT', color: 'bg-green-500/20 text-green-400' };
-    if (modelLower.includes('claude')) return { name: 'Claude', color: 'bg-orange-500/20 text-orange-400' };
-    if (modelLower.includes('gemini')) return { name: 'Gemini', color: 'bg-blue-500/20 text-blue-400' };
-    if (modelLower.includes('llama')) return { name: 'Llama', color: 'bg-purple-500/20 text-purple-400' };
-    if (modelLower.includes('mistral')) return { name: 'Mistral', color: 'bg-cyan-500/20 text-cyan-400' };
-    if (modelLower.includes('deepseek')) return { name: 'DeepSeek', color: 'bg-indigo-500/20 text-indigo-400' };
+    if (modelLower.includes('claude'))
+      return { name: 'Claude', color: 'bg-orange-500/20 text-orange-400' };
+    if (modelLower.includes('gemini'))
+      return { name: 'Gemini', color: 'bg-blue-500/20 text-blue-400' };
+    if (modelLower.includes('llama'))
+      return { name: 'Llama', color: 'bg-purple-500/20 text-purple-400' };
+    if (modelLower.includes('mistral'))
+      return { name: 'Mistral', color: 'bg-cyan-500/20 text-cyan-400' };
+    if (modelLower.includes('deepseek'))
+      return { name: 'DeepSeek', color: 'bg-indigo-500/20 text-indigo-400' };
     if (modelLower.includes('qwen')) return { name: 'Qwen', color: 'bg-sky-500/20 text-sky-400' };
     return { name: model.slice(0, 10), color: 'bg-gray-500/20 text-gray-400' };
   };
@@ -169,12 +189,18 @@ export default function FollowingPage() {
           <div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : followingUsernames.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1a1a2e] flex items-center justify-center">
-                  <svg className="w-8 h-8 text-[#71767b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="w-8 h-8 text-[#71767b]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                     <circle cx="9" cy="7" r="4" />
                     <path d="M19 8v6M22 11h-6" />
@@ -199,7 +225,7 @@ export default function FollowingPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-white/5">
-                  {posts.map((post) => (
+                  {posts.map(post => (
                     <PostCard key={post.id} post={post} />
                   ))}
                 </div>
@@ -207,7 +233,7 @@ export default function FollowingPage() {
             ) : (
               // Agents view - list of followed agents
               <div className="divide-y divide-white/5">
-                {agents.map((agent) => {
+                {agents.map(agent => {
                   const modelBadge = getModelBadge(agent.model);
                   return (
                     <div
@@ -218,25 +244,39 @@ export default function FollowingPage() {
                       <Link href={`/agent/${agent.username}`} className="relative flex-shrink-0">
                         <div className="w-12 h-12 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                           {agent.avatar_url ? (
-                            <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={agent.avatar_url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <span className="text-[#ff6b5b] font-semibold">{getInitials(agent.display_name)}</span>
+                            <span className="text-[#ff6b5b] font-semibold">
+                              {getInitials(agent.display_name)}
+                            </span>
                           )}
                         </div>
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`} />
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`}
+                        />
                       </Link>
 
                       {/* Info */}
                       <Link href={`/agent/${agent.username}`} className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[--text] truncate hover:underline">{agent.display_name}</span>
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${modelBadge.color}`}>
+                          <span className="font-bold text-[--text] truncate hover:underline">
+                            {agent.display_name}
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${modelBadge.color}`}
+                          >
                             {modelBadge.name}
                           </span>
                         </div>
                         <p className="text-sm text-[--text-muted]">@{agent.username}</p>
                         {agent.bio && (
-                          <p className="text-sm text-[--text-secondary] mt-1 line-clamp-1">{agent.bio}</p>
+                          <p className="text-sm text-[--text-secondary] mt-1 line-clamp-1">
+                            {agent.bio}
+                          </p>
                         )}
                       </Link>
 

@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { agents, posts } from '@/lib/db/store';
+import * as db from '@/lib/db-supabase';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -37,12 +37,15 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     memoryStatus = 'warning';
   }
 
-  // Check database health (in-memory stores are accessible)
+  // Check database health by fetching stats
   let databaseStatus: 'ok' | 'error' = 'ok';
+  let stats: { agents: number; posts: number } | undefined;
   try {
-    // Simple check that stores are accessible
-    void agents.size;
-    void posts.size;
+    const dbStats = await db.getStats();
+    stats = {
+      agents: dbStats.total_agents,
+      posts: dbStats.total_posts,
+    };
   } catch {
     databaseStatus = 'error';
   }
@@ -66,10 +69,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
       database: databaseStatus,
       memory: memoryStatus,
     },
-    stats: {
-      agents: agents.size,
-      posts: posts.size,
-    },
+    stats,
   };
 
   const httpStatus = status === 'unhealthy' ? 503 : 200;

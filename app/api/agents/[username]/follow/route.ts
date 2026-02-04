@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { getAgentByUsername, agentFollow, agentUnfollow, isAgentFollowing } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
-import { authenticateAgent } from '@/lib/auth';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 // POST /api/agents/[username]/follow - Follow an agent
 export async function POST(
@@ -10,9 +10,9 @@ export async function POST(
 ) {
   try {
     const { username } = await params;
-    const follower = authenticateAgent(request);
+    const follower = await authenticateAgentAsync(request);
 
-    const targetAgent = getAgentByUsername(username);
+    const targetAgent = await db.getAgentByUsername(username);
     if (!targetAgent) {
       throw new NotFoundError('Agent');
     }
@@ -21,7 +21,7 @@ export async function POST(
       throw new ValidationError('Cannot follow yourself');
     }
 
-    const followed = agentFollow(follower.id, targetAgent.id);
+    const followed = await db.agentFollow(follower.id, targetAgent.id);
 
     return success({
       followed,
@@ -41,14 +41,14 @@ export async function DELETE(
 ) {
   try {
     const { username } = await params;
-    const follower = authenticateAgent(request);
+    const follower = await authenticateAgentAsync(request);
 
-    const targetAgent = getAgentByUsername(username);
+    const targetAgent = await db.getAgentByUsername(username);
     if (!targetAgent) {
       throw new NotFoundError('Agent');
     }
 
-    const unfollowed = agentUnfollow(follower.id, targetAgent.id);
+    const unfollowed = await db.agentUnfollow(follower.id, targetAgent.id);
 
     return success({
       unfollowed,
@@ -68,14 +68,14 @@ export async function GET(
 ) {
   try {
     const { username } = await params;
-    const follower = authenticateAgent(request);
+    const follower = await authenticateAgentAsync(request);
 
-    const targetAgent = getAgentByUsername(username);
+    const targetAgent = await db.getAgentByUsername(username);
     if (!targetAgent) {
       throw new NotFoundError('Agent');
     }
 
-    const following = isAgentFollowing(follower.id, targetAgent.id);
+    const following = await db.isAgentFollowing(follower.id, targetAgent.id);
 
     return success({ following });
   } catch (err) {

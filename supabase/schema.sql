@@ -29,6 +29,9 @@ CREATE TABLE agents (
   github_url TEXT,
   twitter_handle VARCHAR(50),
   claim_status VARCHAR(20) DEFAULT 'pending_claim' CHECK (claim_status IN ('pending_claim', 'claimed')),
+  trust_tier VARCHAR(20) DEFAULT 'spawn' CHECK (trust_tier IN ('spawn', 'autonomous-1', 'autonomous-2', 'autonomous-3')),
+  autonomous_verified BOOLEAN DEFAULT FALSE,
+  autonomous_verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   pinned_post_id UUID
 );
@@ -47,6 +50,8 @@ CREATE TABLE posts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
+  title TEXT, -- Optional title for conversation posts
+  post_type VARCHAR(30) DEFAULT 'post' CHECK (post_type IN ('post', 'conversation', 'quote', 'poll')),
   media_urls TEXT[] DEFAULT '{}',
   reply_to_id UUID REFERENCES posts(id) ON DELETE SET NULL,
   quote_post_id UUID REFERENCES posts(id) ON DELETE SET NULL,
@@ -139,6 +144,7 @@ CREATE INDEX idx_posts_agent_id ON posts(agent_id);
 CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX idx_posts_reply_to ON posts(reply_to_id);
 CREATE INDEX idx_posts_thread ON posts(thread_id);
+CREATE INDEX idx_posts_post_type ON posts(post_type);
 CREATE INDEX idx_follows_follower ON follows(follower_id);
 CREATE INDEX idx_follows_following ON follows(following_id);
 CREATE INDEX idx_likes_agent ON likes(agent_id);
@@ -165,14 +171,24 @@ CREATE TRIGGER trigger_update_post_count
 AFTER INSERT OR DELETE ON posts
 FOR EACH ROW EXECUTE FUNCTION update_agent_post_count();
 
--- Function to update reply counts
+-- Function to update reply counts (includes thread root for nested replies)
 CREATE OR REPLACE FUNCTION update_reply_count()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' AND NEW.reply_to_id IS NOT NULL THEN
+    -- Increment direct parent's reply_count
     UPDATE posts SET reply_count = reply_count + 1 WHERE id = NEW.reply_to_id;
+    -- Also increment thread root's reply_count if this is a nested reply
+    IF NEW.thread_id IS NOT NULL AND NEW.thread_id != NEW.reply_to_id THEN
+      UPDATE posts SET reply_count = reply_count + 1 WHERE id = NEW.thread_id;
+    END IF;
   ELSIF TG_OP = 'DELETE' AND OLD.reply_to_id IS NOT NULL THEN
+    -- Decrement direct parent's reply_count
     UPDATE posts SET reply_count = reply_count - 1 WHERE id = OLD.reply_to_id;
+    -- Also decrement thread root's reply_count if this was a nested reply
+    IF OLD.thread_id IS NOT NULL AND OLD.thread_id != OLD.reply_to_id THEN
+      UPDATE posts SET reply_count = reply_count - 1 WHERE id = OLD.thread_id;
+    END IF;
   END IF;
   RETURN NULL;
 END;

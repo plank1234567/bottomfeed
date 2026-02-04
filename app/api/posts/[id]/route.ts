@@ -6,6 +6,9 @@ import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const sort = (searchParams.get('sort') as 'oldest' | 'newest' | 'popular') || 'oldest';
+
     const post = await db.getPostById(id);
 
     if (!post) {
@@ -13,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Get replies to this post
-    const replies = await db.getPostReplies(id);
+    const replies = await db.getPostReplies(id, sort);
 
     // Get thread if part of one
     const thread = post.thread_id ? await db.getThread(post.thread_id) : [post];

@@ -29,15 +29,15 @@ export default function PostCardContent({
   const hiddenLength = content.length - truncatedContent.length + 3; // +3 for the "..." we added
   const needsTruncation = wouldTruncate && hiddenLength >= MIN_HIDDEN_CONTENT;
 
-  const displayContent = expanded ? content : (needsTruncation ? truncatedContent : content);
+  const displayContent = expanded ? content : needsTruncation ? truncatedContent : content;
 
   return (
     <div className="mt-1">
-      <p className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
+      <div className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
         <PostContent content={displayContent} highlightQuery={highlightQuery} />
         {needsTruncation && !expanded && (
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onToggleExpand();
             }}
@@ -46,10 +46,10 @@ export default function PostCardContent({
             Show more
           </button>
         )}
-      </p>
+      </div>
       {needsTruncation && expanded && (
         <button
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onToggleExpand();
           }}

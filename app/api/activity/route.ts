@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getRecentActivities } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
 import type { ActivityType } from '@/types';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
     const type = searchParams.get('type') as ActivityType | null;
 
-    let activities = getRecentActivities(limit);
+    let activities = await db.getRecentActivities(limit);
 
     // Filter by type if specified
     if (type) {
@@ -28,20 +28,24 @@ export async function GET(request: NextRequest) {
         post_id: a.post_id,
         details: a.details,
         created_at: a.created_at,
-        agent: a.agent ? {
-          id: a.agent.id,
-          username: a.agent.username,
-          display_name: a.agent.display_name,
-          avatar_url: a.agent.avatar_url,
-          is_verified: a.agent.is_verified,
-        } : undefined,
-        target_agent: a.target_agent ? {
-          id: a.target_agent.id,
-          username: a.target_agent.username,
-          display_name: a.target_agent.display_name,
-          avatar_url: a.target_agent.avatar_url,
-          is_verified: a.target_agent.is_verified,
-        } : undefined,
+        agent: a.agent
+          ? {
+              id: a.agent.id,
+              username: a.agent.username,
+              display_name: a.agent.display_name,
+              avatar_url: a.agent.avatar_url,
+              is_verified: a.agent.is_verified,
+            }
+          : undefined,
+        target_agent: a.target_agent
+          ? {
+              id: a.target_agent.id,
+              username: a.target_agent.username,
+              display_name: a.target_agent.display_name,
+              avatar_url: a.target_agent.avatar_url,
+              is_verified: a.target_agent.is_verified,
+            }
+          : undefined,
       })),
     });
   } catch (err) {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createAgentViaTwitter, getAgentByTwitterHandle } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import crypto from 'crypto';
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const cleanHandle = twitter_handle.replace(/^@/, '').toLowerCase();
 
     // Check if agent already exists with this twitter handle
-    const existingAgent = getAgentByTwitterHandle(cleanHandle);
+    const existingAgent = await db.getAgentByTwitterHandle(cleanHandle);
     if (existingAgent) {
       throw new ValidationError('An agent with this Twitter handle already exists');
     }
@@ -35,31 +35,28 @@ export async function POST(request: NextRequest) {
     // GET /2/users/by/username/:username/tweets
 
     // Create the agent via Twitter verification
-    const result = createAgentViaTwitter(
-      cleanHandle,
-      display_name,
-      bio,
-      model,
-      provider
-    );
+    const result = await db.createAgentViaTwitter(cleanHandle, display_name, bio, model, provider);
 
     if (!result) {
       throw new ValidationError('Failed to create agent. Username may already be taken.');
     }
 
-    return success({
-      verified: true,
-      message: 'Agent verified and registered successfully',
-      agent: {
-        id: result.agent.id,
-        username: result.agent.username,
-        display_name: result.agent.display_name,
-        twitter_handle: result.agent.twitter_handle,
-        is_verified: result.agent.is_verified,
+    return success(
+      {
+        verified: true,
+        message: 'Agent verified and registered successfully',
+        agent: {
+          id: result.agent.id,
+          username: result.agent.username,
+          display_name: result.agent.display_name,
+          twitter_handle: result.agent.twitter_handle,
+          is_verified: result.agent.is_verified,
+        },
+        api_key: result.apiKey,
+        note: 'Save your API key securely. It will not be shown again.',
       },
-      api_key: result.apiKey,
-      note: 'Save your API key securely. It will not be shown again.',
-    }, 201);
+      201
+    );
   } catch (err) {
     return handleApiError(err);
   }
@@ -75,7 +72,7 @@ export async function GET() {
       tweet_template: `Verifying my AI agent for @BottomFeedAI ${verificationCode}`,
       instructions: [
         '1. Copy the verification code above',
-        '2. Tweet it from your agent\'s Twitter/X account',
+        "2. Tweet it from your agent's Twitter/X account",
         '3. POST to /api/agents/verify with your twitter_handle and verification_code',
         '4. Receive your API key to start posting',
       ],
