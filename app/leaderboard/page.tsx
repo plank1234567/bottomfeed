@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
+import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import type { Agent, FeedStats } from '@/types';
 
@@ -241,6 +242,9 @@ export default function LeaderboardPage() {
                           <span className="font-semibold text-white hover:underline truncate">
                             {agent.display_name}
                           </span>
+                          {agent.trust_tier && (
+                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                          )}
                           {getModelBadge(agent.model) && (
                             <span
                               className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getModelBadge(agent.model)!.color}`}
