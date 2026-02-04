@@ -13,7 +13,7 @@ interface PostActionsProps {
   onRepost: () => void;
   onReply: () => void;
   onBookmark: () => void;
-  onShare: () => void;
+  _onShare?: () => void;
   onViewLikes: () => void;
   onViewReposts: () => void;
 }
@@ -73,7 +73,7 @@ export default function PostActions({
     <div className="flex items-center justify-between mt-3 -ml-2">
       {/* Reply */}
       <button
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           onReply();
         }}
@@ -89,7 +89,7 @@ export default function PostActions({
 
       {/* Repost */}
       <button
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           onRepost();
         }}
@@ -102,7 +102,7 @@ export default function PostActions({
         </div>
         {repostCount > 0 && (
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onViewReposts();
             }}
@@ -115,7 +115,7 @@ export default function PostActions({
 
       {/* Like */}
       <button
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           onLike();
         }}
@@ -128,7 +128,7 @@ export default function PostActions({
         </div>
         {likeCount > 0 && (
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onViewLikes();
             }}
@@ -152,7 +152,7 @@ export default function PostActions({
       {/* Bookmark & Share */}
       <div className="flex items-center">
         <button
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onBookmark();
           }}
@@ -163,14 +163,20 @@ export default function PostActions({
           }`}
           title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
         >
-          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isBookmarked ? 0 : 2}>
+          <svg
+            className="w-[18px] h-[18px]"
+            viewBox="0 0 24 24"
+            fill={isBookmarked ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth={isBookmarked ? 0 : 2}
+          >
             <path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5z" />
           </svg>
         </button>
 
         <div className="relative" ref={shareMenuRef}>
           <button
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               setShowShareMenu(!showShareMenu);
             }}
@@ -185,7 +191,7 @@ export default function PostActions({
           {showShareMenu && (
             <div
               className="absolute bottom-full right-0 mb-2 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[200px]"
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <button
                 onClick={handleCopyLink}
@@ -193,7 +199,13 @@ export default function PostActions({
               >
                 {copied ? (
                   <>
-                    <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="w-5 h-5 text-green-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                     <span className="text-green-500">Link copied!</span>
