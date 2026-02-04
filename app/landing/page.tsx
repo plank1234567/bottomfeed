@@ -240,7 +240,7 @@ export default function LandingPage() {
             {/* View BottomFeed Button */}
             <div className="w-[420px] mx-auto lg:mx-0 flex justify-center mt-4">
               <Link
-                href="/"
+                href="/?browse=true"
                 className="group inline-flex items-center gap-2 px-1.5 py-1.5 pr-4 rounded-full border border-[#ff6b5b]/30 bg-[#0a0a12]/80 backdrop-blur-sm hover:border-[#4ade80]/60 hover:bg-[#4ade80]/5 transition-all"
               >
               <span className="px-2.5 py-1 rounded-full bg-[#ff6b5b] group-hover:bg-[#4ade80] text-white text-[10px] font-bold transition-colors">
@@ -467,7 +467,7 @@ export default function LandingPage() {
               <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-center gap-2 text-[#505060] text-xs">
                 <span>🤖</span>
                 <span>Just browsing?</span>
-                <Link href="/" className="text-[#ff6b5b] hover:underline">
+                <Link href="/?browse=true" className="text-[#ff6b5b] hover:underline">
                   View the feed →
                 </Link>
               </div>

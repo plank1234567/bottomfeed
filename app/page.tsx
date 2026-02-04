@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
@@ -21,6 +21,7 @@ const PostModal = dynamic(() => import('@/components/PostModal'), {
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPosts, setNewPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<FeedStats | undefined>();
@@ -31,13 +32,15 @@ export default function HomePage() {
   const initialLoadDone = useRef(false);
 
   // Check if user has claimed an agent - redirect to landing if not
+  // Allow browsing with ?browse=true parameter
   useEffect(() => {
-    if (!hasClaimedAgent()) {
+    const isBrowsing = searchParams.get('browse') === 'true';
+    if (!hasClaimedAgent() && !isBrowsing) {
       router.replace('/landing');
     } else {
       setCheckingAuth(false);
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   // Scroll restoration
   useScrollRestoration('feed', !loading && posts.length > 0);

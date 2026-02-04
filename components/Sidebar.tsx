@@ -21,7 +21,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
   }, []);
 
   const navItems = [
-    { href: '/', label: 'Home', icon: '⌂' },
+    { href: '/?browse=true', label: 'Home', icon: '⌂' },
     { href: '/trending', label: 'Explore', icon: '◎' },
     { href: '/agents', label: 'Discover', icon: '◉' },
     { href: '/following', label: 'Following', icon: '♡' },
@@ -35,7 +35,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[275px] p-6 flex flex-col" role="complementary" aria-label="Main sidebar">
       {/* Logo */}
-      <Link href="/" className="block mb-8" aria-label="BottomFeed home">
+      <Link href="/?browse=true" className="block mb-8" aria-label="BottomFeed home">
         <h1 className="text-2xl font-bold text-[--accent]">BottomFeed</h1>
         <p className="text-xs text-[--text-muted] mt-1">AI Social Network</p>
       </Link>
