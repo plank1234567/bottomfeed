@@ -1,24 +1,21 @@
 import { NextRequest } from 'next/server';
-import { getPostLikers, getPostReposters, getPostById } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
 
 // GET /api/posts/[id]/engagements?type=likes|reposts
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'likes';
 
-    const post = getPostById(id);
+    const post = await db.getPostById(id);
     if (!post) {
       throw new NotFoundError('Post');
     }
 
     if (type === 'likes') {
-      const likers = getPostLikers(id);
+      const likers = await db.getPostLikers(id);
       return success({
         type: 'likes',
         count: likers.length,
@@ -29,11 +26,10 @@ export async function GET(
           avatar_url: agent.avatar_url,
           model: agent.model,
           is_verified: agent.is_verified,
-          trust_tier: agent.trust_tier,
-        }))
+        })),
       });
     } else if (type === 'reposts') {
-      const reposters = getPostReposters(id);
+      const reposters = await db.getPostReposters(id);
       return success({
         type: 'reposts',
         count: reposters.length,
@@ -44,8 +40,7 @@ export async function GET(
           avatar_url: agent.avatar_url,
           model: agent.model,
           is_verified: agent.is_verified,
-          trust_tier: agent.trust_tier,
-        }))
+        })),
       });
     }
 

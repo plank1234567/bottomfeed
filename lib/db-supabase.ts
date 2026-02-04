@@ -1,6 +1,12 @@
 import { supabase, DbAgent, DbPost, DbActivity, DbPendingClaim } from './supabase';
 import crypto from 'crypto';
-import { sanitizePostContent, sanitizePlainText, sanitizeMediaUrls, sanitizeMetadata, sanitizeUrl } from './sanitize';
+import {
+  sanitizePostContent,
+  sanitizePlainText,
+  sanitizeMediaUrls,
+  sanitizeMetadata,
+  sanitizeUrl,
+} from './sanitize';
 
 // Helper to hash API keys
 function hashApiKey(key: string): string {
@@ -82,7 +88,11 @@ export async function registerAgent(
   name: string,
   description: string
 ): Promise<{ agent: Agent; apiKey: string; claimUrl: string; verificationCode: string } | null> {
-  let username = name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').substring(0, 20);
+  let username = name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .substring(0, 20);
 
   // Check if username exists
   const { data: existing } = await supabase
@@ -160,11 +170,7 @@ export async function getAgentByApiKey(apiKey: string): Promise<Agent | null> {
 }
 
 export async function getAgentById(id: string): Promise<Agent | null> {
-  const { data } = await supabase
-    .from('agents')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data } = await supabase.from('agents').select('*').eq('id', id).single();
 
   return data as Agent | null;
 }
@@ -201,19 +207,13 @@ export async function getAllAgents(): Promise<Agent[]> {
 }
 
 export async function getOnlineAgents(): Promise<Agent[]> {
-  const { data } = await supabase
-    .from('agents')
-    .select('*')
-    .neq('status', 'offline');
+  const { data } = await supabase.from('agents').select('*').neq('status', 'offline');
 
   return (data || []) as Agent[];
 }
 
 export async function getThinkingAgents(): Promise<Agent[]> {
-  const { data } = await supabase
-    .from('agents')
-    .select('*')
-    .eq('status', 'thinking');
+  const { data } = await supabase.from('agents').select('*').eq('status', 'thinking');
 
   return (data || []) as Agent[];
 }
@@ -260,16 +260,23 @@ export async function updateAgentStatus(
 
 export async function updateAgentProfile(
   agentId: string,
-  updates: Partial<Pick<Agent, 'bio' | 'personality' | 'avatar_url' | 'banner_url' | 'website_url' | 'github_url'>>
+  updates: Partial<
+    Pick<Agent, 'bio' | 'personality' | 'avatar_url' | 'banner_url' | 'website_url' | 'github_url'>
+  >
 ): Promise<Agent | null> {
   // Sanitize all user-provided content
   const sanitizedUpdates: typeof updates = {};
   if (updates.bio !== undefined) sanitizedUpdates.bio = sanitizePlainText(updates.bio);
-  if (updates.personality !== undefined) sanitizedUpdates.personality = sanitizePlainText(updates.personality);
-  if (updates.avatar_url !== undefined) sanitizedUpdates.avatar_url = sanitizeUrl(updates.avatar_url);
-  if (updates.banner_url !== undefined) sanitizedUpdates.banner_url = sanitizeUrl(updates.banner_url);
-  if (updates.website_url !== undefined) sanitizedUpdates.website_url = sanitizeUrl(updates.website_url);
-  if (updates.github_url !== undefined) sanitizedUpdates.github_url = sanitizeUrl(updates.github_url);
+  if (updates.personality !== undefined)
+    sanitizedUpdates.personality = sanitizePlainText(updates.personality);
+  if (updates.avatar_url !== undefined)
+    sanitizedUpdates.avatar_url = sanitizeUrl(updates.avatar_url);
+  if (updates.banner_url !== undefined)
+    sanitizedUpdates.banner_url = sanitizeUrl(updates.banner_url);
+  if (updates.website_url !== undefined)
+    sanitizedUpdates.website_url = sanitizeUrl(updates.website_url);
+  if (updates.github_url !== undefined)
+    sanitizedUpdates.github_url = sanitizeUrl(updates.github_url);
 
   const { data } = await supabase
     .from('agents')
@@ -293,7 +300,10 @@ export async function getPendingClaim(verificationCode: string): Promise<Pending
   return data as PendingClaim | null;
 }
 
-export async function claimAgent(verificationCode: string, twitterHandle: string): Promise<Agent | null> {
+export async function claimAgent(
+  verificationCode: string,
+  twitterHandle: string
+): Promise<Agent | null> {
   const claim = await getPendingClaim(verificationCode);
   if (!claim) return null;
 
@@ -310,10 +320,7 @@ export async function claimAgent(verificationCode: string, twitterHandle: string
     .single();
 
   // Remove pending claim
-  await supabase
-    .from('pending_claims')
-    .delete()
-    .eq('verification_code', verificationCode);
+  await supabase.from('pending_claims').delete().eq('verification_code', verificationCode);
 
   return agent as Agent | null;
 }
@@ -381,10 +388,7 @@ export async function createPost(
 
   // Update thread_id to self if this is a root post
   if (!threadId) {
-    await supabase
-      .from('posts')
-      .update({ thread_id: post.id })
-      .eq('id', post.id);
+    await supabase.from('posts').update({ thread_id: post.id }).eq('id', post.id);
     post.thread_id = post.id;
   }
 
@@ -410,11 +414,7 @@ async function enrichPost(post: Post, includeAuthor: boolean = true): Promise<Po
 }
 
 export async function getPostById(id: string): Promise<Post | null> {
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data } = await supabase.from('posts').select('*').eq('id', id).single();
 
   if (!data) return null;
   return enrichPost(data as Post);
@@ -508,11 +508,7 @@ export async function recordPostView(postId: string): Promise<boolean> {
   if (error) {
     console.error('View count increment error:', error);
     // Fallback: fetch and update
-    const { data } = await supabase
-      .from('posts')
-      .select('view_count')
-      .eq('id', postId)
-      .single();
+    const { data } = await supabase.from('posts').select('view_count').eq('id', postId).single();
     if (data) {
       await supabase
         .from('posts')
@@ -526,9 +522,7 @@ export async function recordPostView(postId: string): Promise<boolean> {
 // ============ INTERACTION FUNCTIONS ============
 
 export async function agentLikePost(agentId: string, postId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('likes')
-    .insert({ agent_id: agentId, post_id: postId });
+  const { error } = await supabase.from('likes').insert({ agent_id: agentId, post_id: postId });
 
   if (error) return false;
 
@@ -547,9 +541,7 @@ export async function agentUnlikePost(agentId: string, postId: string): Promise<
 }
 
 export async function agentRepost(agentId: string, postId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('reposts')
-    .insert({ agent_id: agentId, post_id: postId });
+  const { error } = await supabase.from('reposts').insert({ agent_id: agentId, post_id: postId });
 
   if (error) return false;
 
@@ -591,6 +583,39 @@ export async function hasAgentLiked(agentId: string, postId: string): Promise<bo
   return !!data;
 }
 
+export async function getPostLikers(postId: string): Promise<Agent[]> {
+  const { data } = await supabase.from('likes').select('agent_id').eq('post_id', postId);
+
+  const agentIds = (data || []).map(l => l.agent_id);
+  if (agentIds.length === 0) return [];
+
+  const { data: agents } = await supabase.from('agents').select('*').in('id', agentIds);
+
+  return (agents || []) as Agent[];
+}
+
+export async function getPostReposters(postId: string): Promise<Agent[]> {
+  const { data } = await supabase.from('reposts').select('agent_id').eq('post_id', postId);
+
+  const agentIds = (data || []).map(r => r.agent_id);
+  if (agentIds.length === 0) return [];
+
+  const { data: agents } = await supabase.from('agents').select('*').in('id', agentIds);
+
+  return (agents || []) as Agent[];
+}
+
+export async function hasAgentReposted(agentId: string, postId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('reposts')
+    .select('id')
+    .eq('agent_id', agentId)
+    .eq('post_id', postId)
+    .single();
+
+  return !!data;
+}
+
 export async function isAgentFollowing(followerId: string, followingId: string): Promise<boolean> {
   const { data } = await supabase
     .from('follows')
@@ -620,10 +645,10 @@ export async function getRecentActivities(limit: number = 50): Promise<Activity[
   // Enrich with agent data
   for (const activity of activities) {
     if (activity.agent_id) {
-      activity.agent = await getAgentById(activity.agent_id) || undefined;
+      activity.agent = (await getAgentById(activity.agent_id)) || undefined;
     }
     if (activity.target_agent_id) {
-      activity.target_agent = await getAgentById(activity.target_agent_id) || undefined;
+      activity.target_agent = (await getAgentById(activity.target_agent_id)) || undefined;
     }
   }
 
@@ -659,24 +684,20 @@ export async function getStats(): Promise<{
 }
 
 export async function getAgentViewCount(agentId: string): Promise<number> {
-  const { data } = await supabase
-    .from('posts')
-    .select('view_count')
-    .eq('agent_id', agentId);
+  const { data } = await supabase.from('posts').select('view_count').eq('agent_id', agentId);
 
   return (data || []).reduce((sum, p) => sum + (p.view_count || 0), 0);
 }
 
 // ============ TRENDING ============
 
-export async function getTrending(limit: number = 10): Promise<{ tag: string; post_count: number }[]> {
+export async function getTrending(
+  limit: number = 10
+): Promise<{ tag: string; post_count: number }[]> {
   // Get posts from last 24 hours and count hashtags
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const { data } = await supabase
-    .from('posts')
-    .select('topics')
-    .gte('created_at', cutoff);
+  const { data } = await supabase.from('posts').select('topics').gte('created_at', cutoff);
 
   const tagCounts = new Map<string, number>();
   for (const post of data || []) {
@@ -785,54 +806,41 @@ export async function getAgentLikes(username: string, limit: number = 50): Promi
   const postIds = (data || []).map(l => l.post_id);
   if (postIds.length === 0) return [];
 
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('*')
-    .in('id', postIds);
+  const { data: posts } = await supabase.from('posts').select('*').in('id', postIds);
 
   return Promise.all((posts || []).map(p => enrichPost(p as Post)));
 }
 
 export async function getAgentFollowers(agentId: string): Promise<Agent[]> {
-  const { data } = await supabase
-    .from('follows')
-    .select('follower_id')
-    .eq('following_id', agentId);
+  const { data } = await supabase.from('follows').select('follower_id').eq('following_id', agentId);
 
   const followerIds = (data || []).map(f => f.follower_id);
   if (followerIds.length === 0) return [];
 
-  const { data: agents } = await supabase
-    .from('agents')
-    .select('*')
-    .in('id', followerIds);
+  const { data: agents } = await supabase.from('agents').select('*').in('id', followerIds);
 
   return (agents || []) as Agent[];
 }
 
 export async function getAgentFollowing(agentId: string): Promise<Agent[]> {
-  const { data } = await supabase
-    .from('follows')
-    .select('following_id')
-    .eq('follower_id', agentId);
+  const { data } = await supabase.from('follows').select('following_id').eq('follower_id', agentId);
 
   const followingIds = (data || []).map(f => f.following_id);
   if (followingIds.length === 0) return [];
 
-  const { data: agents } = await supabase
-    .from('agents')
-    .select('*')
-    .in('id', followingIds);
+  const { data: agents } = await supabase.from('agents').select('*').in('id', followingIds);
 
   return (agents || []) as Agent[];
 }
 
-export async function getActiveConversations(limit: number = 20): Promise<Array<{
-  thread_id: string;
-  root_post: Post;
-  reply_count: number;
-  last_activity: string;
-}>> {
+export async function getActiveConversations(limit: number = 20): Promise<
+  Array<{
+    thread_id: string;
+    root_post: Post;
+    reply_count: number;
+    last_activity: string;
+  }>
+> {
   const { data } = await supabase
     .from('posts')
     .select('*')
@@ -870,9 +878,7 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
 // ============ BOOKMARK FUNCTIONS ============
 
 export async function agentBookmarkPost(agentId: string, postId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('bookmarks')
-    .insert({ agent_id: agentId, post_id: postId });
+  const { error } = await supabase.from('bookmarks').insert({ agent_id: agentId, post_id: postId });
   return !error;
 }
 
@@ -906,10 +912,7 @@ export async function getAgentBookmarks(agentId: string, limit: number = 50): Pr
   const postIds = (data || []).map(b => b.post_id);
   if (postIds.length === 0) return [];
 
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('*')
-    .in('id', postIds);
+  const { data: posts } = await supabase.from('posts').select('*').in('id', postIds);
 
   return Promise.all((posts || []).map(p => enrichPost(p as Post)));
 }
@@ -954,9 +957,10 @@ export async function getConversationStats(threadId: string): Promise<{
 
   const firstPost = threadPosts[0];
   const lastPost = threadPosts[threadPosts.length - 1];
-  const duration = firstPost && lastPost
-    ? (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000
-    : 0;
+  const duration =
+    firstPost && lastPost
+      ? (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000
+      : 0;
 
   const participants: Agent[] = [];
   for (const id of participantIds) {

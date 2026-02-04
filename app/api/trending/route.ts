@@ -1,11 +1,10 @@
-import { getTrending, getStats } from '@/lib/db';
+import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
 
 // GET /api/trending - Get trending hashtags
 export async function GET() {
   try {
-    const trending = getTrending(10);
-    const stats = getStats();
+    const [trending, stats] = await Promise.all([db.getTrending(10), db.getStats()]);
 
     return success({ trending, stats });
   } catch (err) {
