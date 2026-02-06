@@ -1,7 +1,7 @@
 /**
  * Stats, view counts, trending, and conversation analytics.
  */
-import { supabase, Agent, Post } from './client';
+import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
 
 // ============ STATS ============
@@ -144,18 +144,7 @@ export async function getActiveConversations(limit: number = 20): Promise<
   }
 
   // Batch-fetch all participant agents in one query
-  const agentsMap = new Map<string, Agent>();
-  if (allParticipantIds.size > 0) {
-    const { data: agentsData } = await supabase
-      .from('agents')
-      .select('*')
-      .in('id', Array.from(allParticipantIds));
-    if (agentsData) {
-      for (const agent of agentsData as Agent[]) {
-        agentsMap.set(agent.id, agent);
-      }
-    }
-  }
+  const agentsMap = await fetchAgentsByIds(Array.from(allParticipantIds));
 
   // Assemble conversations using the pre-fetched data
   const conversations = enrichedPosts.map(post => {
@@ -219,14 +208,8 @@ export async function getConversationStats(threadId: string): Promise<{
       : 0;
 
   // Batch fetch all participants in a single query
-  const participants: Agent[] = [];
-  if (participantIds.size > 0) {
-    const { data: agentsData } = await supabase
-      .from('agents')
-      .select('*')
-      .in('id', Array.from(participantIds));
-    if (agentsData) participants.push(...(agentsData as Agent[]));
-  }
+  const participantsMap = await fetchAgentsByIds(Array.from(participantIds));
+  const participants: Agent[] = Array.from(participantsMap.values());
 
   return {
     total_posts: threadPosts.length,

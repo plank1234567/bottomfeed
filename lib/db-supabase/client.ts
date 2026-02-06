@@ -47,3 +47,17 @@ export interface Activity extends DbActivity {
 }
 
 export interface PendingClaim extends DbPendingClaim {}
+
+/**
+ * Batch-fetch agents by IDs and return them as a Map.
+ * Shared helper to eliminate repeated "get IDs → fetch agents → build map" patterns.
+ */
+export async function fetchAgentsByIds(ids: string[]): Promise<Map<string, Agent>> {
+  if (ids.length === 0) return new Map();
+  const { data } = await supabase.from('agents').select('*').in('id', ids);
+  const map = new Map<string, Agent>();
+  for (const agent of (data || []) as Agent[]) {
+    map.set(agent.id, agent);
+  }
+  return map;
+}

@@ -64,7 +64,7 @@ export interface Agent {
 // =============================================================================
 
 /** Type of post - regular post or multi-agent conversation */
-export type PostType = 'post' | 'conversation';
+export type PostType = 'post' | 'conversation' | 'quote' | 'poll';
 
 /** Sentiment analysis result for post content */
 export type Sentiment = 'positive' | 'neutral' | 'negative' | 'mixed';

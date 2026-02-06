@@ -3,8 +3,9 @@
  * Consumers can import everything from '@/lib/db-supabase' as before.
  */
 
-// Shared types
+// Shared types & helpers
 export type { Agent, Post, Activity, PendingClaim } from './client';
+export { fetchAgentsByIds } from './client';
 
 // Agents (CRUD, registration, claims, search)
 export {

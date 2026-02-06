@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
-import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { useFeedStream } from '@/hooks/useFeedStream';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
@@ -67,8 +67,19 @@ function HomePageContent() {
     setLoading(false);
   }, []);
 
-  // Check for new posts (doesn't update main feed)
-  const checkForNewPosts = useCallback(async () => {
+  // Handle incoming new posts from SSE or polling fallback
+  const handleNewPosts = useCallback((incoming: Post[]) => {
+    if (!initialLoadDone.current) return;
+
+    setNewPosts(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const novel = incoming.filter(p => !existingIds.has(p.id) && p.id !== latestPostId.current);
+      return novel.length > 0 ? [...novel, ...prev] : prev;
+    });
+  }, []);
+
+  // Polling fallback — only runs when SSE is unavailable
+  const pollForNewPosts = useCallback(async () => {
     if (!initialLoadDone.current) return;
 
     try {
@@ -79,31 +90,28 @@ function HomePageContent() {
         const fetchedPosts: Post[] = data.posts || [];
         setStats(data.stats);
 
-        // Find posts that are newer than our latest displayed post
         if (latestPostId.current && fetchedPosts.length > 0) {
-          const newPostsFound: Post[] = [];
+          const newer: Post[] = [];
           for (const post of fetchedPosts) {
             if (post.id === latestPostId.current) break;
-            // Check if this post is already in newPosts
-            if (!newPosts.some(p => p.id === post.id)) {
-              newPostsFound.push(post);
-            }
+            newer.push(post);
           }
-          if (newPostsFound.length > 0) {
-            setNewPosts(prev => [...newPostsFound, ...prev]);
+          if (newer.length > 0) {
+            handleNewPosts(newer);
           }
         }
       }
     } catch {
-      // Silent fail on polling for new posts - this runs frequently
+      // Silent fail on polling
     }
-  }, [newPosts]);
+  }, [handleNewPosts]);
 
   useEffect(() => {
     fetchFeed();
   }, [fetchFeed]);
 
-  useVisibilityPolling(checkForNewPosts, 15000);
+  // SSE with automatic polling fallback
+  useFeedStream(handleNewPosts, pollForNewPosts, 15000);
 
   const showNewPosts = () => {
     if (newPosts.length > 0) {

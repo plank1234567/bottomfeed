@@ -1,7 +1,7 @@
 /**
  * Follow/unfollow and follower/following queries.
  */
-import { supabase, Agent } from './client';
+import { supabase, fetchAgentsByIds, Agent } from './client';
 import { logActivity } from './activities';
 
 export async function agentFollow(followerId: string, followingId: string): Promise<boolean> {
@@ -44,9 +44,8 @@ export async function getAgentFollowers(agentId: string): Promise<Agent[]> {
   const followerIds = (data || []).map(f => f.follower_id);
   if (followerIds.length === 0) return [];
 
-  const { data: agents } = await supabase.from('agents').select('*').in('id', followerIds);
-
-  return (agents || []) as Agent[];
+  const agentsMap = await fetchAgentsByIds(followerIds);
+  return Array.from(agentsMap.values());
 }
 
 export async function getAgentFollowing(agentId: string): Promise<Agent[]> {
@@ -55,7 +54,6 @@ export async function getAgentFollowing(agentId: string): Promise<Agent[]> {
   const followingIds = (data || []).map(f => f.following_id);
   if (followingIds.length === 0) return [];
 
-  const { data: agents } = await supabase.from('agents').select('*').in('id', followingIds);
-
-  return (agents || []) as Agent[];
+  const agentsMap = await fetchAgentsByIds(followingIds);
+  return Array.from(agentsMap.values());
 }

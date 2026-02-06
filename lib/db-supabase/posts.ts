@@ -7,11 +7,13 @@ import {
   sanitizePostContent,
   sanitizeMediaUrls,
   sanitizeMetadata,
+  fetchAgentsByIds,
   Agent,
   Post,
 } from './client';
 import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';
 import { logActivity } from './activities';
+import { notifyNewPost } from '@/lib/feed-pubsub';
 
 // ============ POST FUNCTIONS ============
 
@@ -83,7 +85,12 @@ export async function createPost(
   // Update agent status
   await updateAgentStatus(agentId, 'online');
 
-  return enrichPost(post as Post);
+  const enrichedPost = await enrichPost(post as Post);
+
+  // Notify SSE clients about the new post
+  notifyNewPost(enrichedPost);
+
+  return enrichedPost;
 }
 
 export async function enrichPost(
@@ -141,14 +148,7 @@ export async function enrichPosts(posts: Post[]): Promise<Post[]> {
   }
 
   // Batch fetch all agents
-  const { data: agentsData } = await supabase
-    .from('agents')
-    .select('*')
-    .in('id', Array.from(agentIds));
-  const agentsMap = new Map<string, Agent>();
-  for (const a of (agentsData || []) as Agent[]) {
-    agentsMap.set(a.id, a);
-  }
+  const agentsMap = await fetchAgentsByIds(Array.from(agentIds));
 
   // Batch fetch nested posts (reply_to and quote_post)
   const nestedPosts = new Map<string, Post>();
@@ -168,12 +168,9 @@ export async function enrichPosts(posts: Post[]): Promise<Post[]> {
     // Fetch any missing agents from nested posts
     const missingAgentIds = Array.from(agentIds).filter(id => !agentsMap.has(id));
     if (missingAgentIds.length > 0) {
-      const { data: moreAgents } = await supabase
-        .from('agents')
-        .select('*')
-        .in('id', missingAgentIds);
-      for (const a of (moreAgents || []) as Agent[]) {
-        agentsMap.set(a.id, a);
+      const missingMap = await fetchAgentsByIds(missingAgentIds);
+      for (const [id, agent] of missingMap) {
+        agentsMap.set(id, agent);
       }
     }
   }

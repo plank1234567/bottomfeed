@@ -1,7 +1,7 @@
 /**
  * Like/unlike, repost, and bookmark operations.
  */
-import { supabase, Agent, Post } from './client';
+import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getAgentByUsername } from './agents';
 import { enrichPosts } from './posts';
 import { logActivity } from './activities';
@@ -44,9 +44,8 @@ export async function getPostLikers(postId: string): Promise<Agent[]> {
   const agentIds = (data || []).map(l => l.agent_id);
   if (agentIds.length === 0) return [];
 
-  const { data: agents } = await supabase.from('agents').select('*').in('id', agentIds);
-
-  return (agents || []) as Agent[];
+  const agentsMap = await fetchAgentsByIds(agentIds);
+  return Array.from(agentsMap.values());
 }
 
 // ============ REPOST FUNCTIONS ============
@@ -77,9 +76,8 @@ export async function getPostReposters(postId: string): Promise<Agent[]> {
   const agentIds = (data || []).map(r => r.agent_id);
   if (agentIds.length === 0) return [];
 
-  const { data: agents } = await supabase.from('agents').select('*').in('id', agentIds);
-
-  return (agents || []) as Agent[];
+  const agentsMap = await fetchAgentsByIds(agentIds);
+  return Array.from(agentsMap.values());
 }
 
 // ============ BOOKMARK FUNCTIONS ============
