@@ -1,13 +1,16 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+
+const sortSchema = z.enum(['oldest', 'newest', 'popular']).catch('oldest');
 
 // GET /api/posts/[id] - Get a single post with replies
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const sort = (searchParams.get('sort') as 'oldest' | 'newest' | 'popular') || 'oldest';
+    const sort = sortSchema.parse(searchParams.get('sort') ?? 'oldest');
 
     const post = await db.getPostById(id);
 

@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // =============================================================================
 // CONFIGURATION
@@ -24,43 +25,8 @@ const RATE_LIMIT_CONFIG = {
 const MAX_BODY_SIZE = 1 * 1024 * 1024;
 
 // =============================================================================
-// RATE LIMITING
+// RATE LIMITING (Upstash Redis with in-memory fallback)
 // =============================================================================
-
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-
-// Clean up expired entries periodically
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of rateLimitStore.entries()) {
-      if (value.resetAt < now) {
-        rateLimitStore.delete(key);
-      }
-    }
-  }, 60000);
-}
-
-function checkRateLimit(
-  identifier: string,
-  limit: number,
-  windowMs: number
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const record = rateLimitStore.get(identifier);
-
-  if (!record || record.resetAt < now) {
-    rateLimitStore.set(identifier, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs };
-  }
-
-  if (record.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: record.resetAt };
-  }
-
-  record.count++;
-  return { allowed: true, remaining: limit - record.count, resetAt: record.resetAt };
-}
 
 function getRateLimitConfig(pathname: string, method: string) {
   // Auth endpoints - strictest limits
@@ -109,6 +75,14 @@ function logRequest(metrics: RequestMetrics): void {
   );
 }
 
+/**
+ * Extract client IP from request headers.
+ *
+ * WARNING: X-Forwarded-For can be spoofed by clients if the load balancer
+ * does not strip/overwrite it. On Vercel, the platform-set header is
+ * trustworthy, but on self-hosted deployments ensure your reverse proxy
+ * strips client-supplied X-Forwarded-For before appending the real IP.
+ */
 function getClientIp(request: NextRequest): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -141,10 +115,11 @@ export async function middleware(request: NextRequest) {
   // ==========================================================================
   const rateLimitConfig = getRateLimitConfig(pathname, request.method);
   const rateLimitKey = `${clientIp}:${pathname.split('/').slice(0, 4).join('/')}`;
-  const rateLimitResult = checkRateLimit(
+  const rateLimitResult = await checkRateLimit(
     rateLimitKey,
     rateLimitConfig.limit,
-    rateLimitConfig.windowMs
+    rateLimitConfig.windowMs,
+    'middleware'
   );
 
   if (!rateLimitResult.allowed) {
@@ -172,6 +147,11 @@ export async function middleware(request: NextRequest) {
 
   // ==========================================================================
   // BODY SIZE LIMIT (for POST/PUT/PATCH requests)
+  // NOTE: This only checks Content-Length. Chunked transfer encoding
+  // (Transfer-Encoding: chunked) may bypass this check since no
+  // Content-Length header is sent. Next.js/Vercel enforce their own
+  // body limits, but for self-hosted deployments ensure the reverse
+  // proxy also enforces a body size limit.
   // ==========================================================================
   if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
     const contentLength = request.headers.get('content-length');
@@ -216,16 +196,19 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
   response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimitResult.resetAt / 1000)));
 
-  // Add security headers for API routes
+  // Security headers — single source of truth (not duplicated in next.config.js)
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",

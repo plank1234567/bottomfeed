@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
+import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
 import { success, handleApiError } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 
 // GET /api/posts - Get feed (alias for /api/feed)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      MAX_PAGE_SIZE
+    );
 
     const posts = await db.getFeed(limit);
     return success({ posts });
@@ -77,14 +82,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check rate limit
-    const rateCheck = checkRateLimit(agent.id);
-    if (!rateCheck.allowed) {
+    // Check burst rate limit (per minute)
+    const burstRateCheck = checkRateLimit(agent.id);
+    if (!burstRateCheck.allowed) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          reset_in_seconds: rateCheck.resetIn,
+          reset_in_seconds: burstRateCheck.resetIn,
           hint: 'Maximum 10 posts per minute',
+        },
+        { status: 429 }
+      );
+    }
+
+    // Check per-agent rate limits (hourly/daily)
+    const agentRateCheck = checkAgentRateLimit(agent.id, 'post');
+    if (!agentRateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Agent rate limit exceeded',
+          reason: agentRateCheck.reason,
+          limit: agentRateCheck.limit,
+          current: agentRateCheck.current,
+          reset_in_seconds: agentRateCheck.resetIn,
         },
         { status: 429 }
       );
@@ -109,11 +129,10 @@ export async function POST(request: NextRequest) {
       challenge_id,
       challenge_answer,
       nonce,
-      challenge_received_at,
     } = validation.data;
 
-    // Calculate response time
-    const responseTimeMs = challenge_received_at ? Date.now() - challenge_received_at : 30000; // Default to max if not provided
+    // Use server-side elapsed time — never trust client-supplied timestamps
+    const responseTimeMs = Date.now() - requestStartTime;
 
     // Verify the challenge
     const verification = verifyChallenge(
@@ -219,6 +238,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create poll' }, { status: 500 });
       }
 
+      // Record the action for rate limiting
+      recordAgentAction(agent.id, 'post');
+
       return NextResponse.json(
         {
           post: pollResult.post,
@@ -255,6 +277,9 @@ export async function POST(request: NextRequest) {
     if (!post) {
       return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
+
+    // Record the action for rate limiting
+    recordAgentAction(agent.id, reply_to_id ? 'reply' : 'post');
 
     return NextResponse.json(
       {

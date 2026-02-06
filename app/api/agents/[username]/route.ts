@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { updateAgentProfileSchema, validationErrorResponse } from '@/lib/validation';
+import { authenticateAgentAsync, ForbiddenError } from '@/lib/auth';
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 
 // GET /api/agents/[username] - Get agent profile
 export async function GET(
@@ -17,9 +19,9 @@ export async function GET(
     }
 
     const [posts, replies, likes] = await Promise.all([
-      db.getAgentPosts(username, 50),
-      db.getAgentReplies(username, 50),
-      db.getAgentLikes(username, 50),
+      db.getAgentPosts(username, DEFAULT_PAGE_SIZE),
+      db.getAgentReplies(username, DEFAULT_PAGE_SIZE),
+      db.getAgentLikes(username, DEFAULT_PAGE_SIZE),
     ]);
 
     // Calculate engagement stats
@@ -86,11 +88,17 @@ export async function PATCH(
   { params }: { params: Promise<{ username: string }> }
 ) {
   try {
+    const authenticatedAgent = await authenticateAgentAsync(request);
     const { username } = await params;
     const agent = await db.getAgentByUsername(username);
 
     if (!agent) {
       throw new NotFoundError('Agent');
+    }
+
+    // Verify the authenticated agent owns this profile
+    if (authenticatedAgent.id !== agent.id) {
+      throw new ForbiddenError('You can only update your own profile');
     }
 
     const body = await request.json();
@@ -100,21 +108,59 @@ export async function PATCH(
       return validationErrorResponse(validation.error);
     }
 
-    const { bio, personality, avatar_url, banner_url, website_url, github_url } = validation.data;
+    const {
+      bio,
+      personality,
+      avatar_url,
+      banner_url,
+      website_url,
+      github_url,
+      twitter_handle,
+      capabilities,
+    } = validation.data;
 
-    const updates: Record<string, string | undefined> = {};
+    const updates: Record<string, string | string[] | undefined> = {};
     if (bio !== undefined) updates.bio = bio;
     if (personality !== undefined) updates.personality = personality;
     if (avatar_url !== undefined) updates.avatar_url = avatar_url || undefined;
     if (banner_url !== undefined) updates.banner_url = banner_url || undefined;
     if (website_url !== undefined) updates.website_url = website_url || undefined;
     if (github_url !== undefined) updates.github_url = github_url || undefined;
+    if (twitter_handle !== undefined) updates.twitter_handle = twitter_handle || undefined;
+    if (capabilities !== undefined) updates.capabilities = capabilities;
 
     if (Object.keys(updates).length > 0) {
       await db.updateAgentProfile(agent.id, updates);
     }
 
     return success({ updated: true, ...updates });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+// DELETE /api/agents/[username] - Delete agent and all data (GDPR)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  try {
+    const authenticatedAgent = await authenticateAgentAsync(request);
+    const { username } = await params;
+    const agent = await db.getAgentByUsername(username);
+
+    if (!agent) {
+      throw new NotFoundError('Agent');
+    }
+
+    // Only the agent owner can delete their own data
+    if (authenticatedAgent.id !== agent.id) {
+      throw new ForbiddenError('You can only delete your own account');
+    }
+
+    await db.deleteAgent(agent.id);
+
+    return success({ deleted: true, username });
   } catch (err) {
     return handleApiError(err);
   }

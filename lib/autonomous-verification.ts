@@ -1,15 +1,17 @@
 import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { updateAgentVerificationStatus, recordSpotCheckResult, updateAgentDetectedModel, getAgentById, updateAgentTrustTier } from '@/lib/db';
+import {
+  updateAgentVerificationStatus,
+  recordSpotCheckResult,
+  updateAgentDetectedModel,
+  getAgentById,
+  updateAgentTrustTier,
+} from '@/lib/db';
 import { createFingerprint } from '@/lib/personality-fingerprint';
 import { detectModel } from '@/lib/model-detection';
 import * as VerificationDB from '@/lib/db-verification';
-import {
-  ChallengeTemplate,
-  ChallengeCategory,
-  parseResponse,
-} from '@/lib/verification-challenges';
+import { ChallengeTemplate, ChallengeCategory, parseResponse } from '@/lib/verification-challenges';
 import {
   HighValueChallenge,
   parseHighValueResponse,
@@ -47,12 +49,14 @@ const MAX_RESPONSE_TIME_VARIANCE = 0.5; // Coefficient of variation - human-dire
 const SUSPICIOUS_OFFLINE_PATTERN_THRESHOLD = 0.7; // If offline times correlate with sleep >70%
 
 // Trust tier requirements (consecutive days with 100% challenge response)
-// Uses existing tier system: spawn -> autonomous-1 (I) -> autonomous-2 (II) -> autonomous-3 (III)
+// Uses canonical tier day constants from lib/constants.ts
+import { TIER_1_DAYS, TIER_2_DAYS, TIER_3_DAYS } from './constants';
+
 const TIER_REQUIREMENTS = {
-  'spawn': 0,         // Unverified or no consecutive days
-  'autonomous-1': 1,  // I - 1 full day (24h) online
-  'autonomous-2': 3,  // II - 3 consecutive days
-  'autonomous-3': 7,  // III - 7 consecutive days (PERMANENT once earned)
+  spawn: 0,
+  'autonomous-1': TIER_1_DAYS,
+  'autonomous-2': TIER_2_DAYS,
+  'autonomous-3': TIER_3_DAYS,
 } as const;
 
 // Grace allowance: 1 missed challenge per day doesn't break streak
@@ -63,10 +67,10 @@ const PERMANENT_TIER: TrustTier = 'autonomous-3';
 
 // Spot check frequency by tier (checks per day)
 export const SPOT_CHECK_FREQUENCY = {
-  'spawn': 0,           // No spot checks until verified
-  'autonomous-1': 3,    // 3/day - still proving themselves
-  'autonomous-2': 2,    // 2/day - building trust
-  'autonomous-3': 1,    // 1/day - just data gathering, already proven
+  spawn: 0, // No spot checks until verified
+  'autonomous-1': 3, // 3/day - still proving themselves
+  'autonomous-2': 2, // 2/day - building trust
+  'autonomous-3': 1, // 1/day - just data gathering, already proven
 } as const;
 
 // Types
@@ -151,18 +155,21 @@ const SESSION_DATA_FILE = path.join(process.cwd(), '.data', 'verification-sessio
 
 interface PersistedSessionData {
   verificationSessions: [string, VerificationSession][];
-  verifiedAgents: [string, {
-    verifiedAt: number;
-    webhookUrl: string;
-    lastSpotCheck?: number;
-    spotCheckHistory: SpotCheckResult[];
-    trustTier?: TrustTier;
-    consecutiveDaysOnline?: number;
-    lastConsecutiveCheck?: number;
-    tierHistory?: { tier: TrustTier; achievedAt: number }[];
-    currentDaySkips?: number;
-    currentDayStart?: number;
-  }][];
+  verifiedAgents: [
+    string,
+    {
+      verifiedAt: number;
+      webhookUrl: string;
+      lastSpotCheck?: number;
+      spotCheckHistory: SpotCheckResult[];
+      trustTier?: TrustTier;
+      consecutiveDaysOnline?: number;
+      lastConsecutiveCheck?: number;
+      tierHistory?: { tier: TrustTier; achievedAt: number }[];
+      currentDaySkips?: number;
+      currentDayStart?: number;
+    },
+  ][];
   pendingSpotChecks: [string, SpotCheck][];
 }
 
@@ -197,18 +204,21 @@ function saveSessionData() {
 
 // Storage (in production, use Redis/database)
 const verificationSessions = new Map<string, VerificationSession>();
-const verifiedAgents = new Map<string, {
-  verifiedAt: number;
-  webhookUrl: string;
-  lastSpotCheck?: number;
-  spotCheckHistory: SpotCheckResult[]; // Rolling history for 30-day window
-  trustTier: TrustTier;
-  consecutiveDaysOnline: number; // Days with challenges answered (1 skip/day allowed)
-  lastConsecutiveCheck: number; // Timestamp of last day counted
-  tierHistory: { tier: TrustTier; achievedAt: number }[];
-  currentDaySkips: number; // Skips in current day (resets daily)
-  currentDayStart: number; // Start of current tracking day
-}>();
+const verifiedAgents = new Map<
+  string,
+  {
+    verifiedAt: number;
+    webhookUrl: string;
+    lastSpotCheck?: number;
+    spotCheckHistory: SpotCheckResult[]; // Rolling history for 30-day window
+    trustTier: TrustTier;
+    consecutiveDaysOnline: number; // Days with challenges answered (1 skip/day allowed)
+    lastConsecutiveCheck: number; // Timestamp of last day counted
+    tierHistory: { tier: TrustTier; achievedAt: number }[];
+    currentDaySkips: number; // Skips in current day (resets daily)
+    currentDayStart: number; // Start of current tracking day
+  }
+>();
 const pendingSpotChecks = new Map<string, SpotCheck>();
 
 // Initialize from persisted data
@@ -216,17 +226,21 @@ const persistedSessionData = loadSessionData();
 if (persistedSessionData) {
   persistedSessionData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
   // Handle migration of old data without tier fields
-  persistedSessionData.verifiedAgents.forEach(([k, v]) => verifiedAgents.set(k, {
-    ...v,
-    trustTier: v.trustTier || 'spawn',
-    consecutiveDaysOnline: v.consecutiveDaysOnline || 0,
-    lastConsecutiveCheck: v.lastConsecutiveCheck || v.verifiedAt,
-    tierHistory: v.tierHistory || [{ tier: 'spawn' as TrustTier, achievedAt: v.verifiedAt }],
-    currentDaySkips: v.currentDaySkips || 0,
-    currentDayStart: v.currentDayStart || Date.now(),
-  }));
+  persistedSessionData.verifiedAgents.forEach(([k, v]) =>
+    verifiedAgents.set(k, {
+      ...v,
+      trustTier: v.trustTier || 'spawn',
+      consecutiveDaysOnline: v.consecutiveDaysOnline || 0,
+      lastConsecutiveCheck: v.lastConsecutiveCheck || v.verifiedAt,
+      tierHistory: v.tierHistory || [{ tier: 'spawn' as TrustTier, achievedAt: v.verifiedAt }],
+      currentDaySkips: v.currentDaySkips || 0,
+      currentDayStart: v.currentDayStart || Date.now(),
+    })
+  );
   persistedSessionData.pendingSpotChecks.forEach(([k, v]) => pendingSpotChecks.set(k, v));
-  console.log(`[Verification] Loaded ${verificationSessions.size} sessions, ${verifiedAgents.size} verified agents`);
+  console.log(
+    `[Verification] Loaded ${verificationSessions.size} sessions, ${verifiedAgents.size} verified agents`
+  );
 }
 
 // Helper: Get spot check stats for rolling window
@@ -240,7 +254,7 @@ function getSpotCheckStats(agentId: string): {
   const agent = verifiedAgents.get(agentId);
   if (!agent) return { passed: 0, failed: 0, total: 0, failureRate: 0, shouldRevoke: false };
 
-  const windowStart = Date.now() - (SPOT_CHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const windowStart = Date.now() - SPOT_CHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
   // Filter to only checks within the 30-day window
   const recentChecks = agent.spotCheckHistory.filter(sc => sc.timestamp >= windowStart);
@@ -259,7 +273,10 @@ function getSpotCheckStats(agentId: string): {
 }
 
 // Generate a challenge from dynamically generated challenge (UNLIMITED VARIATIONS)
-function generateChallengeFromDynamic(generated: GeneratedChallenge, scheduledFor?: number): Challenge {
+function generateChallengeFromDynamic(
+  generated: GeneratedChallenge,
+  scheduledFor?: number
+): Challenge {
   return {
     id: generated.id,
     templateId: generated.templateId,
@@ -277,61 +294,10 @@ function generateChallengeFromDynamic(generated: GeneratedChallenge, scheduledFo
   };
 }
 
-// Generate a challenge from v2 high-value template (STATIC - used as fallback)
-function _generateChallengeFromHighValue(template: HighValueChallenge, scheduledFor?: number): Challenge {
-  return {
-    id: crypto.randomUUID(),
-    templateId: template.id,
-    category: template.category,
-    subcategory: template.subcategory,
-    type: template.category,
-    prompt: template.prompt,
-    expectedFormat: template.expectedFormat,
-    extractionSchema: template.extractionSchema,
-    groundTruth: template.groundTruth,
-    dataValue: template.dataValue,
-    useCase: template.useCase,
-    scheduledFor: scheduledFor || Date.now(),
-    status: 'pending',
-  };
-}
-
-// Generate a challenge from v1 template (legacy fallback)
-function _generateChallengeFromTemplate(template: ChallengeTemplate, scheduledFor?: number): Challenge {
-  return {
-    id: crypto.randomUUID(),
-    templateId: template.id,
-    category: template.category,
-    subcategory: template.subcategory,
-    type: template.category,
-    prompt: template.prompt,
-    expectedFormat: template.expectedFormat,
-    dataFields: template.dataFields,
-    dataValue: template.modelFingerprint ? 'high' : 'medium',
-    scheduledFor: scheduledFor || Date.now(),
-    status: 'pending',
-  };
-}
-
 // Generate a random challenge for spot checks (uses dynamic generator for unlimited variations)
 function generateChallenge(scheduledFor?: number): Challenge {
   const generated = generateDynamicSpotCheck();
   return generateChallengeFromDynamic(generated, scheduledFor);
-}
-
-// Generate random times within a day (spread across 24 hours)
-function _generateRandomTimesForDay(dayStart: number, count: number): number[] {
-  const times: number[] = [];
-  const dayMs = 24 * 60 * 60 * 1000;
-
-  for (let i = 0; i < count; i++) {
-    // Random time within the day
-    const randomOffset = Math.floor(Math.random() * dayMs);
-    times.push(dayStart + randomOffset);
-  }
-
-  // Sort chronologically
-  return times.sort((a, b) => a - b);
 }
 
 // Check if a timestamp falls within night hours (1am-6am in any timezone)
@@ -350,7 +316,10 @@ function calculateTierFromDays(consecutiveDays: number): TrustTier {
 
 // Update agent's consecutive day count and potentially upgrade tier
 // Allows 1 skip per day grace for brief downtime (restarts, etc.)
-export function updateConsecutiveDays(agentId: string, challengeAnswered: boolean): {
+export function updateConsecutiveDays(
+  agentId: string,
+  challengeAnswered: boolean
+): {
   newTier: TrustTier;
   consecutiveDays: number;
   tierChanged: boolean;
@@ -363,7 +332,7 @@ export function updateConsecutiveDays(agentId: string, challengeAnswered: boolea
   const oneDayMs = 24 * 60 * 60 * 1000;
 
   // Check if we're in a new day
-  const isNewDay = (now - agent.currentDayStart) >= oneDayMs;
+  const isNewDay = now - agent.currentDayStart >= oneDayMs;
 
   if (isNewDay) {
     // Previous day complete - check if it counted as "online"
@@ -411,7 +380,9 @@ export function updateConsecutiveDays(agentId: string, challengeAnswered: boolea
     agent.tierHistory.push({ tier: newTier, achievedAt: now });
     // Update tier in main database
     updateAgentTrustTier(agentId, newTier);
-    console.log(`[Tier] Agent ${agentId} changed to ${newTier} (${agent.consecutiveDaysOnline} consecutive days)`);
+    console.log(
+      `[Tier] Agent ${agentId} changed to ${newTier} (${agent.consecutiveDaysOnline} consecutive days)`
+    );
   }
 
   saveSessionData();
@@ -457,8 +428,17 @@ export function getTierInfo(tier: TrustTier): {
   nextTier: TrustTier | null;
   daysRequired: number;
 } {
-  const tiers: Record<TrustTier, { name: string; numeral: string; description: string; nextTier: TrustTier | null; daysRequired: number }> = {
-    'spawn': {
+  const tiers: Record<
+    TrustTier,
+    {
+      name: string;
+      numeral: string;
+      description: string;
+      nextTier: TrustTier | null;
+      daysRequired: number;
+    }
+  > = {
+    spawn: {
       name: 'Spawn',
       numeral: '',
       description: 'Unverified or building streak',
@@ -492,7 +472,7 @@ export function getTierInfo(tier: TrustTier): {
 
 // Generate a timestamp during night hours for a given day
 function generateNightTimestamp(dayStart: number): number {
-  const nightStart = dayStart + (NIGHT_HOURS_START * 60 * 60 * 1000);
+  const nightStart = dayStart + NIGHT_HOURS_START * 60 * 60 * 1000;
   const nightDuration = (NIGHT_HOURS_END - NIGHT_HOURS_START) * 60 * 60 * 1000;
   const randomOffset = Math.floor(Math.random() * nightDuration);
   return nightStart + randomOffset;
@@ -510,7 +490,10 @@ function calculateVarianceCoefficient(values: number[]): number {
 }
 
 // Analyze if offline times correlate with typical sleep patterns
-function analyzeSleepPattern(missedTimestamps: number[]): { correlation: number; isSuspicious: boolean } {
+function analyzeSleepPattern(missedTimestamps: number[]): {
+  correlation: number;
+  isSuspicious: boolean;
+} {
   if (missedTimestamps.length < 3) return { correlation: 0, isSuspicious: false };
 
   // Count how many missed challenges fall within typical sleep hours (10pm-8am)
@@ -547,14 +530,18 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
   const responseTimeScore = isHighVariance ? 30 : 100;
 
   if (isHighVariance) {
-    reasons.push(`High response time variance (${(variance * 100).toFixed(1)}%) suggests human-in-the-loop`);
+    reasons.push(
+      `High response time variance (${(variance * 100).toFixed(1)}%) suggests human-in-the-loop`
+    );
   }
   totalScore += responseTimeScore * 0.25;
 
   // 2. Night Challenge Performance
   // Autonomous agents respond at 3am, human-directed doesn't
   const nightChallenges = allChallenges.filter(c => c.isNightChallenge);
-  const nightAttempted = nightChallenges.filter(c => c.status === 'passed' || c.status === 'failed').length;
+  const nightAttempted = nightChallenges.filter(
+    c => c.status === 'passed' || c.status === 'failed'
+  ).length;
   const nightPassed = nightChallenges.filter(c => c.status === 'passed').length;
   const nightTotal = nightChallenges.length;
 
@@ -583,7 +570,9 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
   const offlineScore = sleepAnalysis.isSuspicious ? 20 : 100;
 
   if (sleepAnalysis.isSuspicious) {
-    reasons.push(`${(sleepAnalysis.correlation * 100).toFixed(0)}% of missed challenges during typical sleep hours`);
+    reasons.push(
+      `${(sleepAnalysis.correlation * 100).toFixed(0)}% of missed challenges during typical sleep hours`
+    );
   }
   totalScore += offlineScore * 0.2;
 
@@ -596,7 +585,9 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
   let uptimeScore = 100;
   if (responseRate < 0.6) {
     uptimeScore = 30;
-    reasons.push(`Low response rate: only attempted ${((1 - totalMissed/totalSent) * 100).toFixed(0)}% of challenges`);
+    reasons.push(
+      `Low response rate: only attempted ${((1 - totalMissed / totalSent) * 100).toFixed(0)}% of challenges`
+    );
   } else if (responseRate < 0.8) {
     uptimeScore = 60;
   }
@@ -617,8 +608,17 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
     score: Math.round(totalScore),
     signals: {
       responseTimeVariance: { score: responseTimeScore, variance, isHumanLike: isHighVariance },
-      nightChallengePerformance: { score: nightScore, attempted: nightAttempted, passed: nightPassed, total: nightTotal },
-      offlinePattern: { score: offlineScore, sleepCorrelation: sleepAnalysis.correlation, isSuspicious: sleepAnalysis.isSuspicious },
+      nightChallengePerformance: {
+        score: nightScore,
+        attempted: nightAttempted,
+        passed: nightPassed,
+        total: nightTotal,
+      },
+      offlinePattern: {
+        score: offlineScore,
+        sleepCorrelation: sleepAnalysis.correlation,
+        isSuspicious: sleepAnalysis.isSuspicious,
+      },
       overallUptime: { score: uptimeScore, missedCount: totalMissed, totalSent },
     },
     verdict,
@@ -633,8 +633,11 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   const THREE_DAYS_MS = VERIFICATION_DAYS * 24 * 60 * 60 * 1000;
 
   // Calculate total challenges needed (more challenges = more data)
-  const totalChallenges = VERIFICATION_DAYS * CHALLENGES_PER_DAY_MIN +
-    Math.floor(Math.random() * (CHALLENGES_PER_DAY_MAX - CHALLENGES_PER_DAY_MIN + 1) * VERIFICATION_DAYS);
+  const totalChallenges =
+    VERIFICATION_DAYS * CHALLENGES_PER_DAY_MIN +
+    Math.floor(
+      Math.random() * (CHALLENGES_PER_DAY_MAX - CHALLENGES_PER_DAY_MIN + 1) * VERIFICATION_DAYS
+    );
 
   // Generate UNIQUE challenges using dynamic generator (unlimited variations, no repeats)
   const generatedChallenges = generateVerificationChallenges(totalChallenges);
@@ -650,7 +653,7 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   // First, schedule MIN_NIGHT_CHALLENGES bursts during night hours (1am-6am)
   // Spread across different days for better coverage
   for (let i = 0; i < MIN_NIGHT_CHALLENGES && i < VERIFICATION_DAYS; i++) {
-    const dayStart = now + (i * 24 * 60 * 60 * 1000);
+    const dayStart = now + i * 24 * 60 * 60 * 1000;
     nightBurstTimes.push(generateNightTimestamp(dayStart));
   }
 
@@ -664,7 +667,9 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   // Combine and sort all burst times
   const allBurstTimes = [...nightBurstTimes, ...burstTimes].sort((a, b) => a - b);
 
-  console.log(`[Verification] Scheduled ${nightBurstTimes.length} night bursts (1am-6am) + ${remainingBursts} random bursts`);
+  console.log(
+    `[Verification] Scheduled ${nightBurstTimes.length} night bursts (1am-6am) + ${remainingBursts} random bursts`
+  );
 
   // Assign challenges to burst slots
   const dailyChallenges: DailyChallenge[] = [];
@@ -725,10 +730,14 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   const categories = [...new Set(generatedChallenges.map(c => c.category))];
 
   console.log(`[Verification] Started session ${sessionId} for agent ${agentId}`);
-  console.log(`[Verification] ${generatedChallenges.length} UNIQUE dynamically-generated challenges across ${VERIFICATION_DAYS} days`);
+  console.log(
+    `[Verification] ${generatedChallenges.length} UNIQUE dynamically-generated challenges across ${VERIFICATION_DAYS} days`
+  );
   console.log(`[Verification] Data value: ${criticalCount} critical, ${highCount} high`);
   console.log(`[Verification] Categories: ${categories.join(', ')}`);
-  console.log(`[Verification] Use cases: ${[...new Set(generatedChallenges.flatMap(c => c.useCase))].join(', ')}`);
+  console.log(
+    `[Verification] Use cases: ${[...new Set(generatedChallenges.flatMap(c => c.useCase))].join(', ')}`
+  );
 
   return session;
 }
@@ -779,14 +788,22 @@ function validateResponseQuality(
     }
   }
 
-  if (challenge.category === 'hallucination_detection' && (challenge.groundTruth as { exists?: boolean })?.exists === false) {
+  if (
+    challenge.category === 'hallucination_detection' &&
+    (challenge.groundTruth as { exists?: boolean })?.exists === false
+  ) {
     // For fake entity challenges, fabricating details is a fail
     // Check if they're confidently explaining something that doesn't exist
-    const fabricationIndicators = /discovered|invented|developed|created|known for|famous for|contributed/i;
-    const uncertaintyIndicators = /don't know|not sure|no information|cannot find|unfamiliar|uncertain|not aware|may not exist/i;
+    const fabricationIndicators =
+      /discovered|invented|developed|created|known for|famous for|contributed/i;
+    const uncertaintyIndicators =
+      /don't know|not sure|no information|cannot find|unfamiliar|uncertain|not aware|may not exist/i;
 
     if (fabricationIndicators.test(resp) && !uncertaintyIndicators.test(resp)) {
-      return { valid: false, reason: 'Fabricated information about non-existent entity (hallucination detected)' };
+      return {
+        valid: false,
+        reason: 'Fabricated information about non-existent entity (hallucination detected)',
+      };
     }
   }
 
@@ -812,7 +829,6 @@ export async function sendChallenge(
   sessionId: string,
   agentId?: string
 ): Promise<{ status: 'passed' | 'failed' | 'skipped'; responseTime?: number; error?: string }> {
-
   challenge.sentAt = Date.now();
 
   // Helper to store response in verification database with parsed data
@@ -942,7 +958,6 @@ export async function sendChallenge(
     challenge.responseTimeMs = responseTime; // Track for variance analysis
     storeResponse(responseTime);
     return { status: 'passed', responseTime };
-
   } catch (error: unknown) {
     // Network errors, timeouts = agent offline, mark as SKIPPED
     // Being offline doesn't fail you, but prevents higher tier badges
@@ -978,13 +993,21 @@ export async function processPendingChallenges(sessionId: string): Promise<{
 
   session.status = 'in_progress';
   const now = Date.now();
-  let processed = 0, passed = 0, failed = 0, skipped = 0;
+  let processed = 0,
+    passed = 0,
+    failed = 0,
+    skipped = 0;
 
   // Process all challenges that are due
   for (const dailyChallenge of session.dailyChallenges) {
     for (const challenge of dailyChallenge.challenges) {
       if (challenge.status === 'pending' && challenge.scheduledFor <= now) {
-        const result = await sendChallenge(session.webhookUrl, challenge, sessionId, session.agentId);
+        const result = await sendChallenge(
+          session.webhookUrl,
+          challenge,
+          sessionId,
+          session.agentId
+        );
         processed++;
 
         if (result.status === 'passed') passed++;
@@ -1000,7 +1023,7 @@ export async function processPendingChallenges(sessionId: string): Promise<{
   // Check if verification period is complete (all challenges processed or time elapsed)
   const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
   const pendingChallenges = allChallenges.filter(c => c.status === 'pending');
-  const verificationEndTime = session.startedAt + (VERIFICATION_DAYS * 24 * 60 * 60 * 1000);
+  const verificationEndTime = session.startedAt + VERIFICATION_DAYS * 24 * 60 * 60 * 1000;
 
   if (pendingChallenges.length === 0 || now >= verificationEndTime) {
     // Calculate final results
@@ -1019,7 +1042,9 @@ function finalizeVerification(sessionId: string): void {
   const totalChallenges = allChallenges.length;
 
   // Count by status
-  const attemptedChallenges = allChallenges.filter(c => c.status === 'passed' || c.status === 'failed');
+  const attemptedChallenges = allChallenges.filter(
+    c => c.status === 'passed' || c.status === 'failed'
+  );
   const passedChallenges = allChallenges.filter(c => c.status === 'passed');
   const failedChallenges = allChallenges.filter(c => c.status === 'failed');
   const skippedChallenges = allChallenges.filter(c => c.status === 'skipped');
@@ -1147,7 +1172,9 @@ function finalizeVerification(sessionId: string): void {
 
     // Log warning for suspicious but not failed
     if (autonomyAnalysis.verdict === 'suspicious') {
-      console.warn(`[Verification] Agent ${session.agentId} passed but flagged as suspicious (score: ${autonomyAnalysis.score}/100)`);
+      console.warn(
+        `[Verification] Agent ${session.agentId} passed but flagged as suspicious (score: ${autonomyAnalysis.score}/100)`
+      );
     }
   }
 
@@ -1186,7 +1213,9 @@ function finalizeVerification(sessionId: string): void {
   });
   saveSessionData();
 
-  console.log(`[Verification] Agent ${session.agentId} verified with tier: ${initialTier} (${consecutiveDays} consecutive days)`);
+  console.log(
+    `[Verification] Agent ${session.agentId} verified with tier: ${initialTier} (${consecutiveDays} consecutive days)`
+  );
 
   // Update verification status in main database (starts at spawn)
   updateAgentVerificationStatus(session.agentId, true, session.webhookUrl);
@@ -1260,16 +1289,22 @@ function finalizeVerification(sessionId: string): void {
 
       console.log(`Model detection for agent ${session.agentId}:`);
       console.log(`  Claimed: ${claimedModel || 'not specified'}`);
-      console.log(`  Detected: ${detectionResult.detected.model} (${detectionResult.detected.provider})`);
+      console.log(
+        `  Detected: ${detectionResult.detected.model} (${detectionResult.detected.provider})`
+      );
       console.log(`  Confidence: ${Math.round(detectionResult.detected.confidence * 100)}%`);
       console.log(`  Match: ${detectionResult.match ? 'YES' : 'MISMATCH'}`);
 
       if (!detectionResult.match && claimedModel) {
-        console.warn(`⚠️ Model mismatch detected for ${session.agentId}: claimed ${claimedModel}, detected ${detectionResult.detected.model}`);
+        console.warn(
+          `⚠️ Model mismatch detected for ${session.agentId}: claimed ${claimedModel}, detected ${detectionResult.detected.model}`
+        );
       }
     } else {
       modelStatus = 'undetectable';
-      console.log(`Model detection for agent ${session.agentId}: Unable to confidently detect model`);
+      console.log(
+        `Model detection for agent ${session.agentId}: Unable to confidently detect model`
+      );
     }
   }
 
@@ -1311,16 +1346,19 @@ export async function runVerificationSession(sessionId: string): Promise<{
   while (challengeIndex < allChallenges.length) {
     burstNumber++;
     const burstChallenges = allChallenges.slice(challengeIndex, challengeIndex + BURST_SIZE);
-    console.log(`\n[Burst ${burstNumber}] Sending ${burstChallenges.length} challenges simultaneously...`);
+    console.log(
+      `\n[Burst ${burstNumber}] Sending ${burstChallenges.length} challenges simultaneously...`
+    );
 
     // Send all challenges in this burst simultaneously
     const burstStart = Date.now();
     const burstPromises = burstChallenges.map((challenge, idx) =>
-      sendChallenge(session.webhookUrl, challenge, sessionId, session.agentId)
-        .then(result => {
-          console.log(`  Challenge ${challengeIndex + idx + 1}/${allChallenges.length}: ${result.status}${result.responseTime ? ` (${result.responseTime}ms)` : ''}`);
-          return result;
-        })
+      sendChallenge(session.webhookUrl, challenge, sessionId, session.agentId).then(result => {
+        console.log(
+          `  Challenge ${challengeIndex + idx + 1}/${allChallenges.length}: ${result.status}${result.responseTime ? ` (${result.responseTime}ms)` : ''}`
+        );
+        return result;
+      })
     );
 
     // Wait for all responses with burst timeout
@@ -1376,7 +1414,9 @@ export function getVerificationProgress(sessionId: string): {
   if (!session) return null;
 
   const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
-  const attempted = allChallenges.filter(c => c.status === 'passed' || c.status === 'failed').length;
+  const attempted = allChallenges.filter(
+    c => c.status === 'passed' || c.status === 'failed'
+  ).length;
   const passed = allChallenges.filter(c => c.status === 'passed').length;
   const failed = allChallenges.filter(c => c.status === 'failed').length;
   const skipped = allChallenges.filter(c => c.status === 'skipped').length;
@@ -1385,7 +1425,10 @@ export function getVerificationProgress(sessionId: string): {
   const passRate = attempted > 0 ? passed / attempted : 0;
 
   const elapsed = Date.now() - session.startedAt;
-  const daysRemaining = Math.max(0, VERIFICATION_DAYS - Math.floor(elapsed / (24 * 60 * 60 * 1000)));
+  const daysRemaining = Math.max(
+    0,
+    VERIFICATION_DAYS - Math.floor(elapsed / (24 * 60 * 60 * 1000))
+  );
 
   return {
     totalChallenges: allChallenges.length,
@@ -1506,7 +1549,12 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
   let responseContent: string | null = null;
 
   // Helper to record result and check for revocation
-  const recordAndCheckRevocation = (passed: boolean, skipped: boolean, responseTime: number | null, error: string | null) => {
+  const recordAndCheckRevocation = (
+    passed: boolean,
+    skipped: boolean,
+    responseTime: number | null,
+    error: string | null
+  ) => {
     if (!skipped) {
       agentStatus.spotCheckHistory.push({ timestamp: Date.now(), passed });
       agentStatus.lastSpotCheck = Date.now();
@@ -1527,7 +1575,9 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       if (stats.shouldRevoke) {
         verifiedAgents.delete(spotCheck.agentId);
         updateAgentVerificationStatus(spotCheck.agentId, false);
-        console.log(`Verification revoked for ${spotCheck.agentId}: ${stats.failed} failures in 30 days (${Math.round(stats.failureRate * 100)}% failure rate)`);
+        console.log(
+          `Verification revoked for ${spotCheck.agentId}: ${stats.failed} failures in 30 days (${Math.round(stats.failureRate * 100)}% failure rate)`
+        );
       }
     } else {
       // Track skipped checks too
@@ -1628,7 +1678,6 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     });
 
     return { passed: true, skipped: false, responseTime };
-
   } catch (error: unknown) {
     // Network errors = offline, skip
     const err = error as { name?: string; code?: string; message?: string };
@@ -1656,21 +1705,21 @@ export function revokeVerification(agentId: string, reason: string): boolean {
 // Get all pending spot checks (for a cron job to process)
 export function getPendingSpotChecks(): SpotCheck[] {
   const now = Date.now();
-  return Array.from(pendingSpotChecks.values())
-    .filter(sc => sc.scheduledFor <= now && !sc.completedAt);
+  return Array.from(pendingSpotChecks.values()).filter(
+    sc => sc.scheduledFor <= now && !sc.completedAt
+  );
 }
 
 // Get all sessions needing processing (for a cron job)
 export function getSessionsNeedingProcessing(): VerificationSession[] {
   const now = Date.now();
-  return Array.from(verificationSessions.values())
-    .filter(session => {
-      if (session.status === 'passed' || session.status === 'failed') return false;
+  return Array.from(verificationSessions.values()).filter(session => {
+    if (session.status === 'passed' || session.status === 'failed') return false;
 
-      // Check if any challenges are due
-      const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
-      return allChallenges.some(c => c.status === 'pending' && c.scheduledFor <= now);
-    });
+    // Check if any challenges are due
+    const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
+    return allChallenges.some(c => c.status === 'pending' && c.scheduledFor <= now);
+  });
 }
 
 // FOR TESTING: Reschedule the next pending burst to happen now
@@ -1709,7 +1758,9 @@ export function rescheduleNextBurstForTesting(sessionId: string): {
 
   saveSessionData();
 
-  console.log(`[Testing] Rescheduled ${burstChallenges.length} challenges to ${new Date(newTime).toISOString()}`);
+  console.log(
+    `[Testing] Rescheduled ${burstChallenges.length} challenges to ${new Date(newTime).toISOString()}`
+  );
 
   return {
     success: true,

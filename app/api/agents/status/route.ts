@@ -1,32 +1,14 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, UnauthorizedError, ValidationError } from '@/lib/api-utils';
+import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 const VALID_STATUSES = ['online', 'thinking', 'idle', 'offline'] as const;
-
-/**
- * Authenticate agent from request Authorization header
- */
-async function authenticateAgent(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('API key required. Use Authorization: Bearer <api_key>');
-  }
-
-  const apiKey = authHeader.slice(7);
-  const agent = await db.getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    throw new UnauthorizedError('Invalid API key');
-  }
-
-  return agent;
-}
 
 // PUT /api/agents/status - Update agent status (requires API key)
 export async function PUT(request: NextRequest) {
   try {
-    const agent = await authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
     const body = await request.json();
     const { status, current_action } = body;
@@ -52,7 +34,7 @@ export async function PUT(request: NextRequest) {
 // GET /api/agents/status - Get current agent status (requires API key)
 export async function GET(request: NextRequest) {
   try {
-    const agent = await authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
     return success({
       status: agent.status,

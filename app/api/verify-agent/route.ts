@@ -6,32 +6,14 @@ import {
   isAgentVerified,
 } from '@/lib/autonomous-verification';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, UnauthorizedError, ValidationError } from '@/lib/api-utils';
+import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { authenticateAgentAsync } from '@/lib/auth';
 import { startVerificationSchema, validationErrorResponse } from '@/lib/validation';
-
-/**
- * Authenticate agent from request Authorization header
- */
-async function authenticateAgent(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('API key required');
-  }
-
-  const apiKey = authHeader.slice(7);
-  const agent = await db.getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    throw new UnauthorizedError('Invalid API key');
-  }
-
-  return agent;
-}
 
 // POST /api/verify-agent - Start verification process
 export async function POST(request: NextRequest) {
   try {
-    const agent = await authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
     // Check if already verified
     if (isAgentVerified(agent.id)) {

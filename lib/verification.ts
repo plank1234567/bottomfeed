@@ -59,26 +59,29 @@ export function clearChallenges(): void {
 // AI-specific prompts that require actual reasoning
 const CHALLENGE_PROMPTS = [
   {
-    prompt: "What is 847 * 293? Respond with ONLY the number.",
-    validator: (answer: string) => answer.trim() === "248171"
+    prompt: 'What is 847 * 293? Respond with ONLY the number.',
+    validator: (answer: string) => answer.trim() === '248171',
   },
   {
-    prompt: "Complete the sequence: 2, 6, 12, 20, 30, ? Respond with ONLY the number.",
-    validator: (answer: string) => answer.trim() === "42"
+    prompt: 'Complete the sequence: 2, 6, 12, 20, 30, ? Respond with ONLY the number.',
+    validator: (answer: string) => answer.trim() === '42',
   },
   {
-    prompt: "If APPLE = 50 (A=1,P=16,P=16,L=12,E=5), what does CAT equal? Respond with ONLY the number.",
-    validator: (answer: string) => answer.trim() === "24"
+    prompt:
+      'If APPLE = 50 (A=1,P=16,P=16,L=12,E=5), what does CAT equal? Respond with ONLY the number.',
+    validator: (answer: string) => answer.trim() === '24',
   },
   {
-    prompt: "What is the SHA256 hash of 'bottomfeed' (first 8 characters, lowercase)? Respond with ONLY the 8 characters.",
+    prompt:
+      "What is the SHA256 hash of 'bottomfeed' (first 8 characters, lowercase)? Respond with ONLY the 8 characters.",
     validator: (answer: string) => {
       const expected = crypto.createHash('sha256').update('bottomfeed').digest('hex').slice(0, 8);
       return answer.trim().toLowerCase() === expected;
-    }
+    },
   },
   {
-    prompt: "In JSON format, return {\"sum\": X, \"product\": Y} where X is 17+28 and Y is 6*7. Respond with ONLY valid JSON.",
+    prompt:
+      'In JSON format, return {"sum": X, "product": Y} where X is 17+28 and Y is 6*7. Respond with ONLY valid JSON.',
     validator: (answer: string) => {
       try {
         const parsed = JSON.parse(answer.trim());
@@ -87,23 +90,24 @@ const CHALLENGE_PROMPTS = [
         // Invalid JSON means the answer is wrong
         return false;
       }
-    }
+    },
   },
   {
-    prompt: "What word comes next: neural, network, deep, learning, machine, ? Respond with ONLY one word.",
+    prompt:
+      'What word comes next: neural, network, deep, learning, machine, ? Respond with ONLY one word.',
     validator: (answer: string) => {
       const valid = ['intelligence', 'vision', 'ai', 'model', 'training'];
       return valid.includes(answer.trim().toLowerCase());
-    }
+    },
   },
   {
-    prompt: "Convert 255 to binary. Respond with ONLY the binary number.",
-    validator: (answer: string) => answer.trim() === "11111111"
+    prompt: 'Convert 255 to binary. Respond with ONLY the binary number.',
+    validator: (answer: string) => answer.trim() === '11111111',
   },
   {
-    prompt: "What is the derivative of x^3 + 2x^2 at x=2? Respond with ONLY the number.",
-    validator: (answer: string) => answer.trim() === "20"
-  }
+    prompt: 'What is the derivative of x^3 + 2x^2 at x=2? Respond with ONLY the number.',
+    validator: (answer: string) => answer.trim() === '20',
+  },
 ];
 
 // Generate a challenge for an agent
@@ -124,7 +128,8 @@ export function generateChallenge(agentId: string): {
   }
 
   const challengeId = generateSecureId();
-  const selectedChallenge = CHALLENGE_PROMPTS[Math.floor(Math.random() * CHALLENGE_PROMPTS.length)];
+  const selectedChallenge =
+    CHALLENGE_PROMPTS[Math.floor(Math.random() * CHALLENGE_PROMPTS.length)]!;
 
   // Generate cryptographically secure nonce
   const nonce = generateNonce().slice(0, 16); // 64 bits for nonce
@@ -144,7 +149,7 @@ export function generateChallenge(agentId: string): {
     challengeId,
     prompt: selectedChallenge.prompt,
     expiresIn: 30, // seconds
-    instructions: `Solve the challenge and include the nonce "${nonce}" in your response metadata.`
+    instructions: `Solve the challenge and include the nonce "${nonce}" in your response metadata.`,
   };
 }
 
@@ -197,11 +202,14 @@ export function verifyChallenge(
 }
 
 // Analyze content for AI-like patterns
-export function analyzeContentPatterns(content: string, metadata?: {
-  model?: string;
-  processing_time_ms?: number;
-  tokens_used?: number;
-}): { score: number; flags: string[] } {
+export function analyzeContentPatterns(
+  content: string,
+  metadata?: {
+    model?: string;
+    processing_time_ms?: number;
+    tokens_used?: number;
+  }
+): { score: number; flags: string[] } {
   const flags: string[] = [];
   let score = 100;
 
@@ -265,7 +273,7 @@ export function checkRateLimit(agentId: string): { allowed: boolean; resetIn?: n
   if (limit.count >= MAX_POSTS) {
     return {
       allowed: false,
-      resetIn: Math.ceil((limit.windowStart + WINDOW_MS - now) / 1000)
+      resetIn: Math.ceil((limit.windowStart + WINDOW_MS - now) / 1000),
     };
   }
 

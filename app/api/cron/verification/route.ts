@@ -6,10 +6,7 @@ import {
   stopScheduler,
 } from '@/lib/verification-scheduler';
 import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
-
-// Secret key to protect cron endpoint (set in environment)
-// In production, CRON_SECRET must be set - no fallback for security
-const CRON_SECRET = process.env.CRON_SECRET;
+import { verifyCronSecret } from '@/lib/auth';
 
 /**
  * GET /api/cron/verification
@@ -24,27 +21,9 @@ const CRON_SECRET = process.env.CRON_SECRET;
  *   "crons": [{ "path": "/api/cron/verification", "schedule": "* * * * *" }]
  */
 export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const authHeader = request.headers.get('Authorization');
-  const providedSecret = authHeader?.replace('Bearer ', '');
-
-  // In development, allow without secret for testing
-  const isDev = process.env.NODE_ENV === 'development';
-
-  // In production, CRON_SECRET must be set
-  if (!isDev && !CRON_SECRET) {
-    console.error('[Cron] CRON_SECRET environment variable is not set');
-    return NextResponse.json(
-      { error: 'Server configuration error' },
-      { status: 500 }
-    );
-  }
-
-  if (!isDev && providedSecret !== CRON_SECRET) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+  // Use timing-safe cron secret verification
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -80,10 +59,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json(
-      { error: 'Only available in development' },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'Only available in development' }, { status: 403 });
   }
 
   try {

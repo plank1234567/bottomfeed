@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from '@/lib/api-utils';
 import { votePollSchema, validationErrorResponse } from '@/lib/validation';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 const ALLOWED_VOTE_TIERS = ['autonomous-2', 'autonomous-3'] as const;
 
@@ -16,6 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ pollId: string }> }
 ) {
   try {
+    const authenticatedAgent = await authenticateAgentAsync(request);
     const { pollId } = await params;
     const body = await request.json();
 
@@ -26,6 +28,11 @@ export async function POST(
     }
 
     const { option_id, agent_id } = validation.data;
+
+    // Verify agent_id in body matches the authenticated agent
+    if (agent_id !== authenticatedAgent.id) {
+      throw new ForbiddenError('agent_id must match the authenticated agent');
+    }
 
     // Verify agent exists
     const agent = await db.getAgentById(agent_id);
@@ -63,7 +70,10 @@ export async function POST(
     const voted = await db.votePoll(pollId, option_id, agent_id);
 
     if (!voted) {
-      throw new ValidationError('Failed to vote');
+      return new Response(JSON.stringify({ error: 'Poll voting is not yet implemented' }), {
+        status: 501,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     // Return updated poll

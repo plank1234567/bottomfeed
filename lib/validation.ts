@@ -61,7 +61,11 @@ const BLOCKED_HOSTNAMES = [
 function isPrivateHost(hostname: string): boolean {
   // Check blocked hostnames
   const lowerHostname = hostname.toLowerCase();
-  if (BLOCKED_HOSTNAMES.some(blocked => lowerHostname === blocked || lowerHostname.endsWith('.' + blocked))) {
+  if (
+    BLOCKED_HOSTNAMES.some(
+      blocked => lowerHostname === blocked || lowerHostname.endsWith('.' + blocked)
+    )
+  ) {
     return true;
   }
 
@@ -78,6 +82,11 @@ function isPrivateHost(hostname: string): boolean {
 /**
  * Validate that a URL is safe for outbound requests (SSRF protection)
  * Returns true if the URL is safe, false if it should be blocked
+ *
+ * NOTE: This check is hostname-based and cannot prevent DNS rebinding attacks
+ * where a hostname initially resolves to a public IP but later resolves to a
+ * private IP. For full protection, resolve the hostname and check the IP at
+ * fetch-time, or use a proxy that enforces network-level restrictions.
  */
 export function isUrlSafeForSSRF(urlString: string): boolean {
   try {
@@ -118,14 +127,11 @@ export function isUrlSafeForSSRF(urlString: string): boolean {
 export const webhookUrlSchema = z
   .string()
   .url('Invalid webhook URL')
+  .refine(url => isUrlSafeForSSRF(url), {
+    message: 'Webhook URL must be a public HTTPS URL. Private/internal addresses are not allowed.',
+  })
   .refine(
-    (url) => isUrlSafeForSSRF(url),
-    {
-      message: 'Webhook URL must be a public HTTPS URL. Private/internal addresses are not allowed.',
-    }
-  )
-  .refine(
-    (url) => {
+    url => {
       try {
         const parsed = new URL(url);
         return parsed.protocol === 'https:';
@@ -148,37 +154,26 @@ export const usernameSchema = z
   .max(20, 'Username must be at most 20 characters')
   .regex(/^[a-z0-9_]+$/, 'Username can only contain lowercase letters, numbers, and underscores');
 
-export const urlSchema = z
-  .string()
-  .url('Invalid URL format')
-  .optional()
-  .or(z.literal(''));
+export const urlSchema = z.string().url('Invalid URL format').optional().or(z.literal(''));
 
 // =============================================================================
 // AGENT SCHEMAS
 // =============================================================================
 
 export const registerAgentSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Name is required')
-    .max(50, 'Name must be at most 50 characters'),
+  name: z.string().min(1, 'Name is required').max(50, 'Name must be at most 50 characters'),
   description: z
     .string()
     .max(280, 'Description must be at most 280 characters')
     .optional()
     .default(''),
+  model: z.string().max(50, 'Model must be at most 50 characters').optional(),
+  provider: z.string().max(50, 'Provider must be at most 50 characters').optional(),
 });
 
 export const updateAgentProfileSchema = z.object({
-  bio: z
-    .string()
-    .max(500, 'Bio must be at most 500 characters')
-    .optional(),
-  personality: z
-    .string()
-    .max(1000, 'Personality must be at most 1000 characters')
-    .optional(),
+  bio: z.string().max(500, 'Bio must be at most 500 characters').optional(),
+  personality: z.string().max(1000, 'Personality must be at most 1000 characters').optional(),
   avatar_url: urlSchema,
   banner_url: urlSchema,
   website_url: urlSchema,
@@ -187,6 +182,15 @@ export const updateAgentProfileSchema = z.object({
     .string()
     .max(15, 'Twitter handle must be at most 15 characters')
     .regex(/^[a-zA-Z0-9_]*$/, 'Invalid Twitter handle format')
+    .optional(),
+  capabilities: z
+    .array(
+      z
+        .string()
+        .min(2, 'Capability must be at least 2 characters')
+        .max(25, 'Capability must be at most 25 characters')
+    )
+    .max(8, 'Maximum 8 capabilities allowed')
     .optional(),
 });
 
@@ -199,33 +203,27 @@ export const createPostSchema = z.object({
     .string()
     .min(1, 'Post content is required')
     .max(4000, 'Post content must be at most 4000 characters'),
-  reply_to_id: z
-    .string()
-    .uuid('Invalid reply_to_id format')
-    .optional(),
-  quote_post_id: z
-    .string()
-    .uuid('Invalid quote_post_id format')
-    .optional(),
+  reply_to_id: z.string().uuid('Invalid reply_to_id format').optional(),
+  quote_post_id: z.string().uuid('Invalid quote_post_id format').optional(),
   media_urls: z
-    .array(z.string().url('Invalid media URL'))
+    .array(
+      z.string().url('Invalid media URL').refine(isUrlSafeForSSRF, {
+        message: 'Media URL must be a public URL. Private/internal addresses are not allowed.',
+      })
+    )
     .max(4, 'Maximum 4 media attachments allowed')
     .optional()
     .default([]),
-  title: z
-    .string()
-    .max(200, 'Title must be at most 200 characters')
+  title: z.string().max(200, 'Title must be at most 200 characters').optional(),
+  post_type: z.enum(['post', 'conversation']).optional().default('post'),
+  metadata: z
+    .object({
+      reasoning: z.string().optional(),
+      intent: z.string().optional(),
+      confidence: z.number().min(0).max(1).optional(),
+      sources: z.array(z.string()).optional(),
+    })
     .optional(),
-  post_type: z
-    .enum(['post', 'conversation'])
-    .optional()
-    .default('post'),
-  metadata: z.object({
-    reasoning: z.string().optional(),
-    intent: z.string().optional(),
-    confidence: z.number().min(0).max(1).optional(),
-    sources: z.array(z.string()).optional(),
-  }).optional(),
 });
 
 // =============================================================================
@@ -250,12 +248,8 @@ export const createPollSchema = z.object({
 });
 
 export const votePollSchema = z.object({
-  option_id: z
-    .string()
-    .uuid('Invalid option_id format'),
-  agent_id: z
-    .string()
-    .uuid('Invalid agent_id format'),
+  option_id: z.string().uuid('Invalid option_id format'),
+  agent_id: z.string().uuid('Invalid agent_id format'),
 });
 
 // =============================================================================
@@ -267,16 +261,8 @@ export const searchSchema = z.object({
     .string()
     .min(2, 'Search query must be at least 2 characters')
     .max(100, 'Search query must be at most 100 characters'),
-  type: z
-    .enum(['all', 'posts', 'agents'])
-    .optional()
-    .default('all'),
-  limit: z
-    .number()
-    .min(1)
-    .max(100)
-    .optional()
-    .default(50),
+  type: z.enum(['all', 'posts', 'agents']).optional().default('all'),
+  limit: z.number().min(1).max(100).optional().default(50),
 });
 
 // =============================================================================
@@ -311,25 +297,13 @@ export const claimAgentSchema = z.object({
 // =============================================================================
 
 export const searchQuerySchema = z.object({
-  q: z
-    .string()
-    .min(1)
-    .max(100, 'Search query must be at most 100 characters')
-    .optional(),
-  type: z
-    .enum(['all', 'posts', 'agents'])
-    .optional()
-    .default('all'),
-  sort: z
-    .enum(['top', 'latest'])
-    .optional()
-    .default('top'),
-  filter: z
-    .enum(['media'])
-    .optional(),
+  q: z.string().min(1).max(100, 'Search query must be at most 100 characters').optional(),
+  type: z.enum(['all', 'posts', 'agents']).optional().default('all'),
+  sort: z.enum(['top', 'latest']).optional().default('top'),
+  filter: z.enum(['media']).optional(),
   limit: z
     .string()
-    .transform((val) => Math.min(parseInt(val, 10) || 50, 100))
+    .transform(val => Math.min(parseInt(val, 10) || 50, 100))
     .optional()
     .default('50'),
 });
@@ -338,65 +312,60 @@ export const searchQuerySchema = z.object({
 // POST CREATION WITH CHALLENGE SCHEMA
 // =============================================================================
 
-const postMetadataSchema = z.object({
-  model: z.string().optional(),
-  tokens_used: z.number().optional(),
-  temperature: z.number().optional(),
-  reasoning: z.string().optional(),
-  intent: z.string().optional(),
-  confidence: z.number().min(0).max(1).optional(),
-  sources: z.array(z.string()).optional(),
-}).optional();
+const postMetadataSchema = z
+  .object({
+    model: z.string().optional(),
+    tokens_used: z.number().optional(),
+    temperature: z.number().optional(),
+    reasoning: z.string().optional(),
+    intent: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    sources: z.array(z.string()).optional(),
+  })
+  .optional();
 
-const pollInputSchema = z.object({
-  options: z
-    .array(z.string().min(1, 'Option cannot be empty').max(100, 'Option must be at most 100 characters'))
-    .min(2, 'Poll must have at least 2 options')
-    .max(4, 'Poll can have at most 4 options'),
-  expires_in_hours: z
-    .number()
-    .min(1, 'Poll must last at least 1 hour')
-    .max(168, 'Poll can last at most 168 hours (1 week)')
-    .optional()
-    .default(24),
-}).optional();
+const pollInputSchema = z
+  .object({
+    options: z
+      .array(
+        z
+          .string()
+          .min(1, 'Option cannot be empty')
+          .max(100, 'Option must be at most 100 characters')
+      )
+      .min(2, 'Poll must have at least 2 options')
+      .max(4, 'Poll can have at most 4 options'),
+    expires_in_hours: z
+      .number()
+      .min(1, 'Poll must last at least 1 hour')
+      .max(168, 'Poll can last at most 168 hours (1 week)')
+      .optional()
+      .default(24),
+  })
+  .optional();
 
 export const createPostWithChallengeSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Content is required'),
-  title: z
-    .string()
-    .max(200, 'Title must be at most 200 characters')
-    .optional(),
-  post_type: z
-    .enum(['post', 'conversation'])
-    .optional()
-    .default('post'),
-  reply_to_id: z
-    .string()
-    .uuid('Invalid reply_to_id format')
-    .optional(),
+  content: z.string().min(1, 'Content is required'),
+  title: z.string().max(200, 'Title must be at most 200 characters').optional(),
+  post_type: z.enum(['post', 'conversation']).optional().default('post'),
+  reply_to_id: z.string().uuid('Invalid reply_to_id format').optional(),
   media_urls: z
-    .array(z.string().url('Invalid media URL'))
+    .array(
+      z.string().url('Invalid media URL').refine(isUrlSafeForSSRF, {
+        message: 'Media URL must be a public URL. Private/internal addresses are not allowed.',
+      })
+    )
     .max(4, 'Maximum 4 media attachments allowed')
     .optional()
     .default([]),
   metadata: postMetadataSchema,
   poll: pollInputSchema,
   // Challenge verification fields
-  challenge_id: z
-    .string()
-    .min(1, 'challenge_id is required'),
-  challenge_answer: z
-    .string()
-    .min(1, 'challenge_answer is required'),
-  nonce: z
-    .string()
-    .min(1, 'nonce is required'),
-  challenge_received_at: z
-    .number()
-    .optional(),
+  challenge_id: z.string().min(1, 'challenge_id is required'),
+  challenge_answer: z.string().min(1, 'challenge_answer is required'),
+  nonce: z.string().min(1, 'nonce is required'),
+  // challenge_received_at intentionally omitted — server uses its own timestamp
+  // to prevent clients from spoofing timing data
 });
 
 // =============================================================================
@@ -404,18 +373,9 @@ export const createPostWithChallengeSchema = z.object({
 // =============================================================================
 
 export const paginationSchema = z.object({
-  limit: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1).max(100))
-    .optional()
-    .default('50'),
+  limit: z.string().transform(Number).pipe(z.number().min(1).max(100)).optional().default('50'),
   cursor: z.string().optional(),
-  page: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1))
-    .optional(),
+  page: z.string().transform(Number).pipe(z.number().min(1)).optional(),
 });
 
 // =============================================================================
@@ -448,7 +408,7 @@ export function safeValidate<T>(
  */
 export function formatZodError(error: z.ZodError): string {
   return error.errors
-    .map((e) => {
+    .map(e => {
       const path = e.path.join('.');
       return path ? `${path}: ${e.message}` : e.message;
     })

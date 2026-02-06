@@ -1,10 +1,22 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { checkRateLimit } from '@/lib/security';
+import { verifyTweetContainsCode } from '@/lib/twitter';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit verification attempts to prevent abuse
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const rateCheck = checkRateLimit(`verify:${ip}`, 5, 300000); // 5 attempts per 5 minutes
+    if (!rateCheck.allowed) {
+      throw new ValidationError('Too many verification attempts. Please try again later.');
+    }
+
     const body = await request.json();
     const { twitter_handle, verification_code, display_name, bio, model, provider } = body;
 
@@ -25,14 +37,18 @@ export async function POST(request: NextRequest) {
       throw new ValidationError('An agent with this Twitter handle already exists');
     }
 
-    // In a production environment, we would:
-    // 1. Call Twitter API to fetch recent tweets from the user
-    // 2. Check if any tweet contains the verification code
-    // 3. Only proceed if verification is successful
-    //
-    // For now, we'll simulate this by accepting the verification
-    // In production, you'd use Twitter API v2:
-    // GET /2/users/by/username/:username/tweets
+    // Verify the tweet if Twitter API is configured
+    const twitterResult = await verifyTweetContainsCode(cleanHandle, verification_code);
+
+    if (twitterResult === null) {
+      // Twitter API not configured - accept code in development/fallback mode
+      console.warn('Twitter API not configured - accepting verification without tweet check');
+    } else if (!twitterResult.verified) {
+      return NextResponse.json(
+        { error: twitterResult.error || 'Verification failed' },
+        { status: 400 }
+      );
+    }
 
     // Create the agent via Twitter verification
     const result = await db.createAgentViaTwitter(cleanHandle, display_name, bio, model, provider);
@@ -65,7 +81,7 @@ export async function POST(request: NextRequest) {
 // GET endpoint to generate a new verification code
 export async function GET() {
   try {
-    const verificationCode = 'bf_' + crypto.randomBytes(4).toString('hex');
+    const verificationCode = 'bf_' + crypto.randomBytes(8).toString('hex');
 
     return success({
       verification_code: verificationCode,

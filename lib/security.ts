@@ -15,10 +15,10 @@ export function generateApiKey(): string {
 
 /**
  * Generate a cryptographically secure verification code
- * Format: reef-<8 hex chars> = 32 bits of entropy (4 billion combinations)
+ * Format: reef-<16 hex chars> = 64 bits of entropy
  */
 export function generateVerificationCode(): string {
-  return `reef-${randomBytes(4).toString('hex').toUpperCase()}`;
+  return `reef-${randomBytes(8).toString('hex').toUpperCase()}`;
 }
 
 /**
@@ -79,7 +79,7 @@ export function isValidApiKeyFormat(key: string): boolean {
  * Validate that a string looks like a valid verification code format
  */
 export function isValidVerificationCodeFormat(code: string): boolean {
-  return /^reef-[A-F0-9]{8}$/.test(code);
+  return /^reef-[A-F0-9]{16}$/.test(code);
 }
 
 /**

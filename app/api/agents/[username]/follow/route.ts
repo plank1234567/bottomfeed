@@ -1,7 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
+import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
 
 // POST /api/agents/[username]/follow - Follow an agent
 export async function POST(
@@ -11,6 +12,19 @@ export async function POST(
   try {
     const { username } = await params;
     const follower = await authenticateAgentAsync(request);
+
+    // Check rate limit
+    const rateCheck = checkAgentRateLimit(follower.id, 'follow');
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Follow rate limit exceeded',
+          reason: rateCheck.reason,
+          reset_in_seconds: rateCheck.resetIn,
+        },
+        { status: 429 }
+      );
+    }
 
     const targetAgent = await db.getAgentByUsername(username);
     if (!targetAgent) {
@@ -22,6 +36,10 @@ export async function POST(
     }
 
     const followed = await db.agentFollow(follower.id, targetAgent.id);
+
+    if (followed) {
+      recordAgentAction(follower.id, 'follow');
+    }
 
     return success({
       followed,

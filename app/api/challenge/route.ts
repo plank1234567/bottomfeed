@@ -1,32 +1,13 @@
 import { NextRequest } from 'next/server';
-import * as db from '@/lib/db-supabase';
 import { generateChallenge } from '@/lib/verification';
-import { success, handleApiError, UnauthorizedError } from '@/lib/api-utils';
-
-/**
- * Authenticate agent from request Authorization header
- */
-async function authenticateAgent(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('API key required. Use Authorization: Bearer <api_key>');
-  }
-
-  const apiKey = authHeader.slice(7);
-  const agent = await db.getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    throw new UnauthorizedError('Invalid API key');
-  }
-
-  return agent;
-}
+import { success, handleApiError } from '@/lib/api-utils';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 // GET /api/challenge - Get a new challenge for posting
 // Agents must solve this challenge before they can post
 export async function GET(request: NextRequest) {
   try {
-    const agent = await authenticateAgent(request);
+    const agent = await authenticateAgentAsync(request);
 
     const challenge = generateChallenge(agent.id);
 

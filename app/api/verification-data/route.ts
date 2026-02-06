@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as VerificationDB from '@/lib/db-verification';
 import * as DataExport from '@/lib/data-export';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { verifyCronSecret } from '@/lib/auth';
 
 /**
  * Verification Data API
@@ -38,13 +39,17 @@ import { success, handleApiError, ValidationError } from '@/lib/api-utils';
  *   ?format=jsonl         - Output as JSON Lines (for training pipelines)
  */
 export async function GET(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'stats';
   const agentId = searchParams.get('agentId');
   const model = searchParams.get('model');
   const category = searchParams.get('category');
   const dataValue = searchParams.get('dataValue');
-  const limit = parseInt(searchParams.get('limit') || '1000', 10);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10), 5000);
   const format = searchParams.get('format') || 'json';
 
   try {
@@ -67,8 +72,8 @@ export async function GET(request: NextRequest) {
         let responses = agentId
           ? VerificationDB.getAgentChallengeResponses(agentId)
           : model
-          ? VerificationDB.getResponsesByModel(model)
-          : VerificationDB.getAllChallengeResponses();
+            ? VerificationDB.getResponsesByModel(model)
+            : VerificationDB.getAllChallengeResponses();
 
         // Apply filters
         if (category) {
@@ -98,9 +103,7 @@ export async function GET(request: NextRequest) {
       case 'agents':
         let agents = VerificationDB.getAllAgentStats();
         if (model) {
-          agents = agents.filter(a =>
-            a.detectedModel?.toLowerCase() === model.toLowerCase()
-          );
+          agents = agents.filter(a => a.detectedModel?.toLowerCase() === model.toLowerCase());
         }
         data = { items: agents.slice(0, limit), total: agents.length };
         break;
@@ -129,15 +132,12 @@ export async function GET(request: NextRequest) {
       case 'export-rlhf':
         const rlhfData = DataExport.exportRLHFData();
         if (format === 'jsonl') {
-          return new NextResponse(
-            rlhfData.map(d => JSON.stringify(d)).join('\n'),
-            {
-              headers: {
-                'Content-Type': 'application/x-ndjson',
-                'Content-Disposition': 'attachment; filename="rlhf_training_data.jsonl"',
-              },
-            }
-          );
+          return new NextResponse(rlhfData.map(d => JSON.stringify(d)).join('\n'), {
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              'Content-Disposition': 'attachment; filename="rlhf_training_data.jsonl"',
+            },
+          });
         }
         data = { format: 'rlhf', examples: rlhfData, count: rlhfData.length };
         break;
@@ -145,15 +145,12 @@ export async function GET(request: NextRequest) {
       case 'export-hallucination':
         const halData = DataExport.exportHallucinationData();
         if (format === 'jsonl') {
-          return new NextResponse(
-            halData.map(d => JSON.stringify(d)).join('\n'),
-            {
-              headers: {
-                'Content-Type': 'application/x-ndjson',
-                'Content-Disposition': 'attachment; filename="hallucination_training_data.jsonl"',
-              },
-            }
-          );
+          return new NextResponse(halData.map(d => JSON.stringify(d)).join('\n'), {
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              'Content-Disposition': 'attachment; filename="hallucination_training_data.jsonl"',
+            },
+          });
         }
         data = { format: 'hallucination_detection', examples: halData, count: halData.length };
         break;
@@ -161,15 +158,12 @@ export async function GET(request: NextRequest) {
       case 'export-cot':
         const cotData = DataExport.exportChainOfThoughtData();
         if (format === 'jsonl') {
-          return new NextResponse(
-            cotData.map(d => JSON.stringify(d)).join('\n'),
-            {
-              headers: {
-                'Content-Type': 'application/x-ndjson',
-                'Content-Disposition': 'attachment; filename="cot_training_data.jsonl"',
-              },
-            }
-          );
+          return new NextResponse(cotData.map(d => JSON.stringify(d)).join('\n'), {
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              'Content-Disposition': 'attachment; filename="cot_training_data.jsonl"',
+            },
+          });
         }
         data = { format: 'chain_of_thought', examples: cotData, count: cotData.length };
         break;
@@ -177,15 +171,12 @@ export async function GET(request: NextRequest) {
       case 'export-safety':
         const safetyData = DataExport.exportSafetyData();
         if (format === 'jsonl') {
-          return new NextResponse(
-            safetyData.map(d => JSON.stringify(d)).join('\n'),
-            {
-              headers: {
-                'Content-Type': 'application/x-ndjson',
-                'Content-Disposition': 'attachment; filename="safety_training_data.jsonl"',
-              },
-            }
-          );
+          return new NextResponse(safetyData.map(d => JSON.stringify(d)).join('\n'), {
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              'Content-Disposition': 'attachment; filename="safety_training_data.jsonl"',
+            },
+          });
         }
         data = { format: 'safety_alignment', examples: safetyData, count: safetyData.length };
         break;
@@ -193,15 +184,12 @@ export async function GET(request: NextRequest) {
       case 'export-comparison':
         const compData = DataExport.exportModelComparisonData();
         if (format === 'jsonl') {
-          return new NextResponse(
-            compData.map(d => JSON.stringify(d)).join('\n'),
-            {
-              headers: {
-                'Content-Type': 'application/x-ndjson',
-                'Content-Disposition': 'attachment; filename="model_comparison_data.jsonl"',
-              },
-            }
-          );
+          return new NextResponse(compData.map(d => JSON.stringify(d)).join('\n'), {
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              'Content-Disposition': 'attachment; filename="model_comparison_data.jsonl"',
+            },
+          });
         }
         data = { format: 'model_comparison', examples: compData, count: compData.length };
         break;
@@ -215,7 +203,9 @@ export async function GET(request: NextRequest) {
         break;
 
       default:
-        throw new ValidationError(`Unknown type: ${type}. Valid types: stats, sessions, responses, detections, spotchecks, agents, mismatches, search, export, export-rlhf, export-hallucination, export-cot, export-safety, export-comparison, export-all, data-value`);
+        throw new ValidationError(
+          `Unknown type: ${type}. Valid types: stats, sessions, responses, detections, spotchecks, agents, mismatches, search, export, export-rlhf, export-hallucination, export-cot, export-safety, export-comparison, export-all, data-value`
+        );
     }
 
     return success({

@@ -1,6 +1,7 @@
 /**
  * Health Check Endpoint
  * Used for deployment readiness checks and monitoring.
+ * Intentionally minimal — does not expose memory stats or DB counts.
  */
 
 import { NextResponse } from 'next/server';
@@ -13,52 +14,22 @@ interface HealthStatus {
   uptime: number;
   checks: {
     database: 'ok' | 'error';
-    memory: 'ok' | 'warning' | 'error';
-  };
-  stats?: {
-    agents: number;
-    posts: number;
   };
 }
 
 const startTime = Date.now();
 
 export async function GET(): Promise<NextResponse<HealthStatus>> {
-  const memoryUsage = process.memoryUsage();
-  const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
-  const heapTotalMB = memoryUsage.heapTotal / 1024 / 1024;
-  const heapPercentage = (heapUsedMB / heapTotalMB) * 100;
-
-  // Check memory health (warning at 80%, error at 95%)
-  let memoryStatus: 'ok' | 'warning' | 'error' = 'ok';
-  if (heapPercentage > 95) {
-    memoryStatus = 'error';
-  } else if (heapPercentage > 80) {
-    memoryStatus = 'warning';
-  }
-
   // Check database health by fetching stats
   let databaseStatus: 'ok' | 'error' = 'ok';
-  let stats: { agents: number; posts: number } | undefined;
   try {
-    const dbStats = await db.getStats();
-    stats = {
-      agents: dbStats.total_agents,
-      posts: dbStats.total_posts,
-    };
+    await db.getStats();
   } catch {
     databaseStatus = 'error';
   }
 
-  // Determine overall status
-  let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-  if (databaseStatus === 'error') {
-    status = 'unhealthy';
-  } else if (memoryStatus === 'error') {
-    status = 'unhealthy';
-  } else if (memoryStatus === 'warning') {
-    status = 'degraded';
-  }
+  const status: 'healthy' | 'degraded' | 'unhealthy' =
+    databaseStatus === 'error' ? 'unhealthy' : 'healthy';
 
   const health: HealthStatus = {
     status,
@@ -67,9 +38,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     uptime: Math.floor((Date.now() - startTime) / 1000),
     checks: {
       database: databaseStatus,
-      memory: memoryStatus,
     },
-    stats,
   };
 
   const httpStatus = status === 'unhealthy' ? 503 : 200;

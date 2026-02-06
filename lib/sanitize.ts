@@ -7,19 +7,6 @@
  */
 
 /**
- * HTML entity encoding for XSS protection
- */
-function _escapeHtml(str: string): string {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-/**
  * Strip all HTML tags from a string
  */
 function stripTags(str: string): string {
@@ -30,7 +17,9 @@ function stripTags(str: string): string {
 /**
  * Configuration for different sanitization contexts
  */
-const ALLOWED_TAGS_REGEX = /<\/?(?:b|i|em|strong|a|br|p|ul|ol|li|code|pre)(?:\s[^>]*)?\/?>/gi;
+// Note: No `g` flag — regex with `g` is stateful (lastIndex), which causes
+// alternating true/false when called repeatedly in .test() inside a loop.
+const ALLOWED_TAGS_REGEX = /<\/?(?:b|i|em|strong|a|br|p|ul|ol|li|code|pre)(?:\s[^>]*)?\/?>/i;
 
 /**
  * Sanitize post content - allows basic formatting, strips dangerous elements
@@ -73,8 +62,22 @@ export function sanitizePostContent(content: string): string {
       }
       // Tag - keep allowed tags, strip others
       if (ALLOWED_TAGS_REGEX.test(part)) {
-        // For anchor tags, ensure they open in new tab safely
+        // For anchor tags, validate href and ensure they open in new tab safely
         if (part.toLowerCase().startsWith('<a ')) {
+          const hrefMatch = part.match(/href\s*=\s*["']([^"']*)["']/i);
+          if (hrefMatch) {
+            const rawHref = hrefMatch[1] ?? '';
+            const cleanHref = sanitizeUrl(rawHref);
+            if (cleanHref === '') {
+              // Dangerous href — strip the tag, keep only inner text
+              return '';
+            }
+            // Replace the original href with the sanitized version
+            part = part.replace(hrefMatch[0], `href="${cleanHref}"`);
+          } else {
+            // No href attribute found — strip the anchor tag
+            return '';
+          }
           if (!part.includes('target=')) {
             part = part.replace(/>$/, ' target="_blank" rel="noopener noreferrer">');
           }
@@ -142,9 +145,7 @@ export function sanitizeUrl(url: string): string {
  */
 export function sanitizeMediaUrls(urls: string[]): string[] {
   if (!Array.isArray(urls)) return [];
-  return urls
-    .map(sanitizeUrl)
-    .filter(url => url.length > 0);
+  return urls.map(sanitizeUrl).filter(url => url.length > 0);
 }
 
 /**
@@ -228,4 +229,34 @@ export function sanitizeAgentData(data: {
     website_url: data.website_url ? sanitizeUrl(data.website_url) : undefined,
     github_url: data.github_url ? sanitizeUrl(data.github_url) : undefined,
   };
+}
+
+/**
+ * Sanitize profile update fields (shared between in-memory and Supabase backends)
+ */
+export function sanitizeProfileUpdates(
+  updates: Partial<{
+    bio: string;
+    personality: string;
+    avatar_url: string;
+    banner_url: string;
+    website_url: string;
+    github_url: string;
+    twitter_handle: string;
+    capabilities: string[];
+  }>
+): typeof updates {
+  const sanitized: typeof updates = {};
+  if (updates.bio !== undefined) sanitized.bio = sanitizePlainText(updates.bio);
+  if (updates.personality !== undefined)
+    sanitized.personality = sanitizePlainText(updates.personality);
+  if (updates.avatar_url !== undefined) sanitized.avatar_url = sanitizeUrl(updates.avatar_url);
+  if (updates.banner_url !== undefined) sanitized.banner_url = sanitizeUrl(updates.banner_url);
+  if (updates.website_url !== undefined) sanitized.website_url = sanitizeUrl(updates.website_url);
+  if (updates.github_url !== undefined) sanitized.github_url = sanitizeUrl(updates.github_url);
+  if (updates.twitter_handle !== undefined)
+    sanitized.twitter_handle = sanitizePlainText(updates.twitter_handle);
+  if (updates.capabilities !== undefined)
+    sanitized.capabilities = updates.capabilities.map(cap => sanitizePlainText(cap));
+  return sanitized;
 }

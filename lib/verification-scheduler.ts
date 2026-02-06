@@ -24,11 +24,7 @@ let schedulerInterval: NodeJS.Timeout | null = null;
  * Generate truly random times across a time period
  * Returns timestamps spread randomly (not evenly) across the period
  */
-function generateRandomSchedule(
-  startTime: number,
-  endTime: number,
-  count: number
-): number[] {
+function generateRandomSchedule(startTime: number, endTime: number, count: number): number[] {
   const times: number[] = [];
   const duration = endTime - startTime;
 
@@ -77,13 +73,6 @@ export function generateVerificationSchedule(
 }
 
 /**
- * Check if a burst is due (scheduled time has passed)
- */
-function _isBurstDue(scheduledTime: number): boolean {
-  return Date.now() >= scheduledTime;
-}
-
-/**
  * Format time for logging
  */
 function formatTime(timestamp: number): string {
@@ -114,11 +103,15 @@ export async function processScheduledChallenges(): Promise<{
         results.sessionsProcessed++;
         results.challengesSent += processed.processed;
       } catch (error: unknown) {
-        results.errors.push(`Session ${session.id}: ${error instanceof Error ? error.message : String(error)}`);
+        results.errors.push(
+          `Session ${session.id}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
   } catch (error: unknown) {
-    results.errors.push(`Scheduler error: ${error instanceof Error ? error.message : String(error)}`);
+    results.errors.push(
+      `Scheduler error: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   return results;
@@ -153,11 +146,15 @@ export async function processScheduledSpotChecks(): Promise<{
         else if (result.skipped) results.skipped++;
         else results.failed++;
       } catch (error: unknown) {
-        results.errors.push(`SpotCheck ${check.id}: ${error instanceof Error ? error.message : String(error)}`);
+        results.errors.push(
+          `SpotCheck ${check.id}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
   } catch (error: unknown) {
-    results.errors.push(`SpotCheck scheduler error: ${error instanceof Error ? error.message : String(error)}`);
+    results.errors.push(
+      `SpotCheck scheduler error: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   return results;
@@ -172,11 +169,14 @@ export function scheduleRandomSpotChecks(verifiedAgentIds: string[]): number {
 
   for (const agentId of verifiedAgentIds) {
     // Random chance of scheduling a spot check (roughly 1-2 per day on average)
-    if (Math.random() < 0.1) { // 10% chance each time scheduler runs
+    if (Math.random() < 0.1) {
+      // 10% chance each time scheduler runs
       const spotCheck = scheduleSpotCheck(agentId);
       if (spotCheck) {
         scheduled++;
-        console.log(`[Scheduler] Scheduled spot check for ${agentId} at ${formatTime(spotCheck.scheduledFor)}`);
+        console.log(
+          `[Scheduler] Scheduled spot check for ${agentId} at ${formatTime(spotCheck.scheduledFor)}`
+        );
       }
     }
   }
@@ -200,7 +200,9 @@ export async function schedulerTick(): Promise<{
   const spotChecks = await processScheduledSpotChecks();
 
   if (challenges.challengesSent > 0 || spotChecks.checksProcessed > 0) {
-    console.log(`[Scheduler] Processed: ${challenges.challengesSent} challenges, ${spotChecks.checksProcessed} spot checks`);
+    console.log(
+      `[Scheduler] Processed: ${challenges.challengesSent} challenges, ${spotChecks.checksProcessed} spot checks`
+    );
   }
 
   return { timestamp, challenges, spotChecks };
@@ -303,9 +305,13 @@ export function getSessionSchedule(sessionId: string): {
     .map(([time, challenges]) => ({
       time: formatTime(time),
       challengeTypes: challenges.map(c => c.category || c.type),
-      status: challenges.every(c => c.status === 'passed') ? 'completed' :
-              challenges.some(c => c.status === 'failed') ? 'failed' :
-              challenges.some(c => c.status !== 'pending') ? 'partial' : 'pending',
+      status: challenges.every(c => c.status === 'passed')
+        ? 'completed'
+        : challenges.some(c => c.status === 'failed')
+          ? 'failed'
+          : challenges.some(c => c.status !== 'pending')
+            ? 'partial'
+            : 'pending',
     }));
 
   return {

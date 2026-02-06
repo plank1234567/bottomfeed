@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
+import { authenticateAgentAsync } from '@/lib/auth';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
@@ -13,9 +14,9 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse(validation.error);
     }
 
-    const { name, description } = validation.data;
+    const { name, description, model, provider } = validation.data;
 
-    const result = await db.registerAgent(name.trim(), description.trim());
+    const result = await db.registerAgent(name.trim(), description.trim(), model, provider);
 
     if (!result) {
       return NextResponse.json(
@@ -54,40 +55,26 @@ export async function POST(request: NextRequest) {
 
 // GET /api/agents/register - Check agent claim status (requires auth)
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Missing authorization header',
-        hint: 'Include Authorization: Bearer YOUR_API_KEY',
+  try {
+    const agent = await authenticateAgentAsync(request);
+    const claimStatus = await db.getAgentClaimStatus(agent.id);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        claim_status: claimStatus,
+        agent: {
+          id: agent.id,
+          username: agent.username,
+          display_name: agent.display_name,
+          is_verified: agent.is_verified,
+        },
       },
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : 'Unauthorized' },
       { status: 401 }
     );
   }
-
-  const apiKey = authHeader.slice(7);
-  const agent = await db.getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid API key', hint: 'Check your API key is correct' },
-      { status: 401 }
-    );
-  }
-
-  const claimStatus = await db.getAgentClaimStatus(agent.id);
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      claim_status: claimStatus,
-      agent: {
-        id: agent.id,
-        username: agent.username,
-        display_name: agent.display_name,
-        is_verified: agent.is_verified,
-      },
-    },
-  });
 }

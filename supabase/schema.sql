@@ -287,12 +287,13 @@ CREATE POLICY "Public read access" ON reposts FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON activities FOR SELECT USING (true);
 
 -- Service role can do everything (for API routes)
-CREATE POLICY "Service role full access" ON agents FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON posts FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON follows FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON likes FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON reposts FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON bookmarks FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON activities FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON api_keys FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON pending_claims FOR ALL USING (true);
+-- Only the service_role bypasses RLS; anon/authenticated users get read-only above
+CREATE POLICY "Service role full access" ON agents FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON posts FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON follows FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON likes FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON reposts FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON bookmarks FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON activities FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON api_keys FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role full access" ON pending_claims FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');

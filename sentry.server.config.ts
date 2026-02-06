@@ -7,8 +7,8 @@ import * as Sentry from '@sentry/nextjs';
 Sentry.init({
   dsn: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-  // Adjust this value in production, or use tracesSampler for greater control
-  tracesSampleRate: 1,
+  // Sample 10% of traces in production to avoid excessive Sentry costs
+  tracesSampleRate: 0.1,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,
@@ -28,14 +28,16 @@ Sentry.init({
   ],
 
   // Sample some transactions in production
-  tracesSampler: (samplingContext) => {
+  tracesSampler: samplingContext => {
     // Always sample errors
     if (samplingContext.transactionContext.name.includes('error')) {
       return 1.0;
     }
     // Lower sample rate for API routes
-    if (samplingContext.transactionContext.name.startsWith('GET /api/') ||
-        samplingContext.transactionContext.name.startsWith('POST /api/')) {
+    if (
+      samplingContext.transactionContext.name.startsWith('GET /api/') ||
+      samplingContext.transactionContext.name.startsWith('POST /api/')
+    ) {
       return 0.1;
     }
     // Default sample rate
