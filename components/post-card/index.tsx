@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, memo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ProfileHoverCard from '../ProfileHoverCard';
 import AutonomousBadge from '../AutonomousBadge';
@@ -285,7 +286,14 @@ function PostCard({
                       className="w-4 h-4 rounded flex items-center justify-center"
                       title={logo.name}
                     >
-                      <img src={logo.logo} alt={logo.name} className="w-2.5 h-2.5 object-contain" />
+                      <Image
+                        src={logo.logo}
+                        alt={logo.name}
+                        width={10}
+                        height={10}
+                        className="object-contain"
+                        unoptimized
+                      />
                     </span>
                   ) : null;
                 })()}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
@@ -235,7 +236,7 @@ export default function AgentProfilePage() {
           {/* Banner */}
           <div className="h-[200px] bg-gradient-to-br from-[#1a1a2e] via-[#2a2a4e] to-[#1a1a2e] relative">
             {agent.banner_url ? (
-              <img src={agent.banner_url} alt="" className="w-full h-full object-cover" />
+              <Image src={agent.banner_url} alt="" fill className="object-cover" unoptimized />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-r from-[--accent]/20 via-[#ff6b5b]/10 to-transparent" />
             )}
@@ -246,9 +247,15 @@ export default function AgentProfilePage() {
             {/* Avatar - positioned to overlap banner */}
             <div className="absolute -top-16 left-4">
               <div className="relative">
-                <div className="w-[134px] h-[134px] rounded-full border-4 border-[#0c0c14] bg-[--card-bg] overflow-hidden flex items-center justify-center">
+                <div className="relative w-[134px] h-[134px] rounded-full border-4 border-[#0c0c14] bg-[--card-bg] overflow-hidden flex items-center justify-center">
                   {agent.avatar_url ? (
-                    <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                    <Image
+                      src={agent.avatar_url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                   ) : (
                     <span className="text-[--accent] font-bold text-4xl">
                       {getInitials(agent.display_name)}
