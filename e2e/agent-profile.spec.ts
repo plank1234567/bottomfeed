@@ -6,10 +6,12 @@ test.describe('Agent Profile Page', () => {
     await page.goto('/agents');
 
     // Wait for agents to load
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
 
     // Try to find an agent link
     const agentLink = page.locator('a[href^="/agent/"]').first();
@@ -25,7 +27,9 @@ test.describe('Agent Profile Page', () => {
 
       // Should have agent display name in header or profile section
       // The profile page shows agent's display name
-      const displayNameElement = page.locator('h1, [class*="font-bold"][class*="text-white"]').first();
+      const displayNameElement = page
+        .locator('h1, [class*="font-bold"][class*="text-white"]')
+        .first();
       await expect(displayNameElement).toBeVisible({ timeout: 10000 });
     } else {
       test.skip();
@@ -36,10 +40,12 @@ test.describe('Agent Profile Page', () => {
     await page.goto('/agent/nonexistent_agent_username_12345');
 
     // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
 
     // Should show error message
     await expect(page.getByText(/doesn't exist|not found/i)).toBeVisible({ timeout: 5000 });
@@ -48,10 +54,12 @@ test.describe('Agent Profile Page', () => {
   test('profile tabs are visible and clickable', async ({ page }) => {
     // Navigate to agents list and get first agent
     await page.goto('/agents');
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
     const hasAgents = await agentLink.isVisible().catch(() => false);
@@ -61,10 +69,12 @@ test.describe('Agent Profile Page', () => {
       await page.goto(href!);
 
       // Wait for profile to load
-      await page.waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 10000,
-      }).catch(() => {});
+      await page
+        .waitForSelector('[class*="animate-spin"]', {
+          state: 'hidden',
+          timeout: 10000,
+        })
+        .catch(() => {});
 
       // Check for tabs (use exact match to avoid matching other buttons)
       const postsTab = page.getByRole('button', { name: 'Posts', exact: true });
@@ -92,10 +102,12 @@ test.describe('Agent Profile Page', () => {
 
   test('follow button is visible and toggles state', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
     const hasAgents = await agentLink.isVisible().catch(() => false);
@@ -105,10 +117,12 @@ test.describe('Agent Profile Page', () => {
       await page.goto(href!);
 
       // Wait for profile to load
-      await page.waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 10000,
-      }).catch(() => {});
+      await page
+        .waitForSelector('[class*="animate-spin"]', {
+          state: 'hidden',
+          timeout: 10000,
+        })
+        .catch(() => {});
 
       // Find follow button
       const followButton = page.getByRole('button', { name: /Follow/i }).first();
@@ -130,10 +144,12 @@ test.describe('Agent Profile Page', () => {
 
   test('details panel toggles visibility', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
     const hasAgents = await agentLink.isVisible().catch(() => false);
@@ -143,10 +159,12 @@ test.describe('Agent Profile Page', () => {
       await page.goto(href!);
 
       // Wait for profile to load
-      await page.waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 10000,
-      }).catch(() => {});
+      await page
+        .waitForSelector('[class*="animate-spin"]', {
+          state: 'hidden',
+          timeout: 10000,
+        })
+        .catch(() => {});
 
       // Find Details button (exact match)
       const detailsButton = page.getByRole('button', { name: 'Details', exact: true });
@@ -164,6 +182,74 @@ test.describe('Agent Profile Page', () => {
 
       // Button should show "Details" again
       await expect(page.getByRole('button', { name: 'Details', exact: true })).toBeVisible();
+    } else {
+      test.skip();
+    }
+  });
+
+  test('profile shows username and bio area', async ({ page }) => {
+    await page.goto('/agents');
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
+
+    const agentLink = page.locator('a[href^="/agent/"]').first();
+    const hasAgents = await agentLink.isVisible().catch(() => false);
+
+    if (hasAgents) {
+      const href = await agentLink.getAttribute('href');
+      await page.goto(href!);
+
+      // Wait for profile to load
+      await page
+        .waitForSelector('[class*="animate-spin"]', {
+          state: 'hidden',
+          timeout: 10000,
+        })
+        .catch(() => {});
+
+      // Username should be visible (prefixed with @)
+      const usernameElement = page.locator('text=/@\\w+/').first();
+      await expect(usernameElement).toBeVisible({ timeout: 10000 });
+
+      // Display name (h1) should be visible
+      const displayName = page.locator('main h1').first();
+      await expect(displayName).toBeVisible();
+
+      // Following/Followers stats should be visible
+      await expect(page.getByText('Following')).toBeVisible();
+      await expect(page.getByText('Followers')).toBeVisible();
+    } else {
+      test.skip();
+    }
+  });
+
+  test('back navigation works from profile page', async ({ page }) => {
+    // Navigate to agents list first
+    await page.goto('/agents');
+    await page
+      .waitForSelector('[class*="animate-spin"]', {
+        state: 'hidden',
+        timeout: 10000,
+      })
+      .catch(() => {});
+
+    const agentLink = page.locator('a[href^="/agent/"]').first();
+    const hasAgents = await agentLink.isVisible().catch(() => false);
+
+    if (hasAgents) {
+      // Click on an agent to navigate to their profile
+      await agentLink.click();
+
+      // Wait for profile page to load
+      await expect(page).toHaveURL(/\/agent\//);
+
+      // Use browser back to return to agents list
+      await page.goBack();
+      await expect(page).toHaveURL('/agents');
     } else {
       test.skip();
     }
