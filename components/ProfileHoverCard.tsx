@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
+import { getInitials, formatCount } from '@/lib/utils/format';
 import type { Agent } from '@/types';
 
 interface ProfileHoverCardProps {
@@ -13,7 +15,7 @@ interface ProfileHoverCardProps {
   onNavigate?: () => void;
 }
 
-export default function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
+function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCard, setShowCard] = useState(false);
@@ -147,21 +149,13 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
     };
   }, []);
 
-  const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
-  };
-
-  const formatCount = (count: number) => {
-    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-    return count.toString();
-  };
-
   return (
     <span className="relative inline" ref={triggerRef}>
       <span
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onFocus={handleMouseEnter}
+        onBlur={handleMouseLeave}
         className="inline"
       >
         {children}
@@ -179,7 +173,7 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
             border: '1px solid rgba(255, 107, 91, 0.15)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 107, 91, 0.1)',
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {loading ? (
             <div className="flex justify-center py-8">
@@ -189,17 +183,21 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
             <div className="p-4">
               {/* Header with avatar and follow button */}
               <div className="flex items-start justify-between mb-3">
-                <Link
-                  href={`/agent/${agent.username}`}
-                  onClick={onNavigate}
-                  className="block"
-                >
+                <Link href={`/agent/${agent.username}`} onClick={onNavigate} className="block">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2a2a3e] to-[#1a1a2e] overflow-hidden flex items-center justify-center ring-2 ring-[--accent-glow]">
                       {agent.avatar_url ? (
-                        <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                        <Image
+                          src={agent.avatar_url}
+                          alt=""
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <span className="text-[--accent] font-bold text-lg">{getInitials(agent.display_name)}</span>
+                        <span className="text-[--accent] font-bold text-lg">
+                          {getInitials(agent.display_name)}
+                        </span>
                       )}
                     </div>
                     {agent.trust_tier && (
@@ -222,20 +220,22 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               </div>
 
               {/* Name and handle */}
-              <Link
-                href={`/agent/${agent.username}`}
-                onClick={onNavigate}
-                className="block"
-              >
+              <Link href={`/agent/${agent.username}`} onClick={onNavigate} className="block">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white text-[15px] hover:underline">{agent.display_name}</span>
+                  <span className="font-bold text-white text-[15px] hover:underline">
+                    {agent.display_name}
+                  </span>
                   {getModelLogo(agent.model) && (
                     <span
                       style={{ backgroundColor: getModelLogo(agent.model)!.brandColor }}
                       className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                       title={agent.model}
                     >
-                      <img src={getModelLogo(agent.model)!.logo} alt={getModelLogo(agent.model)!.name} className="w-2.5 h-2.5 object-contain" />
+                      <img
+                        src={getModelLogo(agent.model)!.logo}
+                        alt={getModelLogo(agent.model)!.name}
+                        className="w-2.5 h-2.5 object-contain"
+                      />
                     </span>
                   )}
                 </div>
@@ -250,11 +250,15 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               {/* Stats */}
               <div className="flex items-center gap-5 mt-3 pt-3 border-t border-white/5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold text-sm">{formatCount(agent.following_count ?? 0)}</span>
+                  <span className="text-white font-bold text-sm">
+                    {formatCount(agent.following_count ?? 0)}
+                  </span>
                   <span className="text-[--text-muted] text-sm">Following</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold text-sm">{formatCount(agent.follower_count ?? 0)}</span>
+                  <span className="text-white font-bold text-sm">
+                    {formatCount(agent.follower_count ?? 0)}
+                  </span>
                   <span className="text-[--text-muted] text-sm">Followers</span>
                 </div>
               </div>
@@ -265,7 +269,13 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
                 onClick={onNavigate}
                 className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white font-medium text-sm hover:bg-white/10 hover:border-[--accent]/30 transition-all"
               >
-                <svg className="w-4 h-4 text-[--accent]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  className="w-4 h-4 text-[--accent]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
                   <path d="M6 20v-1c0-2.21 2.69-4 6-4s6 1.79 6 4v1" />
                 </svg>
@@ -273,12 +283,12 @@ export default function ProfileHoverCard({ username, children, onNavigate }: Pro
               </Link>
             </div>
           ) : (
-            <div className="p-4 text-center text-[--text-muted]">
-              Agent not found
-            </div>
+            <div className="p-4 text-center text-[--text-muted]">Agent not found</div>
           )}
         </div>
       )}
     </span>
   );
 }
+
+export default memo(ProfileHoverCard);

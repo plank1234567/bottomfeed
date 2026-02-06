@@ -1,0 +1,153 @@
+.stars,
+.stars2,
+.stars3 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.stars {
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Ccircle fill='%23fff' cx='50' cy='50' r='1'/%3E%3Ccircle fill='%23fff' cx='150' cy='120' r='0.8'/%3E%3Ccircle fill='%23fff' cx='300' cy='80' r='1.2'/%3E%3Ccircle fill='%23fff' cx='450' cy='200' r='0.6'/%3E%3Ccircle fill='%23fff' cx='600' cy='50' r='1'/%3E%3Ccircle fill='%23fff' cx='750' cy='180' r='0.9'/%3E%3Ccircle fill='%23fff' cx='900' cy='100' r='1.1'/%3E%3Ccircle fill='%23fff' cx='100' cy='300' r='0.7'/%3E%3Ccircle fill='%23fff' cx='250' cy='350' r='1'/%3E%3Ccircle fill='%23fff' cx='400' cy='280' r='0.8'/%3E%3Ccircle fill='%23fff' cx='550' cy='400' r='1.2'/%3E%3Ccircle fill='%23fff' cx='700' cy='320' r='0.6'/%3E%3Ccircle fill='%23fff' cx='850' cy='380' r='1'/%3E%3Ccircle fill='%23fff' cx='80' cy='500' r='0.9'/%3E%3Ccircle fill='%23fff' cx='200' cy='550' r='1.1'/%3E%3Ccircle fill='%23fff' cx='350' cy='480' r='0.7'/%3E%3Ccircle fill='%23fff' cx='500' cy='600' r='1'/%3E%3Ccircle fill='%23fff' cx='650' cy='520' r='0.8'/%3E%3Ccircle fill='%23fff' cx='800' cy='580' r='1.2'/%3E%3Ccircle fill='%23fff' cx='950' cy='500' r='0.6'/%3E%3Ccircle fill='%23fff' cx='120' cy='700' r='1'/%3E%3Ccircle fill='%23fff' cx='280' cy='750' r='0.9'/%3E%3Ccircle fill='%23fff' cx='420' cy='680' r='1.1'/%3E%3Ccircle fill='%23fff' cx='580' cy='800' r='0.7'/%3E%3Ccircle fill='%23fff' cx='720' cy='720' r='1'/%3E%3Ccircle fill='%23fff' cx='880' cy='780' r='0.8'/%3E%3Ccircle fill='%23fff' cx='60' cy='900' r='1.2'/%3E%3Ccircle fill='%23fff' cx='220' cy='950' r='0.6'/%3E%3Ccircle fill='%23fff' cx='380' cy='880' r='1'/%3E%3Ccircle fill='%23fff' cx='540' cy='920' r='0.9'/%3E%3Ccircle fill='%23fff' cx='700' cy='860' r='1.1'/%3E%3Ccircle fill='%23fff' cx='860' cy='940' r='0.7'/%3E%3C/svg%3E")
+    repeat;
+  opacity: 0.4;
+  animation:
+    starsDrift1 60s linear infinite,
+    twinkle 4s ease-in-out infinite;
+}
+
+.stars2 {
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Ccircle fill='%23ff6b5b' cx='100' cy='100' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='300' cy='200' r='0.8'/%3E%3Ccircle fill='%23ff6b5b' cx='500' cy='100' r='1.2'/%3E%3Ccircle fill='%23ff6b5b' cx='700' cy='300' r='0.6'/%3E%3Ccircle fill='%23ff6b5b' cx='200' cy='400' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='400' cy='500' r='0.9'/%3E%3Ccircle fill='%23ff6b5b' cx='600' cy='400' r='1.1'/%3E%3Ccircle fill='%23ff6b5b' cx='100' cy='600' r='0.7'/%3E%3Ccircle fill='%23ff6b5b' cx='300' cy='700' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='500' cy='600' r='0.8'/%3E%3Ccircle fill='%23ff6b5b' cx='700' cy='700' r='1.2'/%3E%3C/svg%3E")
+    repeat;
+  opacity: 0.2;
+  animation:
+    starsDrift2 80s linear infinite,
+    twinkle 6s ease-in-out infinite reverse;
+}
+
+.stars3 {
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Ccircle fill='%23fff' cx='50' cy='50' r='1.5'/%3E%3Ccircle fill='%23fff' cx='200' cy='150' r='1.3'/%3E%3Ccircle fill='%23fff' cx='350' cy='50' r='1.8'/%3E%3Ccircle fill='%23fff' cx='500' cy='200' r='1.1'/%3E%3Ccircle fill='%23fff' cx='100' cy='300' r='1.5'/%3E%3Ccircle fill='%23fff' cx='250' cy='400' r='1.4'/%3E%3Ccircle fill='%23fff' cx='400' cy='300' r='1.6'/%3E%3Ccircle fill='%23fff' cx='550' cy='450' r='1.2'/%3E%3Ccircle fill='%23fff' cx='150' cy='550' r='1.5'/%3E%3Ccircle fill='%23fff' cx='300' cy='500' r='1.3'/%3E%3Ccircle fill='%23fff' cx='450' cy='550' r='1.7'/%3E%3C/svg%3E")
+    repeat;
+  opacity: 0.25;
+  animation:
+    starsDrift3 100s linear infinite,
+    twinkle 8s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes starsDrift1 {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1000px 500px;
+  }
+}
+
+@keyframes starsDrift2 {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -800px 400px;
+  }
+}
+
+@keyframes starsDrift3 {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 600px -300px;
+  }
+}
+
+@keyframes titleGlowWave {
+  0%,
+  22%,
+  100% {
+    color: #ff6b5b;
+    text-shadow:
+      0 0 6px rgba(255, 107, 91, 0.25),
+      0 0 12px rgba(255, 107, 91, 0.1);
+  }
+  5%,
+  11% {
+    color: #ff9a90;
+    text-shadow:
+      0 0 12px rgba(255, 107, 91, 0.6),
+      0 0 25px rgba(255, 107, 91, 0.35),
+      0 0 40px rgba(255, 138, 125, 0.2);
+  }
+  17% {
+    color: #ff8078;
+    text-shadow:
+      0 0 8px rgba(255, 107, 91, 0.4),
+      0 0 16px rgba(255, 107, 91, 0.2);
+  }
+}
+
+.titleGlowContainer {
+  display: inline-flex;
+}
+
+.titleGlowChar {
+  animation: titleGlowWave 16s ease-in-out infinite backwards;
+  display: inline-block;
+  color: #ff6b5b;
+  text-shadow:
+    0 0 6px rgba(255, 107, 91, 0.25),
+    0 0 12px rgba(255, 107, 91, 0.1);
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animateScroll {
+  animation: scroll 10s linear infinite;
+  will-change: transform;
+}
+
+.animateScroll:has(.postCard:hover) {
+  animation-play-state: paused;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  50% {
+    transform: scale(1.02) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animateBounceIn {
+  animation: bounceIn 0.4s ease-out forwards;
+}

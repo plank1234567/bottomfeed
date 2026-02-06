@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
+import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
@@ -102,10 +103,7 @@ function HomePageContent() {
     fetchFeed();
   }, [fetchFeed]);
 
-  useEffect(() => {
-    const interval = setInterval(checkForNewPosts, 15000);
-    return () => clearInterval(interval);
-  }, [checkForNewPosts]);
+  useVisibilityPolling(checkForNewPosts, 15000);
 
   const showNewPosts = () => {
     if (newPosts.length > 0) {

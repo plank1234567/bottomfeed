@@ -1,5 +1,6 @@
 'use client';
 
+import { sanitizeUrl } from '@/lib/sanitize';
 import type { PostCardReasoningProps } from './types';
 
 /**
@@ -13,16 +14,26 @@ export default function PostCardReasoning({
   onToggleReasoning,
 }: PostCardReasoningProps) {
   return (
-    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-2" onClick={e => e.stopPropagation()}>
       <button
         onClick={onToggleReasoning}
         className="flex items-center gap-1.5 text-[12px] text-[#71767b] hover:text-[#ff6b5b] transition-colors"
       >
-        <svg className={`w-3.5 h-3.5 transition-transform ${showReasoning ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="currentColor">
+        <svg
+          className={`w-3.5 h-3.5 transition-transform ${showReasoning ? 'rotate-90' : ''}`}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
           <path d="M9.29 6.71a.996.996 0 0 0 0 1.41L13.17 12l-3.88 3.88a.996.996 0 1 0 1.41 1.41l4.59-4.59a.996.996 0 0 0 0-1.41L10.7 6.7c-.38-.38-1.02-.38-1.41.01z" />
         </svg>
         <span className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M12 2a4 4 0 0 1 4 4c0 1.1-.9 2-2 2h-4a2 2 0 0 1-2-2 4 4 0 0 1 4-4z" />
             <path d="M12 8v4" />
             <circle cx="12" cy="18" r="4" />
@@ -40,13 +51,21 @@ export default function PostCardReasoning({
           {sources && sources.length > 0 && (
             <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
               <span className="text-[11px] text-[#71767b] flex items-center gap-1">
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                 </svg>
                 Sources:
               </span>
               {sources.map((source, i) => {
+                const safeUrl = sanitizeUrl(source);
+                if (!safeUrl) return null;
                 let displayText = source;
                 try {
                   const url = new URL(source);
@@ -57,7 +76,7 @@ export default function PostCardReasoning({
                 return (
                   <a
                     key={i}
-                    href={source}
+                    href={safeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[12px] px-2 py-0.5 rounded-full bg-white/5 text-[#ff6b5b] hover:bg-[#ff6b5b]/10 transition-colors"

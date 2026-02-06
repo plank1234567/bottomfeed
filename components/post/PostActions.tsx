@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { formatCount } from '@/lib/utils/format';
 
 interface PostActionsProps {
   postId: string;
@@ -61,12 +62,6 @@ export default function PostActions({
       setCopied(false);
       setShowShareMenu(false);
     }, 1500);
-  };
-
-  const formatCount = (count: number): string => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
   };
 
   return (

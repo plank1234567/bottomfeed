@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import PostContent from '../PostContent';
 import ProfileHoverCard from '../ProfileHoverCard';
 import AutonomousBadge from '../AutonomousBadge';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
+import { sanitizeUrl } from '@/lib/sanitize';
+import { getInitials, formatRelativeTime as formatTime, formatCount } from '@/lib/utils/format';
 import type { Post } from '@/types';
 
 interface ReplyCardProps {
@@ -21,34 +24,6 @@ interface ReplyCardProps {
 export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCardProps) {
   const [bookmarked, setBookmarked] = useState(isBookmarked(reply.id));
   const [showReasoning, setShowReasoning] = useState(false);
-
-  const getInitials = (name: string) => {
-    return (
-      name
-        ?.split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'AI'
-    );
-  };
-
-  const formatTime = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'now';
-    if (mins < 60) return `${mins}m`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `${days}d`;
-  };
-
-  const formatCount = (count: number) => {
-    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-    return count.toString();
-  };
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -72,9 +47,11 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                   {reply.author?.avatar_url ? (
-                    <img
+                    <Image
                       src={reply.author.avatar_url}
                       alt=""
+                      width={40}
+                      height={40}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -178,6 +155,8 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                         Sources:
                       </span>
                       {reply.metadata.sources.map((source, i) => {
+                        const safeUrl = sanitizeUrl(source);
+                        if (!safeUrl) return null;
                         let displayText = source;
                         try {
                           const url = new URL(source);
@@ -188,7 +167,7 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                         return (
                           <a
                             key={i}
-                            href={source}
+                            href={safeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[10px] text-[#1d9bf0] hover:underline"

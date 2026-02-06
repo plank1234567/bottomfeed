@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
 import type { TrustTier } from '@/types';
@@ -64,12 +65,15 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center"
       onClick={onClose}
-      onWheel={(e) => e.stopPropagation()}
+      onWheel={e => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-label={type === 'likes' ? 'Liked by' : 'Reposted by'}
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
         className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
@@ -79,6 +83,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-white/10 transition-colors"
+            aria-label="Close"
           >
             <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
               <path d="M10.59 12L4.54 5.96l1.42-1.42L12 10.59l6.04-6.05 1.42 1.42L13.41 12l6.05 6.04-1.42 1.42L12 13.41l-6.04 6.05-1.42-1.42L10.59 12z" />
@@ -89,7 +94,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
         {/* Agents list */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {loading ? (
-            <div className="flex justify-center py-8">
+            <div className="flex justify-center py-8" role="status" aria-label="Loading">
               <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : agents.length === 0 ? (
@@ -97,7 +102,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
               <p className="text-[#71767b] text-sm">No agents yet</p>
             </div>
           ) : (
-            agents.map((agent) => {
+            agents.map(agent => {
               const agentModelLogo = getModelLogo(agent.model);
               return (
                 <Link
@@ -109,10 +114,21 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                       {agent.avatar_url ? (
-                        <img src={agent.avatar_url} alt="" className="w-full h-full object-cover" />
+                        <Image
+                          src={agent.avatar_url}
+                          alt=""
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <span className="text-[#ff6b5b] font-semibold text-xs">
-                          {agent.display_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI'}
+                          {agent.display_name
+                            ?.split(' ')
+                            .map(n => n[0])
+                            .join('')
+                            .toUpperCase()
+                            .slice(0, 2) || 'AI'}
                         </span>
                       )}
                     </div>
@@ -131,10 +147,14 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                           className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                           title={agentModelLogo.name}
                         >
-                          <img src={agentModelLogo.logo} alt={agentModelLogo.name} className="w-2.5 h-2.5 object-contain" />
+                          <img
+                            src={agentModelLogo.logo}
+                            alt={agentModelLogo.name}
+                            className="w-2.5 h-2.5 object-contain"
+                          />
                         </span>
                       )}
-                                          </div>
+                    </div>
                     <span className="text-[#71767b] text-sm">@{agent.username}</span>
                   </div>
                 </Link>

@@ -22,7 +22,12 @@ interface PostContentProps {
   showHashtagsInline?: boolean; // If true, shows hashtags inline (default: false - shows at bottom)
 }
 
-export default function PostContent({ content, onNavigate, highlightQuery, showHashtagsInline = false }: PostContentProps) {
+export default function PostContent({
+  content,
+  onNavigate,
+  highlightQuery,
+  showHashtagsInline = false,
+}: PostContentProps) {
   // Extract hashtags from content
   const hashtagMatches = content.match(/#\w+/g) || [];
   const hashtags = [...new Set(hashtagMatches)]; // Remove duplicates
@@ -36,13 +41,20 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
     }
 
     // Split the query into individual words
-    const queryWords = highlightQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+    const queryWords = highlightQuery
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter(w => w.length > 0);
     if (queryWords.length === 0) {
       return [text];
     }
 
     // Create regex pattern that matches any of the query words (case insensitive)
-    const pattern = new RegExp(`(${queryWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+    const pattern = new RegExp(
+      `(${queryWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+      'gi'
+    );
 
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
@@ -95,10 +107,14 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
         // It's a @mention
         const username = match[2] ?? '';
         parts.push(
-          <ProfileHoverCard key={`${keyPrefix}-mention-${match.index}`} username={username} onNavigate={onNavigate}>
+          <ProfileHoverCard
+            key={`${keyPrefix}-mention-${match.index}`}
+            username={username}
+            onNavigate={onNavigate}
+          >
             <Link
               href={`/agent/${username}`}
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 onNavigate?.();
               }}
@@ -115,7 +131,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
           <Link
             key={`${keyPrefix}-hashtag-${match.index}`}
             href={`/search?q=${encodeURIComponent('#' + hashtag)}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
             className="text-[#ff6b5b] hover:underline"
           >
             #{hashtag}
@@ -147,8 +163,20 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
     return parts;
   };
 
+  // Defense-in-depth: strip dangerous HTML tags from raw content
+  const stripDangerousTags = (text: string): string => {
+    return text
+      .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s>][\s\S]*?<\/style>/gi, '')
+      .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, '')
+      .replace(/<script[\s>][\s\S]*?$/gi, '')
+      .replace(/<style[\s>][\s\S]*?$/gi, '')
+      .replace(/<iframe[\s>][\s\S]*?$/gi, '');
+  };
+
   // Parse content with code blocks
   const parseContent = (text: string) => {
+    text = stripDangerousTags(text);
     const parts: (string | JSX.Element)[] = [];
 
     // Match code blocks: ```language\ncode\n``` or ```\ncode\n```
@@ -167,9 +195,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
       // Add the code block
       const language = match[1] || 'text';
       const code = match[2] ?? '';
-      parts.push(
-        <CodeBlock key={`code-${blockCount}`} code={code} language={language} />
-      );
+      parts.push(<CodeBlock key={`code-${blockCount}`} code={code} language={language} />);
 
       lastIndex = match.index + match[0].length;
       blockCount++;
@@ -199,7 +225,7 @@ export default function PostContent({ content, onNavigate, highlightQuery, showH
             <Link
               key={`hashtag-bottom-${index}`}
               href={`/search?q=${encodeURIComponent(tag)}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
               className="text-[11px] text-[#ff6b5b]/50 hover:text-[#ff6b5b]/80 transition-colors"
             >
               {tag}

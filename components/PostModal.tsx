@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import PostContent from './PostContent';
 import ProfileHoverCard from './ProfileHoverCard';
 import AutonomousBadge from './AutonomousBadge';
@@ -9,6 +10,7 @@ import { PostModalHeader, ReplyCard } from './post-modal';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatFullDate, formatCount } from '@/lib/utils/format';
+import { sanitizeUrl } from '@/lib/sanitize';
 import type { Post, EngagementAgent } from '@/types';
 
 interface PostModalProps {
@@ -17,6 +19,7 @@ interface PostModalProps {
 }
 
 export default function PostModal({ postId, onClose }: PostModalProps) {
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const [post, setPost] = useState<Post | null>(null);
   const [replies, setReplies] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,47 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
       });
   }, [postId]);
 
+  const isOpen = true; // Component only renders when open
+
+  // Focus trap for modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const modal = document.getElementById('post-modal-dialog');
+    if (!modal) return;
+
+    const focusableSelectors =
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    const focusableElements = modal.querySelectorAll(focusableSelectors);
+    const firstFocusable = focusableElements[0] as HTMLElement | undefined;
+    const lastFocusable = focusableElements[focusableElements.length - 1] as
+      | HTMLElement
+      | undefined;
+
+    // Save previously focused element before moving focus into modal
+    previouslyFocusedRef.current = document.activeElement as HTMLElement;
+
+    // Focus first element on open
+    firstFocusable?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          e.preventDefault();
+          lastFocusable?.focus();
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          e.preventDefault();
+          firstFocusable?.focus();
+        }
+      }
+    };
+
+    modal.addEventListener('keydown', handleKeyDown);
+    return () => modal.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -66,6 +110,11 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
     return () => {
       document.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = '';
+      // Restore focus to the element that was focused before the modal opened
+      if (previouslyFocusedRef.current) {
+        previouslyFocusedRef.current.focus();
+        previouslyFocusedRef.current = null;
+      }
     };
   }, [onClose, engagementModal]);
 
@@ -123,12 +172,16 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="post-modal-title"
+      aria-describedby="post-modal-description"
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-[#5b708366]" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-[600px] max-h-[90vh] mt-[5vh] bg-[--card-bg-dark] rounded-2xl overflow-hidden flex flex-col border border-white/10">
+      <div
+        id="post-modal-dialog"
+        className="relative w-full max-w-[600px] max-h-[90vh] mt-[5vh] bg-[--card-bg-dark] rounded-2xl overflow-hidden flex flex-col border border-white/10"
+      >
         {/* Header */}
         <PostModalHeader postType={post?.post_type} onClose={onClose} />
         <h2 id="post-modal-title" className="sr-only">
@@ -181,9 +234,11 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center">
                           {post.author?.avatar_url ? (
-                            <img
+                            <Image
                               src={post.author.avatar_url}
                               alt={`${post.author?.display_name}'s avatar`}
+                              width={40}
+                              height={40}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -242,7 +297,10 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                 </div>
 
                 {/* Post content */}
-                <div className="text-[--text-primary] text-[17px] leading-relaxed mt-4 whitespace-pre-wrap">
+                <div
+                  id="post-modal-description"
+                  className="text-[--text-primary] text-[17px] leading-relaxed mt-4 whitespace-pre-wrap"
+                >
                   <PostContent content={post.content} onNavigate={onClose} />
                 </div>
 
@@ -294,6 +352,8 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                               Sources:
                             </span>
                             {post.metadata.sources.map((source, i) => {
+                              const safeUrl = sanitizeUrl(source);
+                              if (!safeUrl) return null;
                               let displayText = source;
                               try {
                                 const url = new URL(source);
@@ -304,7 +364,7 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                               return (
                                 <a
                                   key={i}
-                                  href={source}
+                                  href={safeUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[11px] text-[--info] hover:underline"
@@ -334,10 +394,12 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                           post.media_urls!.length === 3 && index === 0 ? 'row-span-2' : ''
                         } ${post.media_urls!.length === 1 ? 'aspect-video' : 'aspect-square'}`}
                       >
-                        <img
+                        <Image
                           src={url}
                           alt={`Post image ${index + 1} of ${post.media_urls!.length}`}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 600px) 100vw, 50vw"
                         />
                       </div>
                     ))}
@@ -584,9 +646,11 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center">
                           {agent.avatar_url ? (
-                            <img
+                            <Image
                               src={agent.avatar_url}
                               alt={`${agent.display_name}'s avatar`}
+                              width={40}
+                              height={40}
                               className="w-full h-full object-cover"
                             />
                           ) : (

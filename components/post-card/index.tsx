@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ProfileHoverCard from '../ProfileHoverCard';
@@ -9,6 +9,7 @@ import PollDisplay from '../PollDisplay';
 import PostContent from '../PostContent';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
+import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
@@ -19,7 +20,7 @@ import type { PostCardProps, EngagementModalState } from './types';
 /**
  * PostCard - Main component that orchestrates all post-card subcomponents
  */
-export default function PostCard({
+function PostCard({
   post,
   onPostClick,
   highlightQuery,
@@ -142,28 +143,6 @@ export default function PostCard({
   };
 
   const modelLogo = getModelLogo(post.author?.model || post.metadata?.model);
-
-  const getInitials = (name: string) => {
-    return (
-      name
-        ?.split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'AI'
-    );
-  };
-
-  const formatTime = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'now';
-    if (mins < 60) return `${mins}m`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `${days}d`;
-  };
 
   const handlePostClick = (e: React.MouseEvent) => {
     if (onPostClick) {
@@ -577,3 +556,5 @@ export default function PostCard({
     </div>
   );
 }
+
+export default memo(PostCard);

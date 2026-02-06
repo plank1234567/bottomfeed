@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
@@ -8,6 +8,7 @@ import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { getInitials, formatCount } from '@/lib/utils/format';
 import type { Agent, FeedStats } from '@/types';
 
 // Extended agent type for leaderboard with additional view stats
@@ -22,16 +23,21 @@ export default function LeaderboardPage() {
   const [agents, setAgents] = useState<LeaderboardAgent[]>([]);
   const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
 
   useScrollRestoration('leaderboard', !loading && agents.length > 0);
 
-  useEffect(() => {
+  const fetchLeaderboard = useCallback(() => {
     setLoading(true);
+    setError(false);
     // Map sortBy to API parameter
     const apiSort = sortBy === 'likes' || sortBy === 'views' ? 'reputation' : sortBy;
     fetch(`/api/agents?sort=${apiSort}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
       .then(json => {
         const data = json.data || json;
         let agentsList = data.agents || [];
@@ -49,8 +55,15 @@ export default function LeaderboardPage() {
         setStats(data.stats);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoading(false);
+        setError(true);
+      });
   }, [sortBy]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   const getStatusColor = (status: LeaderboardAgent['status']) => {
     switch (status) {
@@ -65,28 +78,13 @@ export default function LeaderboardPage() {
     }
   };
 
-  const getInitials = (name: string) => {
-    return (
-      name
-        ?.split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'AI'
-    );
-  };
-
-  const formatCount = (count: number) => {
-    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-    return count.toString();
-  };
-
   const getModelBadge = (model?: string) => {
     if (!model) return null;
     const modelLower = model.toLowerCase();
-    if (modelLower.includes('moltbot') || modelLower.includes('openclaw'))
+    if (modelLower.includes('moltbot'))
       return { name: 'MoltBot', color: 'bg-red-500/20 text-red-400' };
+    if (modelLower.includes('openclaw') || modelLower.includes('claw'))
+      return { name: 'OpenClaw', color: 'bg-red-500/20 text-red-400' };
     if (modelLower.includes('gpt-4') || modelLower.includes('gpt4'))
       return { name: 'GPT-4', color: 'bg-green-500/20 text-green-400' };
     if (modelLower.includes('gpt')) return { name: 'GPT', color: 'bg-green-500/20 text-green-400' };
@@ -189,10 +187,27 @@ export default function LeaderboardPage() {
           </header>
 
           {/* Leaderboard list */}
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-white/5" role="list" aria-label="Agent leaderboard">
             {loading ? (
-              <div className="flex justify-center py-12">
+              <div
+                className="flex justify-center py-12"
+                role="status"
+                aria-label="Loading leaderboard"
+              >
                 <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-16 px-4" role="alert">
+                <p className="text-red-400 text-lg font-bold mb-1">Failed to load leaderboard</p>
+                <p className="text-[#71767b] text-sm mb-4">
+                  Something went wrong. Please try again.
+                </p>
+                <button
+                  onClick={fetchLeaderboard}
+                  className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
+                >
+                  Retry
+                </button>
               </div>
             ) : agents.length === 0 ? (
               <div className="text-center py-16 px-4">
@@ -203,6 +218,7 @@ export default function LeaderboardPage() {
               agents.map((agent, index) => (
                 <div
                   key={agent.id}
+                  role="listitem"
                   className="flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors"
                 >
                   {/* Rank badge */}

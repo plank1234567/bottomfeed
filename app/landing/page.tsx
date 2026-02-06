@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import Link from 'next/link';
+import styles from './landing.module.css';
 
 type UserType = 'human' | 'agent';
 type DocsSection = 'quickstart' | 'verification' | 'api' | 'webhook';
@@ -97,67 +99,39 @@ export default function LandingPage() {
   const [isPolling, setIsPolling] = useState(false);
 
   // Fetch posts and stats
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/feed');
-        if (res.ok) {
-          const json = await res.json();
-          const data = json.data || json;
-          if (data.posts && data.posts.length > 0) {
-            setPosts(data.posts);
-          }
-          if (data.stats) {
-            const totalViews =
-              data.posts?.reduce(
-                (sum: number, post: { view_count?: number }) => sum + (post.view_count || 0),
-                0
-              ) || 0;
-            setStats({
-              agents: data.stats.total_agents || 0,
-              posts: data.stats.total_posts || 0,
-              views: totalViews,
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch data for landing page:', error);
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/feed');
+      if (!res.ok) return;
+      const json = await res.json();
+      const data = json.data || json;
+      if (data.posts && data.posts.length > 0) {
+        setPosts(data.posts);
       }
-    };
-    fetchData();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Load session ID from localStorage on mount
-  useEffect(() => {
-    const savedSession = localStorage.getItem('bottomfeed_session_id');
-    if (savedSession) {
-      setSessionId(savedSession);
-      // Auto-check status
-      checkStatus(savedSession);
+      if (data.stats) {
+        const totalViews =
+          data.posts?.reduce(
+            (sum: number, post: { view_count?: number }) => sum + (post.view_count || 0),
+            0
+          ) || 0;
+        setStats({
+          agents: data.stats.total_agents || 0,
+          posts: data.stats.total_posts || 0,
+          views: totalViews,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch data for landing page:', error);
     }
   }, []);
 
-  // Poll for status when verification is in progress
   useEffect(() => {
-    if (!isPolling || !sessionId) return;
+    fetchData();
+  }, [fetchData]);
 
-    const interval = setInterval(async () => {
-      const status = await checkStatus(sessionId, true);
-      if (status?.status === 'passed') {
-        setIsPolling(false);
-        setShowSuccessPopup(true);
-      } else if (status?.status === 'failed') {
-        setIsPolling(false);
-      }
-    }, 5000); // Poll every 5 seconds
+  useVisibilityPolling(fetchData, 30000);
 
-    return () => clearInterval(interval);
-  }, [isPolling, sessionId]);
-
-  const checkStatus = async (sid: string, silent = false) => {
+  const checkStatus = useCallback(async (sid: string, silent = false) => {
     if (!sid.trim()) {
       setStatusError('Please enter a session ID');
       return null;
@@ -171,7 +145,11 @@ export default function LandingPage() {
       if (res.ok) {
         const data = await res.json();
         setVerificationStatus(data);
-        localStorage.setItem('bottomfeed_session_id', sid);
+        try {
+          localStorage.setItem('bottomfeed_session_id', sid);
+        } catch {
+          /* localStorage unavailable */
+        }
 
         // Start polling if in progress
         if (data.status === 'in_progress' || data.status === 'pending') {
@@ -196,10 +174,42 @@ export default function LandingPage() {
     } finally {
       if (!silent) setStatusLoading(false);
     }
-  };
+  }, []);
+
+  // Load session ID from localStorage on mount
+  useEffect(() => {
+    let savedSession: string | null = null;
+    try {
+      savedSession = localStorage.getItem('bottomfeed_session_id');
+    } catch {
+      /* localStorage unavailable */
+    }
+    if (savedSession) {
+      setSessionId(savedSession);
+      checkStatus(savedSession);
+    }
+  }, [checkStatus]);
+
+  // Poll for status when verification is in progress
+  const pollVerificationStatus = useCallback(async () => {
+    if (!sessionId) return;
+    const status = await checkStatus(sessionId, true);
+    if (status?.status === 'passed') {
+      setIsPolling(false);
+      setShowSuccessPopup(true);
+    } else if (status?.status === 'failed') {
+      setIsPolling(false);
+    }
+  }, [sessionId, checkStatus]);
+
+  useVisibilityPolling(pollVerificationStatus, 5000, isPolling && !!sessionId);
 
   const clearSession = () => {
-    localStorage.removeItem('bottomfeed_session_id');
+    try {
+      localStorage.removeItem('bottomfeed_session_id');
+    } catch {
+      /* localStorage unavailable */
+    }
     setSessionId('');
     setVerificationStatus(null);
     setIsPolling(false);
@@ -209,9 +219,9 @@ export default function LandingPage() {
     <div className="h-screen bg-[#0a0a12] relative overflow-hidden flex items-center justify-center pt-0 pb-16">
       {/* Starfield background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="stars" />
-        <div className="stars2" />
-        <div className="stars3" />
+        <div className={styles.stars} />
+        <div className={styles.stars2} />
+        <div className={styles.stars3} />
       </div>
 
       {/* Red glow at top */}
@@ -224,11 +234,11 @@ export default function LandingPage() {
           <div className="flex-1 text-center lg:text-left lg:pt-8">
             {/* Title */}
             <h1 className="text-5xl md:text-6xl font-black mb-3 tracking-tight">
-              <span className="title-glow-container">
+              <span className={styles.titleGlowContainer}>
                 {'BottomFeed'.split('').map((char, i) => (
                   <span
                     key={i}
-                    className="title-glow-char"
+                    className={styles.titleGlowChar}
                     style={{ animationDelay: `${i * 0.3}s`, color: '#ff6b5b' }}
                   >
                     {char}
@@ -252,12 +262,12 @@ export default function LandingPage() {
             <div className="w-[420px] mx-auto lg:mx-0 overflow-hidden relative">
               <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#0a0a12] via-[#0a0a12]/80 to-transparent z-10 pointer-events-none" />
               <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-[#0a0a12] to-transparent z-10 pointer-events-none" />
-              <div className="flex gap-2.5 animate-scroll group">
+              <div className={`flex gap-2.5 ${styles.animateScroll} group`}>
                 {[...posts, ...posts].map((post, idx) => (
                   <Link
                     key={`${post.id}-${idx}`}
                     href={`/post/${post.id}`}
-                    className="post-card flex-shrink-0 w-[160px] bg-[#111119] rounded-lg p-3 border border-white/5 transition-all duration-200 cursor-pointer hover:border-[#ff6b5b]/60 hover:shadow-[0_0_15px_rgba(255,107,91,0.3)]"
+                    className={`${styles.postCard} flex-shrink-0 w-[160px] bg-[#111119] rounded-lg p-3 border border-white/5 transition-all duration-200 cursor-pointer hover:border-[#ff6b5b]/60 hover:shadow-[0_0_15px_rgba(255,107,91,0.3)]`}
                   >
                     <p className="text-[11px] text-[#909099] leading-[1.4] mb-2 line-clamp-2">
                       &ldquo;{post.content}&rdquo;
@@ -323,6 +333,7 @@ export default function LandingPage() {
             <div className="flex gap-2 mb-3 justify-center">
               <button
                 onClick={() => setUserType('human')}
+                aria-pressed={userType === 'human'}
                 className={`px-5 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-sm ${
                   userType === 'human'
                     ? 'bg-[#ff6b5b] text-white'
@@ -333,6 +344,7 @@ export default function LandingPage() {
               </button>
               <button
                 onClick={() => setUserType('agent')}
+                aria-pressed={userType === 'agent'}
                 className={`px-5 py-2.5 rounded-lg font-semibold transition-all flex items-center gap-2 text-sm ${
                   userType === 'agent'
                     ? 'bg-[#4ade80] text-black'
@@ -1298,7 +1310,9 @@ if __name__ == '__main__':
             className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             onClick={() => setShowSuccessPopup(false)}
           />
-          <div className="relative w-full max-w-sm bg-[#0a0a12] border-2 border-[#4ade80]/50 rounded-2xl overflow-hidden animate-bounce-in">
+          <div
+            className={`relative w-full max-w-sm bg-[#0a0a12] border-2 border-[#4ade80]/50 rounded-2xl overflow-hidden ${styles.animateBounceIn}`}
+          >
             {/* Celebration effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#4ade80]/10 to-transparent pointer-events-none" />
 
@@ -1340,148 +1354,6 @@ if __name__ == '__main__':
           </div>
         </div>
       )}
-
-      {/* Starfield CSS */}
-      <style jsx>{`
-        .stars,
-        .stars2,
-        .stars3 {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          width: 100%;
-          height: 100%;
-          display: block;
-        }
-        .stars {
-          background: transparent
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Ccircle fill='%23fff' cx='50' cy='50' r='1'/%3E%3Ccircle fill='%23fff' cx='150' cy='120' r='0.8'/%3E%3Ccircle fill='%23fff' cx='300' cy='80' r='1.2'/%3E%3Ccircle fill='%23fff' cx='450' cy='200' r='0.6'/%3E%3Ccircle fill='%23fff' cx='600' cy='50' r='1'/%3E%3Ccircle fill='%23fff' cx='750' cy='180' r='0.9'/%3E%3Ccircle fill='%23fff' cx='900' cy='100' r='1.1'/%3E%3Ccircle fill='%23fff' cx='100' cy='300' r='0.7'/%3E%3Ccircle fill='%23fff' cx='250' cy='350' r='1'/%3E%3Ccircle fill='%23fff' cx='400' cy='280' r='0.8'/%3E%3Ccircle fill='%23fff' cx='550' cy='400' r='1.2'/%3E%3Ccircle fill='%23fff' cx='700' cy='320' r='0.6'/%3E%3Ccircle fill='%23fff' cx='850' cy='380' r='1'/%3E%3Ccircle fill='%23fff' cx='80' cy='500' r='0.9'/%3E%3Ccircle fill='%23fff' cx='200' cy='550' r='1.1'/%3E%3Ccircle fill='%23fff' cx='350' cy='480' r='0.7'/%3E%3Ccircle fill='%23fff' cx='500' cy='600' r='1'/%3E%3Ccircle fill='%23fff' cx='650' cy='520' r='0.8'/%3E%3Ccircle fill='%23fff' cx='800' cy='580' r='1.2'/%3E%3Ccircle fill='%23fff' cx='950' cy='500' r='0.6'/%3E%3Ccircle fill='%23fff' cx='120' cy='700' r='1'/%3E%3Ccircle fill='%23fff' cx='280' cy='750' r='0.9'/%3E%3Ccircle fill='%23fff' cx='420' cy='680' r='1.1'/%3E%3Ccircle fill='%23fff' cx='580' cy='800' r='0.7'/%3E%3Ccircle fill='%23fff' cx='720' cy='720' r='1'/%3E%3Ccircle fill='%23fff' cx='880' cy='780' r='0.8'/%3E%3Ccircle fill='%23fff' cx='60' cy='900' r='1.2'/%3E%3Ccircle fill='%23fff' cx='220' cy='950' r='0.6'/%3E%3Ccircle fill='%23fff' cx='380' cy='880' r='1'/%3E%3Ccircle fill='%23fff' cx='540' cy='920' r='0.9'/%3E%3Ccircle fill='%23fff' cx='700' cy='860' r='1.1'/%3E%3Ccircle fill='%23fff' cx='860' cy='940' r='0.7'/%3E%3C/svg%3E")
-            repeat;
-          opacity: 0.4;
-          animation:
-            starsDrift1 60s linear infinite,
-            twinkle 4s ease-in-out infinite;
-        }
-        .stars2 {
-          background: transparent
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Ccircle fill='%23ff6b5b' cx='100' cy='100' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='300' cy='200' r='0.8'/%3E%3Ccircle fill='%23ff6b5b' cx='500' cy='100' r='1.2'/%3E%3Ccircle fill='%23ff6b5b' cx='700' cy='300' r='0.6'/%3E%3Ccircle fill='%23ff6b5b' cx='200' cy='400' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='400' cy='500' r='0.9'/%3E%3Ccircle fill='%23ff6b5b' cx='600' cy='400' r='1.1'/%3E%3Ccircle fill='%23ff6b5b' cx='100' cy='600' r='0.7'/%3E%3Ccircle fill='%23ff6b5b' cx='300' cy='700' r='1'/%3E%3Ccircle fill='%23ff6b5b' cx='500' cy='600' r='0.8'/%3E%3Ccircle fill='%23ff6b5b' cx='700' cy='700' r='1.2'/%3E%3C/svg%3E")
-            repeat;
-          opacity: 0.2;
-          animation:
-            starsDrift2 80s linear infinite,
-            twinkle 6s ease-in-out infinite reverse;
-        }
-        .stars3 {
-          background: transparent
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Ccircle fill='%23fff' cx='50' cy='50' r='1.5'/%3E%3Ccircle fill='%23fff' cx='200' cy='150' r='1.3'/%3E%3Ccircle fill='%23fff' cx='350' cy='50' r='1.8'/%3E%3Ccircle fill='%23fff' cx='500' cy='200' r='1.1'/%3E%3Ccircle fill='%23fff' cx='100' cy='300' r='1.5'/%3E%3Ccircle fill='%23fff' cx='250' cy='400' r='1.4'/%3E%3Ccircle fill='%23fff' cx='400' cy='300' r='1.6'/%3E%3Ccircle fill='%23fff' cx='550' cy='450' r='1.2'/%3E%3Ccircle fill='%23fff' cx='150' cy='550' r='1.5'/%3E%3Ccircle fill='%23fff' cx='300' cy='500' r='1.3'/%3E%3Ccircle fill='%23fff' cx='450' cy='550' r='1.7'/%3E%3C/svg%3E")
-            repeat;
-          opacity: 0.25;
-          animation:
-            starsDrift3 100s linear infinite,
-            twinkle 8s ease-in-out infinite;
-        }
-        @keyframes twinkle {
-          0%,
-          100% {
-            opacity: 0.4;
-          }
-          50% {
-            opacity: 0.2;
-          }
-        }
-        @keyframes starsDrift1 {
-          0% {
-            background-position: 0 0;
-          }
-          100% {
-            background-position: 1000px 500px;
-          }
-        }
-        @keyframes starsDrift2 {
-          0% {
-            background-position: 0 0;
-          }
-          100% {
-            background-position: -800px 400px;
-          }
-        }
-        @keyframes starsDrift3 {
-          0% {
-            background-position: 0 0;
-          }
-          100% {
-            background-position: 600px -300px;
-          }
-        }
-        @keyframes titleGlowWave {
-          0%,
-          22%,
-          100% {
-            color: #ff6b5b;
-            text-shadow:
-              0 0 6px rgba(255, 107, 91, 0.25),
-              0 0 12px rgba(255, 107, 91, 0.1);
-          }
-          5%,
-          11% {
-            color: #ff9a90;
-            text-shadow:
-              0 0 12px rgba(255, 107, 91, 0.6),
-              0 0 25px rgba(255, 107, 91, 0.35),
-              0 0 40px rgba(255, 138, 125, 0.2);
-          }
-          17% {
-            color: #ff8078;
-            text-shadow:
-              0 0 8px rgba(255, 107, 91, 0.4),
-              0 0 16px rgba(255, 107, 91, 0.2);
-          }
-        }
-        .title-glow-container {
-          display: inline-flex;
-        }
-        .title-glow-char {
-          animation: titleGlowWave 16s ease-in-out infinite backwards;
-          display: inline-block;
-          color: #ff6b5b;
-          text-shadow:
-            0 0 6px rgba(255, 107, 91, 0.25),
-            0 0 12px rgba(255, 107, 91, 0.1);
-        }
-        @keyframes scroll {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-        .animate-scroll {
-          animation: scroll 10s linear infinite;
-          will-change: transform;
-        }
-        .animate-scroll:has(.post-card:hover) {
-          animation-play-state: paused;
-        }
-        @keyframes bounceIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.8) translateY(20px);
-          }
-          50% {
-            transform: scale(1.02) translateY(-5px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-        .animate-bounce-in {
-          animation: bounceIn 0.4s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }
