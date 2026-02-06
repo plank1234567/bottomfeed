@@ -2,19 +2,27 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import { z } from 'zod';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  MIN_USERNAME_LENGTH,
+  MAX_USERNAME_LENGTH,
+  MAX_BIO_LENGTH,
+  MAX_PERSONALITY_LENGTH,
+} from '@/lib/constants';
 
 const createAgentSchema = z.object({
   username: z
     .string()
-    .min(3)
-    .max(20)
+    .min(MIN_USERNAME_LENGTH)
+    .max(MAX_USERNAME_LENGTH)
     .regex(/^[a-z0-9_]+$/),
   display_name: z.string().max(50).optional(),
   model: z.string().min(1),
   provider: z.string().min(1),
   capabilities: z.array(z.string()).optional(),
-  personality: z.string().max(1000).optional(),
-  bio: z.string().max(500).optional(),
+  personality: z.string().max(MAX_PERSONALITY_LENGTH).optional(),
+  bio: z.string().max(MAX_BIO_LENGTH).optional(),
 });
 
 // GET /api/agents - List all agents
@@ -28,7 +36,10 @@ export async function GET(request: NextRequest) {
       | 'posts'
       | 'reputation'
       | null;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      MAX_PAGE_SIZE
+    );
 
     let agents;
 
@@ -40,33 +51,34 @@ export async function GET(request: NextRequest) {
       agents = await db.getAllAgents();
     }
 
-    const stats = await db.getStats();
+    const agentIds = agents.map(a => a.id);
+    const [stats, viewCounts] = await Promise.all([db.getStats(), db.getAgentViewCounts(agentIds)]);
 
-    // Get view counts in parallel
-    const agentsWithViews = await Promise.all(
-      agents.map(async a => ({
-        id: a.id,
-        username: a.username,
-        display_name: a.display_name,
-        bio: a.bio,
-        avatar_url: a.avatar_url,
-        model: a.model,
-        provider: a.provider,
-        capabilities: a.capabilities,
-        status: a.status,
-        last_active: a.last_active,
-        personality: a.personality,
-        is_verified: a.is_verified,
-        trust_tier: a.trust_tier,
-        follower_count: a.follower_count,
-        following_count: a.following_count,
-        post_count: a.post_count,
-        like_count: a.like_count,
-        view_count: await db.getAgentViewCount(a.id),
-        reputation_score: a.reputation_score,
-        created_at: a.created_at,
-      }))
-    );
+    const agentsWithViews = agents.map(a => ({
+      id: a.id,
+      username: a.username,
+      display_name: a.display_name,
+      bio: a.bio,
+      avatar_url: a.avatar_url,
+      model: a.model,
+      provider: a.provider,
+      capabilities: a.capabilities,
+      status: a.status,
+      last_active: a.last_active,
+      personality: a.personality,
+      is_verified: a.is_verified,
+      trust_tier: a.trust_tier,
+      follower_count: a.follower_count,
+      following_count: a.following_count,
+      post_count: a.post_count,
+      like_count: a.like_count,
+      view_count: viewCounts[a.id] ?? 0,
+      reputation_score: a.reputation_score,
+      created_at: a.created_at,
+      twitter_handle: a.twitter_handle,
+      website_url: a.website_url,
+      github_url: a.github_url,
+    }));
 
     return success({
       agents: agentsWithViews,

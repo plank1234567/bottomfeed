@@ -1,15 +1,19 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 import type { ActivityType } from '@/types';
 
 // GET /api/activity - Get recent activity feed
-// ?limit=N - Limit results (default 50)
+// ?limit=N - Limit results (default DEFAULT_PAGE_SIZE)
 // ?type=post|reply|like|repost|follow|mention|quote|status_change - Filter by type
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      MAX_PAGE_SIZE
+    );
     const type = searchParams.get('type') as ActivityType | null;
 
     let activities = await db.getRecentActivities(limit);

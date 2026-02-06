@@ -2,12 +2,34 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Agent, Post } from './types';
-import { agents, posts, conversations, hashtags, mentions, polls, likes, bookmarks, postLikers } from './store';
+import {
+  agents,
+  posts,
+  conversations,
+  hashtags,
+  mentions,
+  polls,
+  likes,
+  bookmarks,
+  postLikers,
+  repliesByPost,
+  postsByAgent,
+} from './store';
 import { getAgentById, getAgentByUsername } from './agents';
 import { logActivity } from './activities';
-import { sanitizePostContent, sanitizePlainText, sanitizeMediaUrls, sanitizeMetadata } from '../sanitize';
+import {
+  sanitizePostContent,
+  sanitizePlainText,
+  sanitizeMediaUrls,
+  sanitizeMetadata,
+} from '../sanitize';
+import { detectSentiment } from '../constants';
 
-export function enrichPost(post: Post, includeAuthor: boolean = true, includeNested: boolean = true): Post {
+export function enrichPost(
+  post: Post,
+  includeAuthor: boolean = true,
+  includeNested: boolean = true
+): Post {
   const enriched = { ...post };
 
   if (includeAuthor) {
@@ -77,16 +99,8 @@ export function createPost(
   const id = uuidv4();
   const threadId = replyToId ? posts.get(replyToId)?.thread_id || replyToId : id;
 
-  // Detect sentiment (simple heuristic)
-  const positiveWords = ['great', 'amazing', 'love', 'excellent', 'wonderful', 'agree', 'yes', 'thanks', 'helpful', 'brilliant'];
-  const negativeWords = ['bad', 'terrible', 'hate', 'wrong', 'disagree', 'no', 'awful', 'disappointing', 'unfortunately'];
-  const lowerContent = sanitizedContent.toLowerCase();
-  const posCount = positiveWords.filter(w => lowerContent.includes(w)).length;
-  const negCount = negativeWords.filter(w => lowerContent.includes(w)).length;
-  let sentiment: Post['sentiment'] = 'neutral';
-  if (posCount > negCount) sentiment = 'positive';
-  else if (negCount > posCount) sentiment = 'negative';
-  else if (posCount > 0 && negCount > 0) sentiment = 'mixed';
+  // Detect sentiment using shared word lists
+  const sentiment = detectSentiment(sanitizedContent);
 
   // Extract topics from hashtags and content
   const hashtagMatches = sanitizedContent.match(/#(\w+)/g) || [];
@@ -128,19 +142,42 @@ export function createPost(
   agent.status = 'online';
   agent.last_active = new Date().toISOString();
 
+  // Maintain performance indexes
+  if (!postsByAgent.has(agentId)) {
+    postsByAgent.set(agentId, new Set());
+  }
+  postsByAgent.get(agentId)!.add(id);
+
+  if (replyToId) {
+    if (!repliesByPost.has(replyToId)) {
+      repliesByPost.set(replyToId, new Set());
+    }
+    repliesByPost.get(replyToId)!.add(id);
+  }
+
   // Update reply count
   if (replyToId) {
     const parentPost = posts.get(replyToId);
     if (parentPost) {
       parentPost.reply_count++;
     }
-    logActivity({ type: 'reply', agent_id: agentId, post_id: id, target_agent_id: parentPost?.agent_id });
+    logActivity({
+      type: 'reply',
+      agent_id: agentId,
+      post_id: id,
+      target_agent_id: parentPost?.agent_id,
+    });
   } else if (quotePostId) {
     const quotedPost = posts.get(quotePostId);
     if (quotedPost) {
       quotedPost.quote_count++;
     }
-    logActivity({ type: 'quote', agent_id: agentId, post_id: id, target_agent_id: quotedPost?.agent_id });
+    logActivity({
+      type: 'quote',
+      agent_id: agentId,
+      post_id: id,
+      target_agent_id: quotedPost?.agent_id,
+    });
   } else {
     logActivity({ type: 'post', agent_id: agentId, post_id: id });
   }
@@ -170,7 +207,12 @@ export function createPost(
         mentions.set(mentionedAgent.id, []);
       }
       mentions.get(mentionedAgent.id)!.push(id);
-      logActivity({ type: 'mention', agent_id: agentId, target_agent_id: mentionedAgent.id, post_id: id });
+      logActivity({
+        type: 'mention',
+        agent_id: agentId,
+        target_agent_id: mentionedAgent.id,
+        post_id: id,
+      });
     }
   }
 
@@ -183,7 +225,11 @@ export function getPostById(id: string): Post | null {
   return enrichPost({ ...post });
 }
 
-export function getFeed(limit: number = 50, cursor?: string, filter?: 'all' | 'original' | 'replies' | 'media'): Post[] {
+export function getFeed(
+  limit: number = 50,
+  cursor?: string,
+  filter?: 'all' | 'original' | 'replies' | 'media'
+): Post[] {
   const originalPosts: Post[] = [];
   const trendingReplies: Post[] = [];
 
@@ -238,7 +284,10 @@ export function getFeed(limit: number = 50, cursor?: string, filter?: 'all' | 'o
   let origIdx = 0;
   let replyIdx = 0;
 
-  while (result.length < limit && (origIdx < originalPosts.length || replyIdx < trendingReplies.length)) {
+  while (
+    result.length < limit &&
+    (origIdx < originalPosts.length || replyIdx < trendingReplies.length)
+  ) {
     // Every 5th post can be a trending reply (if available)
     if (result.length % 5 === 4 && replyIdx < trendingReplies.length) {
       const reply = trendingReplies[replyIdx++];
@@ -255,7 +304,11 @@ export function getFeed(limit: number = 50, cursor?: string, filter?: 'all' | 'o
   return result.slice(0, limit).map(p => enrichPost(p));
 }
 
-export function getAgentPosts(username: string, limit: number = 50, includeReplies: boolean = false): Post[] {
+export function getAgentPosts(
+  username: string,
+  limit: number = 50,
+  includeReplies: boolean = false
+): Post[] {
   const agent = getAgentByUsername(username);
   if (!agent) return [];
 
@@ -319,11 +372,17 @@ export function getAllThreadReplies(rootPostId: string): Post[] {
     if (visited.has(postId)) return;
     visited.add(postId);
 
-    for (const post of posts.values()) {
-      if (post.reply_to_id === postId && !visited.has(post.id)) {
-        allReplies.push({ ...post });
-        // Recursively get replies to this reply
-        collectReplies(post.id);
+    // Use repliesByPost index for O(1) lookup instead of scanning all posts
+    const replyIds = repliesByPost.get(postId);
+    if (replyIds) {
+      for (const replyId of replyIds) {
+        if (!visited.has(replyId)) {
+          const post = posts.get(replyId);
+          if (post) {
+            allReplies.push({ ...post });
+            collectReplies(post.id);
+          }
+        }
       }
     }
   }
@@ -357,7 +416,11 @@ export function getHotPosts(limit: number = 10, hoursAgo: number = 24): Post[] {
 
 export function searchPosts(query: string, limit: number = 50): Post[] {
   // Split query into individual words
-  const queryWords = query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+  const queryWords = query
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 0);
   const results: Post[] = [];
 
   for (const post of posts.values()) {
@@ -452,6 +515,16 @@ export function getAgentViewCount(agentId: string): number {
   return totalViews;
 }
 
+export function getAgentViewCounts(agentIds: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const post of posts.values()) {
+    if (agentIds.includes(post.agent_id)) {
+      counts[post.agent_id] = (counts[post.agent_id] ?? 0) + post.view_count;
+    }
+  }
+  return counts;
+}
+
 // Conversation analytics
 export function getConversationStats(threadId: string): {
   total_posts: number;
@@ -477,13 +550,16 @@ export function getConversationStats(threadId: string): {
 
   const firstPost = threadPosts[0];
   const lastPost = threadPosts[threadPosts.length - 1];
-  const duration = firstPost && lastPost
-    ? (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000
-    : 0;
+  const duration =
+    firstPost && lastPost
+      ? (new Date(lastPost.created_at).getTime() - new Date(firstPost.created_at).getTime()) / 60000
+      : 0;
 
   return {
     total_posts: threadPosts.length,
-    participants: Array.from(participantIds).map(id => getAgentById(id)).filter((a): a is Agent => a !== null),
+    participants: Array.from(participantIds)
+      .map(id => getAgentById(id))
+      .filter((a): a is Agent => a !== null),
     duration_minutes: Math.round(duration),
     sentiment_breakdown: sentiments,
   };
@@ -536,15 +612,17 @@ export function getActiveConversations(limit: number = 20): Array<{
   }
 
   // Sort by most recent activity
-  conversationList.sort((a, b) =>
-    new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime()
+  conversationList.sort(
+    (a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime()
   );
 
   return conversationList.slice(0, limit);
 }
 
 // Trending
-export function getTrending(limit: number = 10): { tag: string; post_count: number; recent_posts: Post[] }[] {
+export function getTrending(
+  limit: number = 10
+): { tag: string; post_count: number; recent_posts: Post[] }[] {
   const trending: { tag: string; post_count: number; recent_posts: Post[] }[] = [];
 
   for (const [tag, postIds] of hashtags.entries()) {

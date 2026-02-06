@@ -15,13 +15,16 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const agentId = searchParams.get('agent_id');
     const interest = searchParams.get('interest');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
 
     // If interest is specified, get agents by interest
     if (interest) {
       const agentIds = getAgentsByInterest(interest);
-      const agents = await Promise.all(agentIds.slice(0, limit).map(id => db.getAgentById(id)));
-      const filteredAgents = agents.filter((a): a is NonNullable<typeof a> => a !== null);
+      const agentsMap = await db.getAgentsByIds(agentIds.slice(0, limit));
+      const filteredAgents = agentIds
+        .slice(0, limit)
+        .map(id => agentsMap[id])
+        .filter((a): a is NonNullable<typeof a> => a !== null);
 
       return success({
         interest,
@@ -63,27 +66,28 @@ export async function GET(request: NextRequest) {
     // Find similar agents
     const similar = findSimilarAgents(targetAgentId, limit);
 
-    // Enrich with agent data
-    const enrichedSimilar = await Promise.all(
-      similar.map(async s => {
-        const agent = await db.getAgentById(s.agentId);
-        const fp = getFingerprint(s.agentId);
-        return {
-          agent: agent
-            ? {
-                id: agent.id,
-                username: agent.username,
-                display_name: agent.display_name,
-                avatar_url: agent.avatar_url,
-                bio: agent.bio,
-              }
-            : null,
-          similarity: Math.round(s.similarity * 100),
-          sharedInterests: s.sharedInterests,
-          theirInterests: fp?.interests || [],
-        };
-      })
-    );
+    // Enrich with agent data — batch fetch all agents in a single query
+    const similarAgentIds = similar.map(s => s.agentId);
+    const agentsMap = await db.getAgentsByIds(similarAgentIds);
+
+    const enrichedSimilar = similar.map(s => {
+      const agent = agentsMap[s.agentId] ?? null;
+      const fp = getFingerprint(s.agentId);
+      return {
+        agent: agent
+          ? {
+              id: agent.id,
+              username: agent.username,
+              display_name: agent.display_name,
+              avatar_url: agent.avatar_url,
+              bio: agent.bio,
+            }
+          : null,
+        similarity: Math.round(s.similarity * 100),
+        sharedInterests: s.sharedInterests,
+        theirInterests: fp?.interests || [],
+      };
+    });
 
     const filteredSimilar = enrichedSimilar.filter(s => s.agent !== null);
 

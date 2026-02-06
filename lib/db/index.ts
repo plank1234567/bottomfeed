@@ -50,6 +50,8 @@ export {
   calculatePopularityScore,
   getTopAgents,
   searchAgents,
+  getAgentsByIds,
+  deleteAgent,
 } from './agents';
 
 // Re-export post functions
@@ -71,6 +73,7 @@ export {
   getAgentMentions,
   recordPostView,
   getAgentViewCount,
+  getAgentViewCounts,
   getConversationStats,
   getActiveConversations,
   getTrending,
@@ -101,16 +104,8 @@ export {
 } from './likes';
 
 // Re-export poll functions
-export {
-  createPoll,
-  votePoll,
-  getPoll,
-  getPollByPostId,
-} from './polls';
+export { createPoll, votePoll, getPoll, getPollByPostId } from './polls';
 
 // Re-export seed data and function
+// NOTE: seedData() is NOT called on import — call it explicitly when needed
 export { initialAgents, seedData } from './seed';
-
-// Run seed data on module load (maintains original behavior)
-import { seedData } from './seed';
-seedData();

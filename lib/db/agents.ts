@@ -2,10 +2,21 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Agent, PendingClaim } from './types';
-import { agents, apiKeys, pendingClaims, posts, agentsByUsername, agentsByTwitter, followers, follows } from './store';
+import {
+  agents,
+  apiKeys,
+  pendingClaims,
+  posts,
+  agentsByUsername,
+  agentsByTwitter,
+  followers,
+  follows,
+  postsByAgent,
+} from './store';
 import { logActivity } from './activities';
 import { generateApiKey, generateVerificationCode, hashValue } from '../security';
-import { sanitizePlainText, sanitizeUrl } from '../sanitize';
+import { sanitizeProfileUpdates } from '../sanitize';
+import { TRUST_TIER_INFO } from '../constants';
 
 // Agent functions
 export function createAgent(
@@ -65,10 +76,16 @@ export function createAgent(
 // Moltbook-style agent self-registration
 export function registerAgent(
   name: string,
-  description: string
+  description: string,
+  model?: string,
+  provider?: string
 ): { agent: Agent; apiKey: string; claimUrl: string; verificationCode: string } | null {
   // Generate a clean username from the name
-  let username = name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').substring(0, 20);
+  let username = name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .substring(0, 20);
 
   // Check if username exists, add random suffix if needed
   if (getAgentByUsername(username)) {
@@ -86,8 +103,8 @@ export function registerAgent(
     bio: description,
     avatar_url: '',
     banner_url: '',
-    model: 'unknown',
-    provider: 'unknown',
+    model: model || 'unknown',
+    provider: provider || 'unknown',
     capabilities: [],
     status: 'online',
     last_active: new Date().toISOString(),
@@ -169,6 +186,14 @@ export function getAgentById(id: string): Agent | null {
   return agents.get(id) || null;
 }
 
+export function getAgentsByIds(ids: string[]): Record<string, Agent | null> {
+  const map: Record<string, Agent | null> = {};
+  for (const id of ids) {
+    map[id] = agents.get(id) || null;
+  }
+  return map;
+}
+
 export function getAgentByUsername(username: string): Agent | null {
   // O(1) lookup using index
   const agentId = agentsByUsername.get(username.toLowerCase());
@@ -239,7 +264,11 @@ export function createAgentViaTwitter(
   return { agent, apiKey };
 }
 
-export function updateAgentStatus(agentId: string, status: Agent['status'], currentAction?: string): void {
+export function updateAgentStatus(
+  agentId: string,
+  status: Agent['status'],
+  currentAction?: string
+): void {
   const agent = agents.get(agentId);
   if (agent) {
     const previousStatus = agent.status;
@@ -257,19 +286,26 @@ export function updateAgentStatus(agentId: string, status: Agent['status'], curr
   }
 }
 
-export function updateAgentProfile(agentId: string, updates: Partial<Pick<Agent, 'bio' | 'personality' | 'avatar_url' | 'banner_url' | 'website_url' | 'github_url' | 'twitter_handle'>>): Agent | null {
+export function updateAgentProfile(
+  agentId: string,
+  updates: Partial<
+    Pick<
+      Agent,
+      | 'bio'
+      | 'personality'
+      | 'avatar_url'
+      | 'banner_url'
+      | 'website_url'
+      | 'github_url'
+      | 'twitter_handle'
+      | 'capabilities'
+    >
+  >
+): Agent | null {
   const agent = agents.get(agentId);
   if (!agent) return null;
 
-  // Sanitize all user-provided content
-  const sanitizedUpdates: typeof updates = {};
-  if (updates.bio !== undefined) sanitizedUpdates.bio = sanitizePlainText(updates.bio);
-  if (updates.personality !== undefined) sanitizedUpdates.personality = sanitizePlainText(updates.personality);
-  if (updates.avatar_url !== undefined) sanitizedUpdates.avatar_url = sanitizeUrl(updates.avatar_url);
-  if (updates.banner_url !== undefined) sanitizedUpdates.banner_url = sanitizeUrl(updates.banner_url);
-  if (updates.website_url !== undefined) sanitizedUpdates.website_url = sanitizeUrl(updates.website_url);
-  if (updates.github_url !== undefined) sanitizedUpdates.github_url = sanitizeUrl(updates.github_url);
-  if (updates.twitter_handle !== undefined) sanitizedUpdates.twitter_handle = sanitizePlainText(updates.twitter_handle);
+  const sanitizedUpdates = sanitizeProfileUpdates(updates);
 
   // Update twitter index if handle is changing
   if (sanitizedUpdates.twitter_handle !== undefined) {
@@ -332,7 +368,7 @@ export function updateAgentTrustTier(
 
   if (oldTier !== newTier) {
     const tierNumerals: Record<string, string> = {
-      'spawn': 'Spawn',
+      spawn: 'Spawn',
       'autonomous-1': 'I',
       'autonomous-2': 'II',
       'autonomous-3': 'III',
@@ -411,10 +447,7 @@ function updateTrustTier(agent: Agent): void {
 }
 
 // Record a spot check result and update trust tier
-export function recordSpotCheckResult(
-  agentId: string,
-  passed: boolean
-): Agent | null {
+export function recordSpotCheckResult(agentId: string, passed: boolean): Agent | null {
   const agent = agents.get(agentId);
   if (!agent) return null;
 
@@ -438,43 +471,15 @@ export function recordSpotCheckResult(
   return agent;
 }
 
-// Get trust tier display info
+// Get trust tier display info — delegates to TRUST_TIER_INFO constant
 export function getTrustTierInfo(tier?: string): {
   label: string;
   numeral: string;
   color: string;
   description: string;
 } {
-  switch (tier) {
-    case 'autonomous-3':
-      return {
-        label: 'Autonomous III',
-        numeral: 'III',
-        color: '#a78bfa', // Violet with glow
-        description: '30+ days of proven autonomous operation',
-      };
-    case 'autonomous-2':
-      return {
-        label: 'Autonomous II',
-        numeral: 'II',
-        color: '#a78bfa', // Violet
-        description: '7+ days of consistent autonomous behavior',
-      };
-    case 'autonomous-1':
-      return {
-        label: 'Autonomous I',
-        numeral: 'I',
-        color: '#a78bfa', // Violet
-        description: 'Passed 3-day autonomous verification',
-      };
-    default:
-      return {
-        label: 'Spawn',
-        numeral: '',
-        color: '#71767b',
-        description: 'Registered but not yet verified as autonomous',
-      };
-  }
+  const key = tier as keyof typeof TRUST_TIER_INFO;
+  return TRUST_TIER_INFO[key] ?? TRUST_TIER_INFO.spawn;
 }
 
 export function getAllAgents(): Agent[] {
@@ -496,11 +501,16 @@ export function calculatePopularityScore(agent: Agent): number {
   let totalReposts = 0;
   let totalReplies = 0;
 
-  for (const post of posts.values()) {
-    if (post.agent_id === agent.id) {
-      totalLikes += post.like_count;
-      totalReposts += post.repost_count;
-      totalReplies += post.reply_count;
+  // Use postsByAgent index for O(n) on agent's posts instead of scanning all posts
+  const agentPostIds = postsByAgent.get(agent.id);
+  if (agentPostIds) {
+    for (const postId of agentPostIds) {
+      const post = posts.get(postId);
+      if (post) {
+        totalLikes += post.like_count;
+        totalReposts += post.repost_count;
+        totalReplies += post.reply_count;
+      }
     }
   }
 
@@ -511,17 +521,20 @@ export function calculatePopularityScore(agent: Agent): number {
   // - Replies show engagement generation
   // - Post count shows activity level
   const score =
-    (agent.follower_count * 5) +      // Followers: weight 5
-    (totalLikes * 2) +                 // Likes received: weight 2
-    (totalReposts * 3) +               // Reposts: weight 3
-    (totalReplies * 2) +               // Replies received: weight 2
-    (agent.post_count * 1) +           // Activity: weight 1
-    (agent.reputation_score * 0.5);    // Reputation bonus: weight 0.5
+    agent.follower_count * 5 + // Followers: weight 5
+    totalLikes * 2 + // Likes received: weight 2
+    totalReposts * 3 + // Reposts: weight 3
+    totalReplies * 2 + // Replies received: weight 2
+    agent.post_count * 1 + // Activity: weight 1
+    agent.reputation_score * 0.5; // Reputation bonus: weight 0.5
 
   return score;
 }
 
-export function getTopAgents(limit: number = 10, sortBy: 'reputation' | 'followers' | 'posts' | 'popularity' = 'reputation'): (Agent & { popularity_score?: number })[] {
+export function getTopAgents(
+  limit: number = 10,
+  sortBy: 'reputation' | 'followers' | 'posts' | 'popularity' = 'reputation'
+): (Agent & { popularity_score?: number })[] {
   const allAgents = Array.from(agents.values());
 
   switch (sortBy) {
@@ -535,7 +548,7 @@ export function getTopAgents(limit: number = 10, sortBy: 'reputation' | 'followe
       // Calculate and attach popularity scores
       const agentsWithScores = allAgents.map(agent => ({
         ...agent,
-        popularity_score: calculatePopularityScore(agent)
+        popularity_score: calculatePopularityScore(agent),
       }));
       agentsWithScores.sort((a, b) => b.popularity_score - a.popularity_score);
       return agentsWithScores.slice(0, limit);
@@ -626,12 +639,13 @@ export function searchAgents(query: string): Agent[] {
   const lowerQuery = query.toLowerCase();
 
   // Filter matching agents
-  const matches = Array.from(agents.values()).filter(agent =>
-    agent.username.includes(lowerQuery) ||
-    agent.display_name.toLowerCase().includes(lowerQuery) ||
-    agent.bio.toLowerCase().includes(lowerQuery) ||
-    agent.model.toLowerCase().includes(lowerQuery) ||
-    agent.provider.toLowerCase().includes(lowerQuery)
+  const matches = Array.from(agents.values()).filter(
+    agent =>
+      agent.username.includes(lowerQuery) ||
+      agent.display_name.toLowerCase().includes(lowerQuery) ||
+      agent.bio.toLowerCase().includes(lowerQuery) ||
+      agent.model.toLowerCase().includes(lowerQuery) ||
+      agent.provider.toLowerCase().includes(lowerQuery)
   );
 
   // Sort by relevance then popularity

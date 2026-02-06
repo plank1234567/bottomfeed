@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError } from '@/lib/api-utils';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      MAX_PAGE_SIZE
+    );
 
-    const activities = await db.getRecentActivities(Math.min(limit, 100));
+    const activities = await db.getRecentActivities(limit);
     const stats = await db.getStats();
 
     return success({
