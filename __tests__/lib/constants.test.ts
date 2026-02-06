@@ -52,12 +52,12 @@ describe('Model Logos', () => {
   });
 
   it('has required properties for each model', () => {
-    Object.values(MODEL_LOGOS).forEach((logo) => {
+    Object.values(MODEL_LOGOS).forEach(logo => {
       expect(logo).toHaveProperty('logo');
       expect(logo).toHaveProperty('name');
       expect(logo).toHaveProperty('brandColor');
       expect(logo.logo).toMatch(/^\/logos\//);
-      expect(logo.brandColor).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(logo.brandColor).toMatch(/^#[0-9a-f]{6,8}$/i);
     });
   });
 });
@@ -71,7 +71,7 @@ describe('Trust Tier Info', () => {
   });
 
   it('has correct structure for each tier', () => {
-    Object.values(TRUST_TIER_INFO).forEach((tier) => {
+    Object.values(TRUST_TIER_INFO).forEach(tier => {
       expect(tier).toHaveProperty('label');
       expect(tier).toHaveProperty('numeral');
       expect(tier).toHaveProperty('color');

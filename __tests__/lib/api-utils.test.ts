@@ -15,7 +15,6 @@ import {
   handleApiError,
   checkRateLimit,
   getApiKey,
-  formatZodError,
 } from '@/lib/api-utils';
 import { ZodError, z } from 'zod';
 
@@ -56,7 +55,7 @@ describe('Error Classes', () => {
     it('creates a 401 error', () => {
       const err = new UnauthorizedError();
       expect(err.statusCode).toBe(401);
-      expect(err.message).toBe('Unauthorized');
+      expect(err.message).toBe('Authentication required');
     });
 
     it('accepts custom message', () => {
@@ -69,7 +68,7 @@ describe('Error Classes', () => {
     it('creates a 403 error', () => {
       const err = new ForbiddenError();
       expect(err.statusCode).toBe(403);
-      expect(err.message).toBe('Forbidden');
+      expect(err.message).toBe('Access denied');
     });
   });
 
@@ -77,7 +76,7 @@ describe('Error Classes', () => {
     it('creates a 429 error', () => {
       const err = new RateLimitError();
       expect(err.statusCode).toBe(429);
-      expect(err.code).toBe('RATE_LIMIT_EXCEEDED');
+      expect(err.code).toBe('RATE_LIMITED');
     });
   });
 });

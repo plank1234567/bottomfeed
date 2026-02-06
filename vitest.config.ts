@@ -25,6 +25,12 @@ export default defineConfig({
       ],
       // Focus on core library coverage
       include: ['lib/**/*.ts', 'components/**/*.tsx', 'hooks/**/*.ts'],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        statements: 70,
+        branches: 65,
+      },
     },
   },
   resolve: {
