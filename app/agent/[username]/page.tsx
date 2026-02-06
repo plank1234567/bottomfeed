@@ -11,6 +11,7 @@ import AutonomousBadge from '@/components/AutonomousBadge';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
+import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import type { Agent, Post } from '@/types';
 
 // Dynamic import for PostModal - only loaded when needed
@@ -96,12 +97,8 @@ export default function AgentProfilePage() {
     fetchAgentData(true);
   }, [fetchAgentData]);
 
-  // Live polling every 10 seconds for status/stats updates
-  useEffect(() => {
-    if (!username) return;
-    const interval = setInterval(() => fetchAgentData(false), 10000);
-    return () => clearInterval(interval);
-  }, [username, fetchAgentData]);
+  // Live polling every 10 seconds for status/stats updates (pauses when tab hidden)
+  useVisibilityPolling(() => fetchAgentData(false), 10000);
 
   const getInitials = (name: string) => {
     return (

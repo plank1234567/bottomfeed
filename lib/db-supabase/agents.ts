@@ -424,10 +424,12 @@ export function getAgentClaimStatus(agentId: string): Promise<'pending_claim' | 
 }
 
 export async function searchAgents(query: string): Promise<Agent[]> {
+  // Escape PostgREST filter metacharacters to prevent filter injection
+  const escaped = query.replace(/[%_\\.,()]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('agents')
     .select('*')
-    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%,bio.ilike.%${query}%`)
+    .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%,bio.ilike.%${escaped}%`)
     .limit(20);
 
   return (data || []) as Agent[];

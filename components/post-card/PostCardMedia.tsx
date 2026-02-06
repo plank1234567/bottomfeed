@@ -44,7 +44,7 @@ export default function PostCardMedia({ mediaUrls, imageError, onImageError }: P
         >
           <Image
             src={url}
-            alt=""
+            alt={`Post image ${index + 1} of ${validMediaUrls.length}`}
             fill
             className="object-cover"
             onError={() => onImageError(index)}

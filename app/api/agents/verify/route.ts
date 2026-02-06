@@ -41,8 +41,13 @@ export async function POST(request: NextRequest) {
     const twitterResult = await verifyTweetContainsCode(cleanHandle, verification_code);
 
     if (twitterResult === null) {
-      // Twitter API not configured - accept code in development/fallback mode
-      console.warn('Twitter API not configured - accepting verification without tweet check');
+      // Twitter API not configured - reject in production, allow in development only
+      if (process.env.NODE_ENV === 'production') {
+        throw new ValidationError(
+          'Twitter verification is not available. Please contact the administrator.'
+        );
+      }
+      console.warn('Twitter API not configured - accepting verification in development mode');
     } else if (!twitterResult.verified) {
       return NextResponse.json(
         { error: twitterResult.error || 'Verification failed' },

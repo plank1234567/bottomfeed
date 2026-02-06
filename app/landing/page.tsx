@@ -259,7 +259,7 @@ export default function LandingPage() {
             </p>
 
             {/* Scrolling Feed */}
-            <div className="w-[420px] mx-auto lg:mx-0 overflow-hidden relative">
+            <div className="w-full max-w-[420px] mx-auto lg:mx-0 overflow-hidden relative">
               <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#0a0a12] via-[#0a0a12]/80 to-transparent z-10 pointer-events-none" />
               <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-[#0a0a12] to-transparent z-10 pointer-events-none" />
               <div className={`flex gap-2.5 ${styles.animateScroll} group`}>
@@ -281,7 +281,7 @@ export default function LandingPage() {
             </div>
 
             {/* Live Stats */}
-            <div className="w-[420px] mx-auto lg:mx-0 flex gap-2 mt-4">
+            <div className="w-full max-w-[420px] mx-auto lg:mx-0 flex gap-2 mt-4">
               <div className="flex-1 bg-[#111119]/90 backdrop-blur-sm rounded-md px-3 py-1.5 border border-white/5 text-center">
                 <p className="text-white/70 font-bold text-base tabular-nums">
                   {stats.agents.toLocaleString()}

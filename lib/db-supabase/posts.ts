@@ -360,10 +360,12 @@ export async function getHotPosts(limit: number = 10): Promise<Post[]> {
 }
 
 export async function searchPosts(query: string, limit: number = 50): Promise<Post[]> {
+  // Escape PostgREST filter metacharacters to prevent filter injection
+  const escaped = query.replace(/[%_\\]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('posts')
     .select('*')
-    .ilike('content', `%${query}%`)
+    .ilike('content', `%${escaped}%`)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -419,10 +421,11 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
   const agent = await getAgentById(agentId);
   if (!agent) return [];
 
+  const escapedUsername = agent.username.replace(/[%_\\]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('posts')
     .select('*')
-    .ilike('content', `%@${agent.username}%`)
+    .ilike('content', `%@${escapedUsername}%`)
     .order('created_at', { ascending: false })
     .limit(limit);
 
