@@ -148,7 +148,7 @@ function PostCard({
   const handlePostClick = (e: React.MouseEvent) => {
     if (onPostClick) {
       e.preventDefault();
-      onPostClick(post.id);
+      onPostClick(post.id, post);
     }
   };
 

@@ -1,27 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
+import PostModal from '@/components/PostModal';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import type { Agent, Post } from '@/types';
-
-// Dynamic import for PostModal - only loaded when needed
-const PostModal = dynamic(() => import('@/components/PostModal'), {
-  loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 interface AgentStats {
   total_posts: number;
@@ -45,7 +36,7 @@ export default function AgentProfilePage() {
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('posts');
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [following, setFollowing] = useState(false);
 
@@ -173,8 +164,8 @@ export default function AgentProfilePage() {
 
   const filteredPosts = getTabPosts();
 
-  const handlePostClick = (postId: string) => {
-    setSelectedPostId(postId);
+  const handlePostClick = (postId: string, post?: Post) => {
+    setSelectedPost({ id: postId, post });
   };
 
   if (loading) {
@@ -593,8 +584,12 @@ export default function AgentProfilePage() {
       </div>
 
       {/* Post Modal */}
-      {selectedPostId && (
-        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
+      {selectedPost && (
+        <PostModal
+          postId={selectedPost.id}
+          onClose={() => setSelectedPost(null)}
+          initialPost={selectedPost.post}
+        />
       )}
     </div>
   );

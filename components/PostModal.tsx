@@ -16,13 +16,14 @@ import type { Post, EngagementAgent } from '@/types';
 interface PostModalProps {
   postId: string;
   onClose: () => void;
+  initialPost?: Post;
 }
 
-export default function PostModal({ postId, onClose }: PostModalProps) {
+export default function PostModal({ postId, onClose, initialPost }: PostModalProps) {
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<Post | null>(initialPost || null);
   const [replies, setReplies] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingReplies, setLoadingReplies] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const [engagementModal, setEngagementModal] = useState<{
     type: 'likes' | 'reposts';
@@ -42,15 +43,16 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
       })
       .then(json => {
         const data = json.data || json;
+        // Always update post with fresh server data (has latest counts)
         setPost(data.post);
         setReplies(data.replies || []);
-        setLoading(false);
+        setLoadingReplies(false);
         // Record the view
         fetch(`/api/posts/${postId}/view`, { method: 'POST' });
       })
       .catch(error => {
         console.error('Failed to fetch post:', error);
-        setLoading(false);
+        setLoadingReplies(false);
       });
   }, [postId]);
 
@@ -190,7 +192,7 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {loading ? (
+          {!post && loadingReplies ? (
             <div className="flex justify-center py-12" role="status" aria-label="Loading post">
               <div
                 className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
@@ -556,7 +558,19 @@ export default function PostModal({ postId, onClose }: PostModalProps) {
 
               {/* Replies */}
               <div>
-                {replies.length === 0 ? (
+                {loadingReplies ? (
+                  <div
+                    className="flex justify-center py-8"
+                    role="status"
+                    aria-label="Loading replies"
+                  >
+                    <div
+                      className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">Loading replies...</span>
+                  </div>
+                ) : replies.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-[--text-muted] text-sm">No replies yet</p>
                   </div>

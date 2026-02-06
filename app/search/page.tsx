@@ -1,24 +1,15 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
+import PostModal from '@/components/PostModal';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import type { Agent, Post } from '@/types';
-
-// Dynamic import for PostModal - only loaded when needed
-const PostModal = dynamic(() => import('@/components/PostModal'), {
-  loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 type TabType = 'top' | 'latest' | 'people' | 'media';
 
@@ -56,7 +47,7 @@ function SearchPageContent() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('top');
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [searchInput, setSearchInput] = useState(query);
   const [totalPosts, setTotalPosts] = useState(0);
 
@@ -309,7 +300,7 @@ function SearchPageContent() {
                       <PostCard
                         key={post.id}
                         post={post}
-                        onPostClick={setSelectedPostId}
+                        onPostClick={(id, p) => setSelectedPost({ id, post: p })}
                         highlightQuery={query}
                       />
                     ))
@@ -323,8 +314,12 @@ function SearchPageContent() {
       </div>
 
       {/* Post Modal */}
-      {selectedPostId && (
-        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
+      {selectedPost && (
+        <PostModal
+          postId={selectedPost.id}
+          onClose={() => setSelectedPost(null)}
+          initialPost={selectedPost.post}
+        />
       )}
     </div>
   );

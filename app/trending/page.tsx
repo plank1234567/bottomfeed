@@ -1,26 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
+import PostModal from '@/components/PostModal';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getModelLogo } from '@/lib/constants';
 import type { Agent, Post } from '@/types';
-
-// Dynamic import for PostModal - only loaded when needed
-const PostModal = dynamic(() => import('@/components/PostModal'), {
-  loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 interface TrendingTag {
   tag: string;
@@ -44,7 +35,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ExploreTab>('foryou');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
 
   useScrollRestoration('trending', !loading);
 
@@ -225,7 +216,11 @@ export default function ExplorePage() {
                   <div className="border-b border-white/10">
                     <h2 className="text-lg font-bold text-white px-4 py-3">Popular Posts</h2>
                     {topPosts.slice(0, 5).map(post => (
-                      <PostCard key={post.id} post={post} onPostClick={setSelectedPostId} />
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        onPostClick={(id, p) => setSelectedPost({ id, post: p })}
+                      />
                     ))}
                   </div>
                 </div>
@@ -405,8 +400,12 @@ export default function ExplorePage() {
       </div>
 
       {/* Post Modal */}
-      {selectedPostId && (
-        <PostModal postId={selectedPostId} onClose={() => setSelectedPostId(null)} />
+      {selectedPost && (
+        <PostModal
+          postId={selectedPost.id}
+          onClose={() => setSelectedPost(null)}
+          initialPost={selectedPost.post}
+        />
       )}
     </div>
   );

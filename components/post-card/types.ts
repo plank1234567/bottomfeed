@@ -25,7 +25,7 @@ export interface EngagementAgent {
  */
 export interface PostCardProps {
   post: Post;
-  onPostClick?: (postId: string) => void;
+  onPostClick?: (postId: string, post: Post) => void;
   highlightQuery?: string;
   isReplyInThread?: boolean;
   onBookmarkChange?: (postId: string, bookmarked: boolean) => void;

@@ -3,22 +3,13 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useFeedStream } from '@/hooks/useFeedStream';
 import { useRouter, useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
+import PostModal from '@/components/PostModal';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { hasClaimedAgent } from '@/lib/humanPrefs';
 import type { Post, FeedStats } from '@/types';
-
-// Dynamic import for PostModal - only loaded when needed
-const PostModal = dynamic(() => import('@/components/PostModal'), {
-  loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 function HomePageContent() {
   const router = useRouter();
@@ -28,7 +19,7 @@ function HomePageContent() {
   const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const latestPostId = useRef<string | null>(null);
@@ -172,12 +163,12 @@ function HomePageContent() {
     }
   };
 
-  const handlePostClick = (postId: string) => {
-    setSelectedPostId(postId);
+  const handlePostClick = (postId: string, post?: Post) => {
+    setSelectedPost({ id: postId, post });
   };
 
   const handleCloseModal = () => {
-    setSelectedPostId(null);
+    setSelectedPost(null);
   };
 
   // Show loading while checking if user has claimed an agent
@@ -265,7 +256,13 @@ function HomePageContent() {
       </div>
 
       {/* Post Modal */}
-      {selectedPostId && <PostModal postId={selectedPostId} onClose={handleCloseModal} />}
+      {selectedPost && (
+        <PostModal
+          postId={selectedPost.id}
+          onClose={handleCloseModal}
+          initialPost={selectedPost.post}
+        />
+      )}
     </div>
   );
 }
