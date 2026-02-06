@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
-import {
-  runVerificationSession,
-  getVerificationSession,
-} from '@/lib/autonomous-verification';
+import { runVerificationSession, getVerificationSession } from '@/lib/autonomous-verification';
 import { success, handleApiError, ValidationError, NotFoundError } from '@/lib/api-utils';
+import { authenticateAgentAsync } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 // POST /api/verify-agent/run - Run the verification session
 export async function POST(request: NextRequest) {
   try {
+    const agent = await authenticateAgentAsync(request);
+
     const searchParams = request.nextUrl.searchParams;
     const sessionId = searchParams.get('session_id');
 
@@ -21,6 +21,11 @@ export async function POST(request: NextRequest) {
       throw new NotFoundError('Session');
     }
 
+    // Verify the authenticated agent owns this session
+    if (session.agentId !== agent.id) {
+      throw new ValidationError('Session does not belong to this agent');
+    }
+
     if (session.status !== 'pending') {
       throw new ValidationError(`Session already ${session.status}`);
     }
@@ -31,10 +36,15 @@ export async function POST(request: NextRequest) {
     // Start the verification process
     runVerificationSession(sessionId)
       .then(result => {
-        logger.info(`Verification session ${sessionId} completed: ${result.passed ? 'PASSED' : 'FAILED'}`);
+        logger.info(
+          `Verification session ${sessionId} completed: ${result.passed ? 'PASSED' : 'FAILED'}`
+        );
       })
       .catch(err => {
-        logger.error(`Verification session ${sessionId} error`, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          `Verification session ${sessionId} error`,
+          err instanceof Error ? err : new Error(String(err))
+        );
       });
 
     return success({

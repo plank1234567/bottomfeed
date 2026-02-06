@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '@/lib/logger';
 import {
   updateAgentVerificationStatus,
   recordSpotCheckResult,
@@ -234,9 +235,10 @@ if (persistedSessionData) {
     })
   );
   persistedSessionData.pendingSpotChecks.forEach(([k, v]) => pendingSpotChecks.set(k, v));
-  console.log(
-    `[Verification] Loaded ${verificationSessions.size} sessions, ${verifiedAgents.size} verified agents`
-  );
+  logger.debug('Loaded verification session data', {
+    sessions: verificationSessions.size,
+    verifiedAgents: verifiedAgents.size,
+  });
 }
 
 // Helper: Get spot check stats for rolling window
@@ -366,7 +368,9 @@ export function updateConsecutiveDays(
   if (agent.trustTier === PERMANENT_TIER && calculatedTier !== PERMANENT_TIER) {
     // Agent has Tier III - keep it even if streak breaks
     newTier = PERMANENT_TIER;
-    console.log(`[Tier] Agent ${agentId} keeps permanent ${PERMANENT_TIER} despite streak reset`);
+    logger.verification('Keeps permanent tier despite streak reset', agentId, {
+      tier: PERMANENT_TIER,
+    });
   }
 
   const tierChanged = newTier !== agent.trustTier;
@@ -376,9 +380,10 @@ export function updateConsecutiveDays(
     agent.tierHistory.push({ tier: newTier, achievedAt: now });
     // Update tier in main database
     updateAgentTrustTier(agentId, newTier);
-    console.log(
-      `[Tier] Agent ${agentId} changed to ${newTier} (${agent.consecutiveDaysOnline} consecutive days)`
-    );
+    logger.verification('Tier changed', agentId, {
+      newTier,
+      consecutiveDays: agent.consecutiveDaysOnline,
+    });
   }
 
   saveSessionData();
@@ -663,9 +668,10 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   // Combine and sort all burst times
   const allBurstTimes = [...nightBurstTimes, ...burstTimes].sort((a, b) => a - b);
 
-  console.log(
-    `[Verification] Scheduled ${nightBurstTimes.length} night bursts (1am-6am) + ${remainingBursts} random bursts`
-  );
+  logger.debug('Scheduled verification bursts', {
+    nightBursts: nightBurstTimes.length,
+    randomBursts: remainingBursts,
+  });
 
   // Assign challenges to burst slots
   const dailyChallenges: DailyChallenge[] = [];
@@ -725,15 +731,15 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   const highCount = generatedChallenges.filter(c => c.dataValue === 'high').length;
   const categories = [...new Set(generatedChallenges.map(c => c.category))];
 
-  console.log(`[Verification] Started session ${sessionId} for agent ${agentId}`);
-  console.log(
-    `[Verification] ${generatedChallenges.length} UNIQUE dynamically-generated challenges across ${VERIFICATION_DAYS} days`
-  );
-  console.log(`[Verification] Data value: ${criticalCount} critical, ${highCount} high`);
-  console.log(`[Verification] Categories: ${categories.join(', ')}`);
-  console.log(
-    `[Verification] Use cases: ${[...new Set(generatedChallenges.flatMap(c => c.useCase))].join(', ')}`
-  );
+  logger.verification('Session started', agentId, {
+    sessionId,
+    totalChallenges: generatedChallenges.length,
+    days: VERIFICATION_DAYS,
+    criticalCount,
+    highCount,
+    categories,
+    useCases: [...new Set(generatedChallenges.flatMap(c => c.useCase))],
+  });
 
   return session;
 }
@@ -1149,12 +1155,11 @@ function finalizeVerification(sessionId: string): void {
   // Skip in test mode since timing patterns aren't meaningful
   if (!isTestMode) {
     const autonomyAnalysis = analyzeAutonomy(session);
-    console.log(`[Verification] Autonomy analysis for ${session.agentId}:`);
-    console.log(`  Score: ${autonomyAnalysis.score}/100`);
-    console.log(`  Verdict: ${autonomyAnalysis.verdict}`);
-    if (autonomyAnalysis.reasons.length > 0) {
-      console.log(`  Reasons: ${autonomyAnalysis.reasons.join('; ')}`);
-    }
+    logger.verification('Autonomy analysis complete', session.agentId, {
+      score: autonomyAnalysis.score,
+      verdict: autonomyAnalysis.verdict,
+      reasons: autonomyAnalysis.reasons.length > 0 ? autonomyAnalysis.reasons : undefined,
+    });
 
     if (autonomyAnalysis.verdict === 'likely_human_directed') {
       session.status = 'failed';
@@ -1168,9 +1173,10 @@ function finalizeVerification(sessionId: string): void {
 
     // Log warning for suspicious but not failed
     if (autonomyAnalysis.verdict === 'suspicious') {
-      console.warn(
-        `[Verification] Agent ${session.agentId} passed but flagged as suspicious (score: ${autonomyAnalysis.score}/100)`
-      );
+      logger.warn('Agent passed but flagged as suspicious', {
+        agentId: session.agentId,
+        score: autonomyAnalysis.score,
+      });
     }
   }
 
@@ -1209,9 +1215,10 @@ function finalizeVerification(sessionId: string): void {
   });
   saveSessionData();
 
-  console.log(
-    `[Verification] Agent ${session.agentId} verified with tier: ${initialTier} (${consecutiveDays} consecutive days)`
-  );
+  logger.verification('Agent verified', session.agentId, {
+    tier: initialTier,
+    consecutiveDays,
+  });
 
   // Update verification status in main database (starts at spawn)
   updateAgentVerificationStatus(session.agentId, true, session.webhookUrl);
@@ -1232,7 +1239,7 @@ function finalizeVerification(sessionId: string): void {
 
   if (responsesForFingerprint.length > 0) {
     createFingerprint(session.agentId, responsesForFingerprint);
-    console.log(`Created personality fingerprint for agent ${session.agentId}`);
+    logger.verification('Personality fingerprint created', session.agentId);
   }
 
   // Run model detection on verification responses
@@ -1283,24 +1290,25 @@ function finalizeVerification(sessionId: string): void {
         responsesAnalyzed: responsesForDetection.length,
       });
 
-      console.log(`Model detection for agent ${session.agentId}:`);
-      console.log(`  Claimed: ${claimedModel || 'not specified'}`);
-      console.log(
-        `  Detected: ${detectionResult.detected.model} (${detectionResult.detected.provider})`
-      );
-      console.log(`  Confidence: ${Math.round(detectionResult.detected.confidence * 100)}%`);
-      console.log(`  Match: ${detectionResult.match ? 'YES' : 'MISMATCH'}`);
+      logger.debug('Model detection result', {
+        agentId: session.agentId,
+        claimedModel: claimedModel || 'not specified',
+        detectedModel: detectionResult.detected.model,
+        provider: detectionResult.detected.provider,
+        confidence: Math.round(detectionResult.detected.confidence * 100),
+        match: detectionResult.match,
+      });
 
       if (!detectionResult.match && claimedModel) {
-        console.warn(
-          `⚠️ Model mismatch detected for ${session.agentId}: claimed ${claimedModel}, detected ${detectionResult.detected.model}`
-        );
+        logger.warn('Model mismatch detected', {
+          agentId: session.agentId,
+          claimedModel,
+          detectedModel: detectionResult.detected.model,
+        });
       }
     } else {
       modelStatus = 'undetectable';
-      console.log(
-        `Model detection for agent ${session.agentId}: Unable to confidently detect model`
-      );
+      logger.debug('Model detection inconclusive', { agentId: session.agentId });
     }
   }
 
@@ -1342,17 +1350,21 @@ export async function runVerificationSession(sessionId: string): Promise<{
   while (challengeIndex < allChallenges.length) {
     burstNumber++;
     const burstChallenges = allChallenges.slice(challengeIndex, challengeIndex + BURST_SIZE);
-    console.log(
-      `\n[Burst ${burstNumber}] Sending ${burstChallenges.length} challenges simultaneously...`
-    );
+    logger.debug('Sending burst challenges', {
+      burstNumber,
+      challengeCount: burstChallenges.length,
+    });
 
     // Send all challenges in this burst simultaneously
     const burstStart = Date.now();
     const burstPromises = burstChallenges.map((challenge, idx) =>
       sendChallenge(session.webhookUrl, challenge, sessionId, session.agentId).then(result => {
-        console.log(
-          `  Challenge ${challengeIndex + idx + 1}/${allChallenges.length}: ${result.status}${result.responseTime ? ` (${result.responseTime}ms)` : ''}`
-        );
+        logger.debug('Challenge result', {
+          challengeNumber: challengeIndex + idx + 1,
+          totalChallenges: allChallenges.length,
+          status: result.status,
+          responseTimeMs: result.responseTime,
+        });
         return result;
       })
     );
@@ -1365,7 +1377,7 @@ export async function runVerificationSession(sessionId: string): Promise<{
       ),
     ]).catch(_err => {
       // Timeout - mark remaining as failed
-      console.log(`  Burst timeout after ${Date.now() - burstStart}ms`);
+      logger.debug('Burst timeout', { elapsedMs: Date.now() - burstStart });
       burstChallenges.forEach((c, _idx) => {
         if (c.status === 'pending') {
           c.status = 'failed';
@@ -1376,13 +1388,13 @@ export async function runVerificationSession(sessionId: string): Promise<{
     });
 
     const burstTime = Date.now() - burstStart;
-    console.log(`[Burst ${burstNumber}] Completed in ${burstTime}ms`);
+    logger.debug('Burst completed', { burstNumber, durationMs: burstTime });
 
     challengeIndex += BURST_SIZE;
 
     // Pause between bursts (unless this was the last burst)
     if (challengeIndex < allChallenges.length) {
-      console.log(`[Pause] Waiting ${PAUSE_BETWEEN_BURSTS_MS / 1000}s before next burst...`);
+      logger.debug('Pausing between bursts', { pauseSeconds: PAUSE_BETWEEN_BURSTS_MS / 1000 });
       await new Promise(resolve => setTimeout(resolve, PAUSE_BETWEEN_BURSTS_MS));
     }
   }
@@ -1571,9 +1583,11 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       if (stats.shouldRevoke) {
         verifiedAgents.delete(spotCheck.agentId);
         updateAgentVerificationStatus(spotCheck.agentId, false);
-        console.log(
-          `Verification revoked for ${spotCheck.agentId}: ${stats.failed} failures in 30 days (${Math.round(stats.failureRate * 100)}% failure rate)`
-        );
+        logger.verification('Verification revoked', spotCheck.agentId, {
+          failures: stats.failed,
+          windowDays: 30,
+          failureRate: Math.round(stats.failureRate * 100),
+        });
       }
     } else {
       // Track skipped checks too
@@ -1694,7 +1708,7 @@ export function revokeVerification(agentId: string, reason: string): boolean {
   if (!verifiedAgents.has(agentId)) return false;
   verifiedAgents.delete(agentId);
   updateAgentVerificationStatus(agentId, false);
-  console.log(`Verification revoked for ${agentId}: ${reason}`);
+  logger.verification('Verification revoked', agentId, { reason });
   return true;
 }
 
@@ -1754,9 +1768,10 @@ export function rescheduleNextBurstForTesting(sessionId: string): {
 
   saveSessionData();
 
-  console.log(
-    `[Testing] Rescheduled ${burstChallenges.length} challenges to ${new Date(newTime).toISOString()}`
-  );
+  logger.debug('Rescheduled challenges for testing', {
+    count: burstChallenges.length,
+    newTime: new Date(newTime).toISOString(),
+  });
 
   return {
     success: true,

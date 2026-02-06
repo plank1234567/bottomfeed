@@ -11,6 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '@/lib/logger';
 
 // File-based persistence for dev (in production, use a real database)
 const DATA_DIR = path.join(process.cwd(), '.data');
@@ -55,7 +56,11 @@ function saveData() {
 }
 
 // Types
-export type ModelVerificationStatus = 'pending' | 'verified_match' | 'verified_mismatch' | 'undetectable';
+export type ModelVerificationStatus =
+  | 'pending'
+  | 'verified_match'
+  | 'verified_mismatch'
+  | 'undetectable';
 
 export interface StoredVerificationSession {
   id: string;
@@ -264,7 +269,11 @@ if (persistedData) {
   persistedData.modelDetections.forEach(([k, v]) => modelDetections.set(k, v));
   persistedData.spotChecks.forEach(([k, v]) => spotChecks.set(k, v));
   persistedData.agentStats.forEach(([k, v]) => agentStats.set(k, v));
-  console.log(`[VerificationDB] Loaded ${verificationSessions.size} sessions, ${challengeResponses.size} responses, ${modelDetections.size} detections`);
+  logger.debug('VerificationDB loaded', {
+    sessions: verificationSessions.size,
+    responses: challengeResponses.size,
+    detections: modelDetections.size,
+  });
 }
 
 // Helper to generate IDs
@@ -274,13 +283,15 @@ function generateId(): string {
 
 // ============ VERIFICATION SESSIONS ============
 
-export function storeVerificationSession(session: Omit<StoredVerificationSession, 'id'>): StoredVerificationSession {
+export function storeVerificationSession(
+  session: Omit<StoredVerificationSession, 'id'>
+): StoredVerificationSession {
   const stored: StoredVerificationSession = {
     id: generateId(),
     ...session,
   };
   verificationSessions.set(stored.id, stored);
-  console.log(`[VerificationDB] Stored session ${stored.id} for agent ${stored.agentId}`);
+  logger.debug('VerificationDB stored session', { sessionId: stored.id, agentId: stored.agentId });
   saveData();
   return stored;
 }
@@ -308,13 +319,14 @@ export function getAgentVerificationSessions(agentId: string): StoredVerificatio
 }
 
 export function getAllVerificationSessions(): StoredVerificationSession[] {
-  return Array.from(verificationSessions.values())
-    .sort((a, b) => b.startedAt - a.startedAt);
+  return Array.from(verificationSessions.values()).sort((a, b) => b.startedAt - a.startedAt);
 }
 
 // ============ CHALLENGE RESPONSES ============
 
-export function storeChallengeResponse(response: Omit<StoredChallengeResponse, 'id'>): StoredChallengeResponse {
+export function storeChallengeResponse(
+  response: Omit<StoredChallengeResponse, 'id'>
+): StoredChallengeResponse {
   const stored: StoredChallengeResponse = {
     id: generateId(),
     ...response,
@@ -337,19 +349,25 @@ export function getAgentChallengeResponses(agentId: string): StoredChallengeResp
 }
 
 export function getAllChallengeResponses(): StoredChallengeResponse[] {
-  return Array.from(challengeResponses.values())
-    .sort((a, b) => b.sentAt - a.sentAt);
+  return Array.from(challengeResponses.values()).sort((a, b) => b.sentAt - a.sentAt);
 }
 
 // ============ MODEL DETECTIONS ============
 
-export function storeModelDetection(detection: Omit<StoredModelDetection, 'id'>): StoredModelDetection {
+export function storeModelDetection(
+  detection: Omit<StoredModelDetection, 'id'>
+): StoredModelDetection {
   const stored: StoredModelDetection = {
     id: generateId(),
     ...detection,
   };
   modelDetections.set(stored.id, stored);
-  console.log(`[VerificationDB] Stored model detection for agent ${stored.agentId}: claimed=${stored.claimedModel}, detected=${stored.detectedModel}, match=${stored.match}`);
+  logger.debug('VerificationDB stored model detection', {
+    agentId: stored.agentId,
+    claimedModel: stored.claimedModel,
+    detectedModel: stored.detectedModel,
+    match: stored.match,
+  });
   saveData();
   return stored;
 }
@@ -366,8 +384,7 @@ export function getLatestModelDetection(agentId: string): StoredModelDetection |
 }
 
 export function getAllModelDetections(): StoredModelDetection[] {
-  return Array.from(modelDetections.values())
-    .sort((a, b) => b.timestamp - a.timestamp);
+  return Array.from(modelDetections.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
 
 // ============ SPOT CHECKS ============
@@ -383,20 +400,22 @@ export function storeSpotCheck(record: Omit<SpotCheckRecord, 'id'>): SpotCheckRe
 }
 
 export function getAgentSpotChecks(agentId: string, days: number = 30): SpotCheckRecord[] {
-  const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   return Array.from(spotChecks.values())
     .filter(s => s.agentId === agentId && s.timestamp >= cutoff)
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export function getAllSpotChecks(): SpotCheckRecord[] {
-  return Array.from(spotChecks.values())
-    .sort((a, b) => b.timestamp - a.timestamp);
+  return Array.from(spotChecks.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
 
 // ============ AGENT STATS ============
 
-export function updateAgentStats(agentId: string, updates: Partial<AgentVerificationStats>): AgentVerificationStats {
+export function updateAgentStats(
+  agentId: string,
+  updates: Partial<AgentVerificationStats>
+): AgentVerificationStats {
   const existing = agentStats.get(agentId) || {
     agentId,
     verificationPassed: false,
@@ -418,9 +437,7 @@ export function updateAgentStats(agentId: string, updates: Partial<AgentVerifica
 
   // Recalculate failure rate
   const totalChecks = updated.spotChecksPassed + updated.spotChecksFailed;
-  updated.spotCheckFailureRate = totalChecks > 0
-    ? updated.spotChecksFailed / totalChecks
-    : 0;
+  updated.spotCheckFailureRate = totalChecks > 0 ? updated.spotChecksFailed / totalChecks : 0;
 
   agentStats.set(agentId, updated);
   saveData();
@@ -450,7 +467,8 @@ export function getGlobalStats(): GlobalStats {
   const claimedModelDistribution: Record<string, number> = {};
   stats.forEach(s => {
     if (s.claimedModel) {
-      claimedModelDistribution[s.claimedModel] = (claimedModelDistribution[s.claimedModel] || 0) + 1;
+      claimedModelDistribution[s.claimedModel] =
+        (claimedModelDistribution[s.claimedModel] || 0) + 1;
     }
   });
 
@@ -458,15 +476,20 @@ export function getGlobalStats(): GlobalStats {
   const detectedModelDistribution: Record<string, number> = {};
   stats.forEach(s => {
     if (s.detectedModel) {
-      detectedModelDistribution[s.detectedModel] = (detectedModelDistribution[s.detectedModel] || 0) + 1;
+      detectedModelDistribution[s.detectedModel] =
+        (detectedModelDistribution[s.detectedModel] || 0) + 1;
     }
   });
 
   // Model verification accuracy
   const withDetection = stats.filter(s => s.modelVerificationStatus !== 'pending');
   const matches = withDetection.filter(s => s.modelVerificationStatus === 'verified_match').length;
-  const mismatches = withDetection.filter(s => s.modelVerificationStatus === 'verified_mismatch').length;
-  const undetectable = withDetection.filter(s => s.modelVerificationStatus === 'undetectable').length;
+  const mismatches = withDetection.filter(
+    s => s.modelVerificationStatus === 'verified_mismatch'
+  ).length;
+  const undetectable = withDetection.filter(
+    s => s.modelVerificationStatus === 'undetectable'
+  ).length;
 
   // Verification success rate
   const completedSessions = sessions.filter(s => s.status !== 'in_progress');
@@ -474,20 +497,23 @@ export function getGlobalStats(): GlobalStats {
 
   // Average metrics
   const completedWithDuration = completedSessions.filter(s => s.completedAt);
-  const avgDuration = completedWithDuration.length > 0
-    ? completedWithDuration.reduce((sum, s) => sum + (s.completedAt! - s.startedAt), 0) / completedWithDuration.length
-    : 0;
+  const avgDuration =
+    completedWithDuration.length > 0
+      ? completedWithDuration.reduce((sum, s) => sum + (s.completedAt! - s.startedAt), 0) /
+        completedWithDuration.length
+      : 0;
 
   const responseTimes = Array.from(challengeResponses.values())
     .filter(r => r.responseTimeMs !== null)
     .map(r => r.responseTimeMs!);
-  const avgResponseTime = responseTimes.length > 0
-    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
-    : 0;
+  const avgResponseTime =
+    responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : 0;
 
-  const avgAttempted = completedSessions.length > 0
-    ? completedSessions.reduce((sum, s) => sum + s.attemptedChallenges, 0) / completedSessions.length
-    : 0;
+  const avgAttempted =
+    completedSessions.length > 0
+      ? completedSessions.reduce((sum, s) => sum + s.attemptedChallenges, 0) /
+        completedSessions.length
+      : 0;
 
   return {
     totalAgents: stats.length,
@@ -498,7 +524,8 @@ export function getGlobalStats(): GlobalStats {
     modelMatchRate: withDetection.length > 0 ? matches / withDetection.length : 0,
     modelMismatchCount: mismatches,
     undetectableCount: undetectable,
-    verificationPassRate: completedSessions.length > 0 ? passedSessions.length / completedSessions.length : 0,
+    verificationPassRate:
+      completedSessions.length > 0 ? passedSessions.length / completedSessions.length : 0,
     avgVerificationDuration: avgDuration,
     avgResponseTime,
     avgChallengesAttempted: avgAttempted,
@@ -534,8 +561,9 @@ export function getModelMismatches(): StoredModelDetection[] {
 }
 
 export function getAgentsByDetectedModel(model: string): AgentVerificationStats[] {
-  return Array.from(agentStats.values())
-    .filter(s => s.detectedModel?.toLowerCase() === model.toLowerCase());
+  return Array.from(agentStats.values()).filter(
+    s => s.detectedModel?.toLowerCase() === model.toLowerCase()
+  );
 }
 
 export function getResponsesByModel(model: string): StoredChallengeResponse[] {

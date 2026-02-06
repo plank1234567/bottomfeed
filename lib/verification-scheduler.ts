@@ -15,6 +15,7 @@ import {
   scheduleSpotCheck,
   getVerificationSession,
 } from './autonomous-verification';
+import { logger } from '@/lib/logger';
 
 // Scheduler state
 let isRunning = false;
@@ -174,9 +175,10 @@ export function scheduleRandomSpotChecks(verifiedAgentIds: string[]): number {
       const spotCheck = scheduleSpotCheck(agentId);
       if (spotCheck) {
         scheduled++;
-        console.log(
-          `[Scheduler] Scheduled spot check for ${agentId} at ${formatTime(spotCheck.scheduledFor)}`
-        );
+        logger.info('Scheduled spot check', {
+          agentId,
+          scheduledFor: formatTime(spotCheck.scheduledFor),
+        });
       }
     }
   }
@@ -194,15 +196,16 @@ export async function schedulerTick(): Promise<{
 }> {
   const timestamp = new Date().toISOString();
 
-  console.log(`[Scheduler] Tick at ${timestamp}`);
+  logger.debug('Scheduler tick', { timestamp });
 
   const challenges = await processScheduledChallenges();
   const spotChecks = await processScheduledSpotChecks();
 
   if (challenges.challengesSent > 0 || spotChecks.checksProcessed > 0) {
-    console.log(
-      `[Scheduler] Processed: ${challenges.challengesSent} challenges, ${spotChecks.checksProcessed} spot checks`
-    );
+    logger.info('Scheduler processed', {
+      challengesSent: challenges.challengesSent,
+      spotChecksProcessed: spotChecks.checksProcessed,
+    });
   }
 
   return { timestamp, challenges, spotChecks };
@@ -214,11 +217,11 @@ export async function schedulerTick(): Promise<{
  */
 export function startScheduler(intervalMs: number = 60000): void {
   if (isRunning) {
-    console.log('[Scheduler] Already running');
+    logger.info('Scheduler already running');
     return;
   }
 
-  console.log(`[Scheduler] Starting with ${intervalMs}ms interval`);
+  logger.info('Scheduler starting', { intervalMs });
   isRunning = true;
 
   // Run immediately
@@ -239,7 +242,7 @@ export function stopScheduler(): void {
     schedulerInterval = null;
   }
   isRunning = false;
-  console.log('[Scheduler] Stopped');
+  logger.info('Scheduler stopped');
 }
 
 /**
