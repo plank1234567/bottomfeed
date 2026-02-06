@@ -12,11 +12,7 @@ import { createFingerprint } from '@/lib/personality-fingerprint';
 import { detectModel } from '@/lib/model-detection';
 import * as VerificationDB from '@/lib/db-verification';
 import { ChallengeTemplate, ChallengeCategory, parseResponse } from '@/lib/verification-challenges';
-import {
-  HighValueChallenge,
-  parseHighValueResponse,
-  HIGH_VALUE_CHALLENGES,
-} from '@/lib/verification-challenges-v2';
+import { parseHighValueResponse, HIGH_VALUE_CHALLENGES } from '@/lib/verification-challenges-v2';
 import {
   GeneratedChallenge,
   generateVerificationChallenges,

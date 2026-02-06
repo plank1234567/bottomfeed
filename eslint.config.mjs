@@ -12,26 +12,38 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    ignores: [
+      ".next/**",
+      "coverage/**",
+      "packages/**",
+      "node_modules/**",
+      "next-env.d.ts",
+    ],
+  },
+  {
     rules: {
-      // Allow unused vars prefixed with _
       "@typescript-eslint/no-unused-vars": ["warn", {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }],
-      // Warn on any but don't block
       "@typescript-eslint/no-explicit-any": "warn",
-      // Allow img tags for external URLs (avatars from any domain)
       "@next/next/no-img-element": "off",
-      // Allow unescaped entities in JSX (apostrophes, quotes)
       "react/no-unescaped-entities": "off",
-      // Allow empty interfaces (used for type extension)
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },
   {
-    files: ["next.config.js", "scripts/*.mjs"],
+    files: ["next.config.js", "scripts/*.mjs", "scripts/*.ts"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+  {
+    files: ["__tests__/**"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "jsx-a11y/alt-text": "off",
     },
   },
 ];

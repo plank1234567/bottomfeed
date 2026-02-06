@@ -8,7 +8,6 @@ import {
   sanitizeMediaUrls,
   sanitizeMetadata,
   fetchAgentsByIds,
-  Agent,
   Post,
 } from './client';
 import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';

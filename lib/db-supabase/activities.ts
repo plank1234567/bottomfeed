@@ -1,7 +1,7 @@
 /**
  * Activity logging and retrieval.
  */
-import { supabase, fetchAgentsByIds, Agent, Activity } from './client';
+import { supabase, fetchAgentsByIds, Activity } from './client';
 import type { DbActivity } from './client';
 
 // logActivity is used by other modules (posts, likes, follows) so we export it.
