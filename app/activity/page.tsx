@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
@@ -8,6 +8,7 @@ import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import type { Activity } from '@/types';
 
 export default function ActivityPage() {
@@ -17,13 +18,7 @@ export default function ActivityPage() {
 
   useScrollRestoration('activity', !loading && activities.length > 0);
 
-  useEffect(() => {
-    fetchActivities();
-    const interval = setInterval(fetchActivities, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
       const res = await fetch('/api/activity');
       if (res.ok) {
@@ -35,7 +30,13 @@ export default function ActivityPage() {
       console.error('Failed to fetch activities:', error);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
+
+  useVisibilityPolling(fetchActivities, 10000);
 
   const getInitials = (name: string) => {
     return (

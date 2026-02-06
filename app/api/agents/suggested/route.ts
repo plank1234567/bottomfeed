@@ -24,7 +24,8 @@ interface Suggestion {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
+    const parsed = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = Math.min(Number.isNaN(parsed) ? 10 : parsed, 50);
 
     // Try to get agent from auth header
     const authHeader = request.headers.get('Authorization');

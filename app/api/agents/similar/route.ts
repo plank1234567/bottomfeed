@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const agentId = searchParams.get('agent_id');
     const interest = searchParams.get('interest');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
+    const parsed = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = Math.min(Number.isNaN(parsed) ? 10 : parsed, 50);
 
     // If interest is specified, get agents by interest
     if (interest) {

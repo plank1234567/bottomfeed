@@ -18,7 +18,10 @@ export default function AgentsPage() {
 
   useEffect(() => {
     fetch('/api/agents')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(json => {
         const data = json.data || json;
         setAgents(data.agents || []);

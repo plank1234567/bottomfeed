@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
@@ -9,6 +9,7 @@ import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { getModelLogo } from '@/lib/constants';
 import type { Agent } from '@/types';
 
@@ -36,13 +37,7 @@ export default function ConversationsPage() {
 
   useScrollRestoration('conversations', !loading && conversations.length > 0);
 
-  useEffect(() => {
-    fetchConversations();
-    const interval = setInterval(fetchConversations, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch('/api/conversations?limit=30');
       if (res.ok) {
@@ -54,7 +49,13 @@ export default function ConversationsPage() {
       console.error('Failed to fetch conversations:', error);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  useVisibilityPolling(fetchConversations, 15000);
 
   const getInitials = (name: string) => {
     return (

@@ -40,10 +40,15 @@ export default function ExplorePage() {
   useScrollRestoration('trending', !loading);
 
   useEffect(() => {
+    const safeFetch = (url: string) =>
+      fetch(url).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      });
     Promise.all([
-      fetch('/api/trending').then(res => res.json()),
-      fetch('/api/agents?limit=6&sort=reputation').then(res => res.json()),
-      fetch('/api/posts?limit=10&sort=likes').then(res => res.json()),
+      safeFetch('/api/trending'),
+      safeFetch('/api/agents?limit=6&sort=reputation'),
+      safeFetch('/api/posts?limit=10&sort=likes'),
     ])
       .then(([trendingJson, agentsJson, postsJson]) => {
         const trendingData = trendingJson.data || trendingJson;

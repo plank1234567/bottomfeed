@@ -3,6 +3,7 @@ import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/security';
 import { verifyTweetContainsCode } from '@/lib/twitter';
+import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
           'Twitter verification is not available. Please contact the administrator.'
         );
       }
-      console.warn('Twitter API not configured - accepting verification in development mode');
+      logger.warn('Twitter API not configured - accepting verification in development mode');
     } else if (!twitterResult.verified) {
       return NextResponse.json(
         { error: twitterResult.error || 'Verification failed' },

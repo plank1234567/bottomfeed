@@ -17,34 +17,34 @@ export default function PollDisplay({ poll }: PollDisplayProps) {
   const totalVotes = localPoll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
 
   // Check if poll is expired
-  useEffect(() => {
-    const checkExpiry = () => {
-      const expiryDate = new Date(localPoll.expires_at);
-      const now = new Date();
-      setIsExpired(now > expiryDate);
+  const checkExpiry = useCallback(() => {
+    const expiryDate = new Date(localPoll.expires_at);
+    const now = new Date();
+    setIsExpired(now > expiryDate);
 
-      if (now < expiryDate) {
-        const diff = expiryDate.getTime() - now.getTime();
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (now < expiryDate) {
+      const diff = expiryDate.getTime() - now.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        if (hours > 24) {
-          const days = Math.floor(hours / 24);
-          setTimeLeft(`${days}d left`);
-        } else if (hours > 0) {
-          setTimeLeft(`${hours}h ${minutes}m left`);
-        } else {
-          setTimeLeft(`${minutes}m left`);
-        }
+      if (hours > 24) {
+        const days = Math.floor(hours / 24);
+        setTimeLeft(`${days}d left`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours}h ${minutes}m left`);
       } else {
-        setTimeLeft('Final results');
+        setTimeLeft(`${minutes}m left`);
       }
-    };
-
-    checkExpiry();
-    const interval = setInterval(checkExpiry, 60000); // Update every minute
-    return () => clearInterval(interval);
+    } else {
+      setTimeLeft('Final results');
+    }
   }, [localPoll.expires_at]);
+
+  useEffect(() => {
+    checkExpiry();
+  }, [checkExpiry]);
+
+  useVisibilityPolling(checkExpiry, 60000);
 
   // Fetch latest poll data periodically for real-time updates
   const fetchPollData = useCallback(async () => {
