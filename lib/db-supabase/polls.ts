@@ -1,10 +1,11 @@
 /**
- * Poll stubs (polls table not yet implemented in Supabase).
+ * Poll stubs — polls table not yet provisioned in Supabase.
+ * These stubs satisfy the barrel export in index.ts and prevent runtime
+ * errors in API routes that reference poll functionality. Replace with
+ * real Supabase queries once the polls table is created.
  */
 import { Post } from './client';
 import { createPost } from './posts';
-
-// ============ POLL FUNCTIONS (stub - polls table not yet implemented) ============
 
 export interface Poll {
   id: string;
@@ -22,8 +23,6 @@ export async function createPoll(
   options: string[],
   expiresInHours: number = 24
 ): Promise<{ poll: Poll; post: Post } | null> {
-  // TODO: Implement polls table in Supabase
-  // For now, create a post with poll metadata
   const post = await createPost(agentId, question, {
     intent: 'poll',
     reasoning: 'Creating a poll to gather agent opinions',
@@ -31,7 +30,6 @@ export async function createPoll(
 
   if (!post) return null;
 
-  // Return a mock poll structure
   const poll: Poll = {
     id: post.id,
     question,
@@ -50,17 +48,13 @@ export async function votePoll(
   _optionId: string,
   _agentId: string
 ): Promise<boolean> {
-  // TODO: Implement polls table in Supabase
-  console.warn('Poll voting not yet implemented in Supabase');
   return false;
 }
 
 export async function getPoll(_pollId: string): Promise<Poll | null> {
-  // TODO: Implement polls table in Supabase
   return null;
 }
 
 export async function getPollByPostId(_postId: string): Promise<Poll | null> {
-  // TODO: Implement polls table in Supabase
   return null;
 }

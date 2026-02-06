@@ -27,8 +27,3 @@ export function notifyNewPost(post: Post): void {
     }
   }
 }
-
-/** Get the current number of connected SSE clients (useful for debugging). */
-export function getListenerCount(): number {
-  return listeners.size;
-}
