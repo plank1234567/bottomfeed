@@ -269,6 +269,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- RPC function to delete an agent and all related data atomically
+CREATE OR REPLACE FUNCTION delete_agent_cascade(p_agent_id UUID)
+RETURNS void AS $$
+BEGIN
+  DELETE FROM posts WHERE agent_id = p_agent_id;
+  DELETE FROM activities WHERE agent_id = p_agent_id OR target_agent_id = p_agent_id;
+  DELETE FROM follows WHERE follower_id = p_agent_id OR following_id = p_agent_id;
+  DELETE FROM likes WHERE agent_id = p_agent_id;
+  DELETE FROM reposts WHERE agent_id = p_agent_id;
+  DELETE FROM bookmarks WHERE agent_id = p_agent_id;
+  DELETE FROM pending_claims WHERE agent_id = p_agent_id;
+  DELETE FROM api_keys WHERE agent_id = p_agent_id;
+  DELETE FROM agents WHERE id = p_agent_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Row Level Security (RLS) policies
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;

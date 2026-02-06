@@ -9,6 +9,7 @@ import {
   Agent,
   PendingClaim,
 } from './client';
+import { getCached, setCache } from '@/lib/cache';
 
 // ============ AGENT FUNCTIONS ============
 
@@ -204,6 +205,10 @@ export async function getTopAgents(
   limit: number = 10,
   sortBy: 'reputation' | 'followers' | 'posts' | 'popularity' = 'reputation'
 ): Promise<Agent[]> {
+  const CACHE_KEY = `topAgents:${sortBy}:${limit}`;
+  const cached = getCached<Agent[]>(CACHE_KEY);
+  if (cached) return cached;
+
   let query = supabase.from('agents').select('*');
 
   switch (sortBy) {
@@ -222,7 +227,10 @@ export async function getTopAgents(
   }
 
   const { data } = await query.limit(limit);
-  return (data || []) as Agent[];
+  const result = (data || []) as Agent[];
+
+  setCache(CACHE_KEY, result, 30_000);
+  return result;
 }
 
 export async function updateAgentStatus(
@@ -269,57 +277,14 @@ export async function updateAgentProfile(
 }
 
 /**
- * Delete an agent and all associated data (GDPR data deletion).
- * Deletes: posts, activities, follows, pending claims, api_keys, and the agent record.
- * Deletion order: dependent data first, agent record last.
- * If any step fails, we log the error and continue with remaining deletes.
+ * Delete an agent and all associated data atomically (GDPR data deletion).
+ * Uses a Supabase RPC function to run all deletes in a single transaction.
+ * If any step fails, the entire operation rolls back.
  */
 export async function deleteAgent(agentId: string): Promise<void> {
-  const errors: string[] = [];
-
-  // Delete dependent data first -- agent record is deleted last so it
-  // still exists if an early step fails (making retry/cleanup possible).
-
-  // Delete agent's posts (including replies, reposts)
-  const { error: postsErr } = await supabase.from('posts').delete().eq('agent_id', agentId);
-  if (postsErr) errors.push(`posts: ${postsErr.message}`);
-
-  // Delete activities referencing this agent
-  const { error: actErr1 } = await supabase.from('activities').delete().eq('agent_id', agentId);
-  if (actErr1) errors.push(`activities(agent_id): ${actErr1.message}`);
-
-  const { error: actErr2 } = await supabase
-    .from('activities')
-    .delete()
-    .eq('target_agent_id', agentId);
-  if (actErr2) errors.push(`activities(target_agent_id): ${actErr2.message}`);
-
-  // Delete follows
-  const { error: followErr1 } = await supabase.from('follows').delete().eq('follower_id', agentId);
-  if (followErr1) errors.push(`follows(follower_id): ${followErr1.message}`);
-
-  const { error: followErr2 } = await supabase.from('follows').delete().eq('following_id', agentId);
-  if (followErr2) errors.push(`follows(following_id): ${followErr2.message}`);
-
-  // Delete pending claims
-  const { error: claimErr } = await supabase
-    .from('pending_claims')
-    .delete()
-    .eq('agent_id', agentId);
-  if (claimErr) errors.push(`pending_claims: ${claimErr.message}`);
-
-  // Delete API keys
-  const { error: keyErr } = await supabase.from('api_keys').delete().eq('agent_id', agentId);
-  if (keyErr) errors.push(`api_keys: ${keyErr.message}`);
-
-  if (errors.length > 0) {
-    console.error(`deleteAgent(${agentId}) partial failures:`, errors);
-  }
-
-  // Delete the agent record itself last
-  const { error: agentErr } = await supabase.from('agents').delete().eq('id', agentId);
-  if (agentErr) {
-    throw new Error(`Failed to delete agent record: ${agentErr.message}`);
+  const { error } = await supabase.rpc('delete_agent_cascade', { p_agent_id: agentId });
+  if (error) {
+    throw new Error(`Failed to delete agent: ${error.message}`);
   }
 }
 

@@ -313,10 +313,13 @@ export default function AgentProfilePage() {
                     className="w-5 h-5 rounded flex items-center justify-center"
                     title={agent.model}
                   >
-                    <img
+                    <Image
                       src={modelLogo.logo}
                       alt={modelLogo.name}
+                      width={12}
+                      height={12}
                       className="w-3 h-3 object-contain"
+                      unoptimized
                     />
                   </span>
                 )}

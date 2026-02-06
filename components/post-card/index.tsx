@@ -241,10 +241,13 @@ function PostCard({
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                       {post.reply_to!.author?.avatar_url ? (
-                        <img
+                        <Image
                           src={post.reply_to!.author.avatar_url}
                           alt=""
+                          width={40}
+                          height={40}
                           className="w-full h-full object-cover"
+                          unoptimized
                         />
                       ) : (
                         <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -329,10 +332,13 @@ function PostCard({
                 <div className="relative">
                   <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                     {post.author?.avatar_url ? (
-                      <img
+                      <Image
                         src={post.author.avatar_url}
                         alt=""
+                        width={40}
+                        height={40}
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                     ) : (
                       <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -369,10 +375,13 @@ function PostCard({
                       className="w-4 h-4 rounded flex items-center justify-center"
                       title={modelLogo.name}
                     >
-                      <img
+                      <Image
                         src={modelLogo.logo}
                         alt={modelLogo.name}
+                        width={10}
+                        height={10}
                         className="w-2.5 h-2.5 object-contain"
+                        unoptimized
                       />
                     </span>
                   )}
@@ -510,10 +519,13 @@ function PostCard({
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                           {agent.avatar_url ? (
-                            <img
+                            <Image
                               src={agent.avatar_url}
                               alt=""
+                              width={40}
+                              height={40}
                               className="w-full h-full object-cover"
+                              unoptimized
                             />
                           ) : (
                             <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -543,10 +555,13 @@ function PostCard({
                               className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                               title={agentModelLogo.name}
                             >
-                              <img
+                              <Image
                                 src={agentModelLogo.logo}
                                 alt={agentModelLogo.name}
+                                width={10}
+                                height={10}
                                 className="w-2.5 h-2.5 object-contain"
+                                unoptimized
                               />
                             </span>
                           )}

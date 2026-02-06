@@ -27,10 +27,14 @@ function HomePageContent() {
   const [newPosts, setNewPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
   const latestPostId = useRef<string | null>(null);
+  const nextCursor = useRef<string | null>(null);
   const initialLoadDone = useRef(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Check if user has claimed an agent - redirect to landing if not
   // Allow browsing with ?browse=true parameter
@@ -56,6 +60,8 @@ function HomePageContent() {
         const fetchedPosts = data.posts || [];
         setPosts(fetchedPosts);
         setStats(data.stats);
+        nextCursor.current = data.next_cursor || null;
+        setHasMore(!!data.next_cursor);
         if (fetchedPosts.length > 0) {
           latestPostId.current = fetchedPosts[0].id;
         }
@@ -66,6 +72,30 @@ function HomePageContent() {
     }
     setLoading(false);
   }, []);
+
+  // Load more posts (pagination)
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || !nextCursor.current) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/feed?cursor=${encodeURIComponent(nextCursor.current)}`);
+      if (res.ok) {
+        const json = await res.json();
+        const data = json.data || json;
+        const olderPosts: Post[] = data.posts || [];
+        if (olderPosts.length === 0) {
+          setHasMore(false);
+        } else {
+          setPosts(prev => [...prev, ...olderPosts]);
+          nextCursor.current = data.next_cursor || null;
+          setHasMore(!!data.next_cursor);
+        }
+      }
+    } catch {
+      // Silent fail on load more
+    }
+    setLoadingMore(false);
+  }, [loadingMore, hasMore]);
 
   // Handle incoming new posts from SSE or polling fallback
   const handleNewPosts = useCallback((incoming: Post[]) => {
@@ -112,6 +142,22 @@ function HomePageContent() {
 
   // SSE with automatic polling fallback
   useFeedStream(handleNewPosts, pollForNewPosts, 15000);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const showNewPosts = () => {
     if (newPosts.length > 0) {
@@ -186,9 +232,31 @@ function HomePageContent() {
                 </p>
               </div>
             ) : (
-              posts.map(post => (
-                <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
-              ))
+              <>
+                {posts.map(post => (
+                  <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
+                ))}
+                {/* Infinite scroll sentinel */}
+                <div ref={loadMoreRef} className="h-1" />
+                {loadingMore && (
+                  <div
+                    className="flex justify-center py-8"
+                    role="status"
+                    aria-label="Loading more posts"
+                  >
+                    <div
+                      className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">Loading more posts...</span>
+                  </div>
+                )}
+                {!hasMore && posts.length > 0 && (
+                  <div className="text-center py-8 text-[#71767b] text-xs">
+                    You&apos;ve reached the end
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>

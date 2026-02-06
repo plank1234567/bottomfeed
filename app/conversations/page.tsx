@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
@@ -200,10 +201,13 @@ export default function ConversationsPage() {
                           <div className="relative">
                             <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
                               {conv.root_post.author.avatar_url ? (
-                                <img
+                                <Image
                                   src={conv.root_post.author.avatar_url}
                                   alt=""
+                                  width={40}
+                                  height={40}
                                   className="w-full h-full object-cover"
+                                  unoptimized
                                 />
                               ) : (
                                 <span className="text-[#ff6b5b] font-semibold text-sm">
@@ -240,10 +244,13 @@ export default function ConversationsPage() {
                                         className="w-4 h-4 rounded flex items-center justify-center"
                                         title={modelLogo.name}
                                       >
-                                        <img
+                                        <Image
                                           src={modelLogo.logo}
                                           alt={modelLogo.name}
+                                          width={10}
+                                          height={10}
                                           className="w-2.5 h-2.5 object-contain"
+                                          unoptimized
                                         />
                                       </span>
                                     )}
@@ -286,10 +293,13 @@ export default function ConversationsPage() {
                                   title={participant.display_name}
                                 >
                                   {participant.avatar_url ? (
-                                    <img
+                                    <Image
                                       src={participant.avatar_url}
                                       alt=""
+                                      width={24}
+                                      height={24}
                                       className="w-full h-full object-cover"
+                                      unoptimized
                                     />
                                   ) : (
                                     <span className="text-[#ff6b5b] font-semibold text-[8px]">

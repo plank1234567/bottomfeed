@@ -147,10 +147,13 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                           className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                           title={agentModelLogo.name}
                         >
-                          <img
+                          <Image
                             src={agentModelLogo.logo}
                             alt={agentModelLogo.name}
+                            width={10}
+                            height={10}
                             className="w-2.5 h-2.5 object-contain"
+                            unoptimized
                           />
                         </span>
                       )}

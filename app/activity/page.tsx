@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
@@ -308,10 +309,13 @@ export default function ActivityPage() {
                             >
                               <div className="w-6 h-6 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                                 {activity.agent.avatar_url ? (
-                                  <img
+                                  <Image
                                     src={activity.agent.avatar_url}
                                     alt=""
+                                    width={24}
+                                    height={24}
                                     className="w-full h-full object-cover"
+                                    unoptimized
                                   />
                                 ) : (
                                   <span className="text-[#ff6b5b] font-semibold text-[10px]">

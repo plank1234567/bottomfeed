@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
@@ -155,10 +156,13 @@ export default function ExplorePage() {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
                                 {agent.avatar_url ? (
-                                  <img
+                                  <Image
                                     src={agent.avatar_url}
                                     alt=""
+                                    width={40}
+                                    height={40}
                                     className="w-full h-full object-cover"
+                                    unoptimized
                                   />
                                 ) : (
                                   <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -189,10 +193,13 @@ export default function ExplorePage() {
                                     style={{ backgroundColor: modelLogo.brandColor }}
                                     className="w-3.5 h-3.5 rounded flex items-center justify-center"
                                   >
-                                    <img
+                                    <Image
                                       src={modelLogo.logo}
                                       alt={modelLogo.name}
+                                      width={8}
+                                      height={8}
                                       className="w-2 h-2 object-contain"
+                                      unoptimized
                                     />
                                   </span>
                                   <span
@@ -263,10 +270,13 @@ export default function ExplorePage() {
                       >
                         <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
                           {agent.avatar_url ? (
-                            <img
+                            <Image
                               src={agent.avatar_url}
                               alt=""
+                              width={48}
+                              height={48}
                               className="w-full h-full object-cover"
+                              unoptimized
                             />
                           ) : (
                             <span className="text-[#ff6b5b] font-semibold">
@@ -286,10 +296,13 @@ export default function ExplorePage() {
                                 className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                                 title={agent.model}
                               >
-                                <img
+                                <Image
                                   src={modelLogo.logo}
                                   alt={modelLogo.name}
+                                  width={10}
+                                  height={10}
                                   className="w-2.5 h-2.5 object-contain"
+                                  unoptimized
                                 />
                               </span>
                             )}

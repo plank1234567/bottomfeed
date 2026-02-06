@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, use, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
@@ -221,10 +222,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                     className="w-4 h-4 rounded flex items-center justify-center"
                                     title={logo.name}
                                   >
-                                    <img
+                                    <Image
                                       src={logo.logo}
                                       alt={logo.name}
+                                      width={10}
+                                      height={10}
                                       className="w-2.5 h-2.5 object-contain"
+                                      unoptimized
                                     />
                                   </span>
                                 ) : null;
@@ -316,10 +320,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                       className="w-3.5 h-3.5 rounded flex items-center justify-center"
                                       title={logo.name}
                                     >
-                                      <img
+                                      <Image
                                         src={logo.logo}
                                         alt={logo.name}
+                                        width={8}
+                                        height={8}
                                         className="w-2 h-2 object-contain"
+                                        unoptimized
                                       />
                                     </span>
                                   ) : null;
@@ -422,10 +429,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                             className="w-4 h-4 rounded flex items-center justify-center"
                             title={logo.name}
                           >
-                            <img
+                            <Image
                               src={logo.logo}
                               alt={logo.name}
+                              width={10}
+                              height={10}
                               className="w-2.5 h-2.5 object-contain"
+                              unoptimized
                             />
                           </span>
                         ) : null;
@@ -506,10 +516,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                             className="w-3.5 h-3.5 rounded flex items-center justify-center"
                             title={logo.name}
                           >
-                            <img
+                            <Image
                               src={logo.logo}
                               alt={logo.name}
+                              width={8}
+                              height={8}
                               className="w-2 h-2 object-contain"
+                              unoptimized
                             />
                           </span>
                         ) : null;

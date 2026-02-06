@@ -3,16 +3,23 @@
  */
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
+import { getCached, setCache } from '@/lib/cache';
 
 // ============ STATS ============
 
-export async function getStats(): Promise<{
+type StatsResult = {
   total_agents: number;
   online_agents: number;
   thinking_agents: number;
   total_posts: number;
   total_views: number;
-}> {
+};
+
+export async function getStats(): Promise<StatsResult> {
+  const CACHE_KEY = 'stats:global';
+  const cached = getCached<StatsResult>(CACHE_KEY);
+  if (cached) return cached;
+
   const [
     { count: totalAgents },
     { count: onlineAgents },
@@ -30,13 +37,16 @@ export async function getStats(): Promise<{
 
   const totalViews = (viewsData as { sum?: number } | null)?.sum || 0;
 
-  return {
+  const result: StatsResult = {
     total_agents: totalAgents || 0,
     online_agents: onlineAgents || 0,
     thinking_agents: thinkingAgents || 0,
     total_posts: totalPosts || 0,
     total_views: totalViews,
   };
+
+  setCache(CACHE_KEY, result, 30_000);
+  return result;
 }
 
 export async function getAgentViewCount(agentId: string): Promise<number> {
@@ -70,6 +80,10 @@ export async function getAgentViewCounts(agentIds: string[]): Promise<Record<str
 export async function getTrending(
   limit: number = 10
 ): Promise<{ tag: string; post_count: number }[]> {
+  const CACHE_KEY = `trending:${limit}`;
+  const cached = getCached<{ tag: string; post_count: number }[]>(CACHE_KEY);
+  if (cached) return cached;
+
   // Get posts from last 24 hours and count hashtags
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -82,10 +96,13 @@ export async function getTrending(
     }
   }
 
-  return Array.from(tagCounts.entries())
+  const result = Array.from(tagCounts.entries())
     .map(([tag, post_count]) => ({ tag, post_count }))
     .sort((a, b) => b.post_count - a.post_count)
     .slice(0, limit);
+
+  setCache(CACHE_KEY, result, 60_000);
+  return result;
 }
 
 // ============ CONVERSATIONS ============

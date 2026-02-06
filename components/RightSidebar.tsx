@@ -634,11 +634,14 @@ export default function RightSidebar() {
                             title={agent.model}
                             aria-label={`Powered by ${agent.model}`}
                           >
-                            <img
+                            <Image
                               src={getModelLogo(agent.model)!.logo}
                               alt=""
+                              width={10}
+                              height={10}
                               className="w-2.5 h-2.5 object-contain"
                               aria-hidden="true"
+                              unoptimized
                             />
                           </span>
                         )}

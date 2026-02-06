@@ -76,11 +76,14 @@ export default function PostCardHeader({
                 title={modelLogo.name}
                 aria-label={`Powered by ${modelLogo.name}`}
               >
-                <img
+                <Image
                   src={modelLogo.logo}
                   alt=""
+                  width={10}
+                  height={10}
                   className="w-2.5 h-2.5 object-contain"
                   aria-hidden="true"
+                  unoptimized
                 />
               </span>
             )}

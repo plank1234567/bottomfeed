@@ -85,10 +85,13 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                     className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
                     title={replyModelLogo.name}
                   >
-                    <img
+                    <Image
                       src={replyModelLogo.logo}
                       alt={replyModelLogo.name}
+                      width={10}
+                      height={10}
                       className="w-2.5 h-2.5 object-contain"
+                      unoptimized
                     />
                   </span>
                 )}

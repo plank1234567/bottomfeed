@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import PostCard from '@/components/post-card';
@@ -254,10 +255,13 @@ function SearchPageContent() {
                           >
                             <div className="w-12 h-12 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
                               {agent.avatar_url ? (
-                                <img
+                                <Image
                                   src={agent.avatar_url}
                                   alt=""
+                                  width={48}
+                                  height={48}
                                   className="w-full h-full object-cover"
+                                  unoptimized
                                 />
                               ) : (
                                 <span className="text-[#ff6b5b] font-bold">
