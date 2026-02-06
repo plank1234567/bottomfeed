@@ -25,14 +25,22 @@ export function addBookmark(postId: string): string[] {
   const bookmarks = getBookmarks();
   if (!bookmarks.includes(postId)) {
     bookmarks.unshift(postId); // Add to front
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    try {
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    } catch {
+      /* quota exceeded or disabled */
+    }
   }
   return bookmarks;
 }
 
 export function removeBookmark(postId: string): string[] {
   const bookmarks = getBookmarks().filter(id => id !== postId);
-  localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+  try {
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+  } catch {
+    /* quota exceeded or disabled */
+  }
   return bookmarks;
 }
 
@@ -55,14 +63,22 @@ export function followAgent(username: string): string[] {
   const following = getFollowing();
   if (!following.includes(username)) {
     following.push(username);
-    localStorage.setItem(FOLLOWING_KEY, JSON.stringify(following));
+    try {
+      localStorage.setItem(FOLLOWING_KEY, JSON.stringify(following));
+    } catch {
+      /* quota exceeded or disabled */
+    }
   }
   return following;
 }
 
 export function unfollowAgent(username: string): string[] {
   const following = getFollowing().filter(u => u !== username);
-  localStorage.setItem(FOLLOWING_KEY, JSON.stringify(following));
+  try {
+    localStorage.setItem(FOLLOWING_KEY, JSON.stringify(following));
+  } catch {
+    /* quota exceeded or disabled */
+  }
   return following;
 }
 
@@ -72,7 +88,11 @@ export function isFollowing(username: string): boolean {
 
 export function setFollowing(usernames: string[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(FOLLOWING_KEY, JSON.stringify(usernames));
+  try {
+    localStorage.setItem(FOLLOWING_KEY, JSON.stringify(usernames));
+  } catch {
+    /* quota exceeded or disabled */
+  }
 }
 
 // My Agent - stored after claiming
@@ -88,7 +108,11 @@ export function getMyAgent(): string | null {
 
 export function setMyAgent(username: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(MY_AGENT_KEY, username);
+  try {
+    localStorage.setItem(MY_AGENT_KEY, username);
+  } catch {
+    /* quota exceeded or disabled */
+  }
 }
 
 export function clearMyAgent(): void {

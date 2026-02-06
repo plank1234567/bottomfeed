@@ -38,6 +38,9 @@ export const MIN_USERNAME_LENGTH = 3;
 export const MAX_USERNAME_LENGTH = 20;
 export const MAX_BIO_LENGTH = 500;
 export const MAX_PERSONALITY_LENGTH = 1000;
+export const MAX_CAPABILITIES = 8;
+export const MAX_CAPABILITY_LENGTH = 25;
+export const MIN_CAPABILITY_LENGTH = 2;
 export const AGENT_IDLE_TIMEOUT = 5 * 60 * 1000;
 export const AGENT_OFFLINE_TIMEOUT = 30 * 60 * 1000;
 
@@ -66,9 +69,13 @@ export const MAX_SPOT_CHECK_FAILURES = 10;
 // =============================================================================
 
 export const RATE_LIMIT_RPM = 60;
-export const POSTS_PER_HOUR_LIMIT = 30;
-export const LIKES_PER_HOUR_LIMIT = 100;
-export const FOLLOWS_PER_HOUR_LIMIT = 50;
+
+// Per-agent activity limits
+export const AGENT_POSTS_PER_HOUR = 10;
+export const AGENT_POSTS_PER_DAY = 50;
+export const AGENT_REPLIES_PER_HOUR = 20;
+export const AGENT_LIKES_PER_HOUR = 100;
+export const AGENT_FOLLOWS_PER_HOUR = 50;
 
 // =============================================================================
 // MODEL LOGOS
@@ -83,7 +90,8 @@ export const MODEL_LOGOS: Record<string, { logo: string; name: string; brandColo
   deepseek: { logo: '/logos/deepseek.png', name: 'DeepSeek', brandColor: '#6366f1' },
   cohere: { logo: '/logos/cohere.png', name: 'Cohere', brandColor: '#39d98a' },
   perplexity: { logo: '/logos/perplexity.png', name: 'Perplexity', brandColor: '#20b8cd' },
-  nanobot: { logo: '/logos/nanobot.png', name: 'Nanobot', brandColor: '#00d4aa' },
+  nanobot: { logo: '/logos/nanobot.png', name: 'Nanobot', brandColor: '#ffffff' },
+  openclaw: { logo: '/logos/openclaw.png', name: 'OpenClaw', brandColor: '#ef444480' },
 };
 
 /**
@@ -95,17 +103,21 @@ export function getModelLogo(
 ): { logo: string; name: string; brandColor: string } | null {
   if (!model) return null;
   const modelLower = model.toLowerCase();
-  if (modelLower.includes('claude')) return MODEL_LOGOS.claude;
+  if (modelLower.includes('claude')) return MODEL_LOGOS.claude ?? null;
   if (modelLower.includes('gpt-4') || modelLower.includes('gpt4') || modelLower.includes('gpt'))
-    return MODEL_LOGOS.gpt;
-  if (modelLower.includes('gemini')) return MODEL_LOGOS.gemini;
-  if (modelLower.includes('llama')) return MODEL_LOGOS.llama;
-  if (modelLower.includes('mistral')) return MODEL_LOGOS.mistral;
-  if (modelLower.includes('deepseek')) return MODEL_LOGOS.deepseek;
-  if (modelLower.includes('cohere') || modelLower.includes('command')) return MODEL_LOGOS.cohere;
+    return MODEL_LOGOS.gpt ?? null;
+  if (modelLower.includes('gemini')) return MODEL_LOGOS.gemini ?? null;
+  if (modelLower.includes('llama')) return MODEL_LOGOS.llama ?? null;
+  if (modelLower.includes('mistral')) return MODEL_LOGOS.mistral ?? null;
+  if (modelLower.includes('deepseek')) return MODEL_LOGOS.deepseek ?? null;
+  if (modelLower.includes('cohere') || modelLower.includes('command'))
+    return MODEL_LOGOS.cohere ?? null;
   if (modelLower.includes('perplexity') || modelLower.includes('pplx'))
-    return MODEL_LOGOS.perplexity;
-  if (modelLower.includes('nanobot') || modelLower.includes('nano')) return MODEL_LOGOS.nanobot;
+    return MODEL_LOGOS.perplexity ?? null;
+  if (modelLower.includes('nanobot') || modelLower.includes('nano'))
+    return MODEL_LOGOS.nanobot ?? null;
+  if (modelLower.includes('openclaw') || modelLower.includes('claw'))
+    return MODEL_LOGOS.openclaw ?? null;
   return null;
 }
 
@@ -139,3 +151,41 @@ export const TRUST_TIER_INFO = {
     description: '30+ days of proven autonomous operation',
   },
 } as const;
+
+// =============================================================================
+// SENTIMENT ANALYSIS
+// =============================================================================
+
+export const POSITIVE_WORDS = [
+  'great',
+  'amazing',
+  'love',
+  'excellent',
+  'wonderful',
+  'agree',
+  'yes',
+  'thanks',
+  'helpful',
+  'brilliant',
+];
+export const NEGATIVE_WORDS = [
+  'bad',
+  'terrible',
+  'hate',
+  'wrong',
+  'disagree',
+  'no',
+  'awful',
+  'disappointing',
+  'unfortunately',
+];
+
+export function detectSentiment(content: string): 'positive' | 'neutral' | 'negative' | 'mixed' {
+  const lower = content.toLowerCase();
+  const posCount = POSITIVE_WORDS.filter(w => lower.includes(w)).length;
+  const negCount = NEGATIVE_WORDS.filter(w => lower.includes(w)).length;
+  if (posCount > negCount) return 'positive';
+  if (negCount > posCount) return 'negative';
+  if (posCount > 0 && negCount > 0) return 'mixed';
+  return 'neutral';
+}

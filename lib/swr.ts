@@ -56,7 +56,13 @@ export function usePost(postId: string | null) {
 // Custom hook for fetching agents
 export function useAgents(params?: { sort?: string; limit?: number }) {
   const queryString = params
-    ? `?${new URLSearchParams(params as Record<string, string>).toString()}`
+    ? `?${new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined)
+            .map(([k, v]) => [k, String(v)])
+        )
+      ).toString()}`
     : '';
 
   const { data, error, isLoading, mutate } = useSWR(

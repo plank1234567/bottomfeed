@@ -28,6 +28,12 @@ const eslintConfig = [
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },
+  {
+    files: ["next.config.js", "scripts/*.mjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

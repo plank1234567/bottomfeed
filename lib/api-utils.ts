@@ -6,7 +6,10 @@
 import { NextResponse } from 'next/server';
 import { ZodError, ZodSchema } from 'zod';
 import { logger } from './logger';
-import { AuthError } from './auth';
+import { AuthError, UnauthorizedError, ForbiddenError, RateLimitError } from './auth';
+
+// Re-export auth error classes for backward compatibility
+export { UnauthorizedError, ForbiddenError, RateLimitError };
 
 // =============================================================================
 // ERROR TYPES
@@ -24,7 +27,10 @@ export class ApiError extends Error {
 }
 
 export class ValidationError extends ApiError {
-  constructor(message: string, public details?: unknown) {
+  constructor(
+    message: string,
+    public details?: unknown
+  ) {
     super(400, message, 'VALIDATION_ERROR');
     this.name = 'ValidationError';
   }
@@ -34,30 +40,6 @@ export class NotFoundError extends ApiError {
   constructor(resource: string) {
     super(404, `${resource} not found`, 'NOT_FOUND');
     this.name = 'NotFoundError';
-  }
-}
-
-export class UnauthorizedError extends ApiError {
-  constructor(message = 'Unauthorized') {
-    super(401, message, 'UNAUTHORIZED');
-    this.name = 'UnauthorizedError';
-  }
-}
-
-export class ForbiddenError extends ApiError {
-  constructor(message = 'Forbidden') {
-    super(403, message, 'FORBIDDEN');
-    this.name = 'ForbiddenError';
-  }
-}
-
-export class RateLimitError extends ApiError {
-  public retryAfterSeconds?: number;
-
-  constructor(retryAfterSeconds?: number) {
-    super(429, 'Rate limit exceeded', 'RATE_LIMIT_EXCEEDED');
-    this.name = 'RateLimitError';
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -132,18 +114,19 @@ export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
   }
 
   if (err instanceof ZodError) {
-    const message = err.errors.map((e) => {
-      const path = e.path.join('.');
-      return path ? `${path}: ${e.message}` : e.message;
-    }).join(', ');
+    const message = err.errors
+      .map(e => {
+        const path = e.path.join('.');
+        return path ? `${path}: ${e.message}` : e.message;
+      })
+      .join(', ');
     return error(message, 400, 'VALIDATION_ERROR', err.errors);
   }
 
   if (err instanceof Error) {
     // Don't expose internal error details in production
-    const message = process.env.NODE_ENV === 'production'
-      ? 'An unexpected error occurred'
-      : err.message;
+    const message =
+      process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message;
     return error(message, 500, 'INTERNAL_ERROR');
   }
 
@@ -157,10 +140,7 @@ export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
 /**
  * Validate request body against a Zod schema
  */
-export async function validateBody<T>(
-  request: Request,
-  schema: ZodSchema<T>
-): Promise<T> {
+export async function validateBody<T>(request: Request, schema: ZodSchema<T>): Promise<T> {
   try {
     const body = await request.json();
     return schema.parse(body);
@@ -175,10 +155,7 @@ export async function validateBody<T>(
 /**
  * Validate query parameters against a Zod schema
  */
-export function validateQuery<T>(
-  searchParams: URLSearchParams,
-  schema: ZodSchema<T>
-): T {
+export function validateQuery<T>(searchParams: URLSearchParams, schema: ZodSchema<T>): T {
   const params: Record<string, string> = {};
   searchParams.forEach((value, key) => {
     params[key] = value;
@@ -192,13 +169,19 @@ export function validateQuery<T>(
 
 /**
  * Extract API key from request headers
+ * @deprecated Use extractApiKey from '@/lib/auth' instead
  */
 export function getApiKey(request: Request): string | null {
-  return request.headers.get('X-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '') || null;
+  return (
+    request.headers.get('X-API-Key') ||
+    request.headers.get('Authorization')?.replace('Bearer ', '') ||
+    null
+  );
 }
 
 /**
  * Require API key authentication
+ * @deprecated Use authenticateAgentAsync from '@/lib/auth' instead
  */
 export function requireApiKey(request: Request): string {
   const apiKey = getApiKey(request);
@@ -212,42 +195,20 @@ export function requireApiKey(request: Request): string {
 // RATE LIMITING
 // =============================================================================
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+// Use checkRateLimit from '@/lib/security' for rate limiting.
+// This module re-exports it for backward compatibility.
+import { checkRateLimit as _checkRateLimit } from './security';
 
-/**
- * Simple in-memory rate limiter
- */
-export function checkRateLimit(
-  identifier: string,
-  limit: number,
-  windowMs: number
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const record = rateLimitMap.get(identifier);
-
-  if (!record || record.resetAt < now) {
-    rateLimitMap.set(identifier, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs };
-  }
-
-  if (record.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: record.resetAt };
-  }
-
-  record.count++;
-  return { allowed: true, remaining: limit - record.count, resetAt: record.resetAt };
-}
+/** @deprecated Use checkRateLimit from '@/lib/security' instead */
+export const checkRateLimit = _checkRateLimit;
 
 /**
  * Apply rate limiting to a request
+ * @deprecated Use checkRateLimit from '@/lib/security' directly
  */
-export function rateLimit(
-  request: Request,
-  limit = 60,
-  windowMs = 60000
-): void {
+export function rateLimit(request: Request, limit = 60, windowMs = 60000): void {
   const ip = request.headers.get('x-forwarded-for') || 'unknown';
-  const result = checkRateLimit(ip, limit, windowMs);
+  const result = _checkRateLimit(ip, limit, windowMs);
 
   if (!result.allowed) {
     throw new RateLimitError();
