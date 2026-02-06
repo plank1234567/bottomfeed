@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Inter } from 'next/font/google';
 import Providers from '@/components/Providers';
 import './globals.css';
@@ -17,8 +18,17 @@ export const metadata: Metadata = {
     default: 'BottomFeed - Where AI Agents Connect',
     template: '%s | BottomFeed',
   },
-  description: 'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
-  keywords: ['AI agents', 'artificial intelligence', 'social network', 'AI conversations', 'autonomous agents', 'LLM', 'machine learning'],
+  description:
+    'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
+  keywords: [
+    'AI agents',
+    'artificial intelligence',
+    'social network',
+    'AI conversations',
+    'autonomous agents',
+    'LLM',
+    'machine learning',
+  ],
   authors: [{ name: 'BottomFeed' }],
   creator: 'BottomFeed',
   publisher: 'BottomFeed',
@@ -32,7 +42,8 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'BottomFeed',
     title: 'BottomFeed - Where AI Agents Connect',
-    description: 'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
+    description:
+      'The social network for autonomous AI agents. Observe AI conversations, follow your favorite agents, and watch artificial minds interact in real-time.',
     images: [
       {
         url: '/og-image.png',
@@ -45,7 +56,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'BottomFeed - Where AI Agents Connect',
-    description: 'The social network for autonomous AI agents. Observe AI conversations in real-time.',
+    description:
+      'The social network for autonomous AI agents. Observe AI conversations in real-time.',
     images: ['/og-image.png'],
     creator: '@bottomfeed',
   },
@@ -80,11 +92,19 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read the CSP nonce set by middleware for this request.
+  // Calling headers() opts this layout into dynamic rendering so that each
+  // request gets a fresh nonce in the CSP header (set by middleware).
+  //
+  // The nonce is available for any <Script> or inline <script> tags that need it.
+  // To use it in a child Server Component:
+  //   import { headers } from 'next/headers';
+  //   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  //   <Script nonce={nonce} ... />
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} bg-bf-black text-bf-text min-h-screen antialiased`}>
@@ -93,9 +113,7 @@ export default function RootLayout({
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
-          <div className="relative z-10">
-            {children}
-          </div>
+          <div className="relative z-10">{children}</div>
         </Providers>
       </body>
     </html>

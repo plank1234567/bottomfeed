@@ -1,6 +1,6 @@
 /**
  * BottomFeed Request Middleware
- * Provides request logging, rate limiting, and security for all API routes.
+ * Provides request logging, rate limiting, security headers, and nonce-based CSP.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -91,22 +91,95 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
+// =============================================================================
+// CSP NONCE GENERATION
+// =============================================================================
+
 /**
- * Middleware function for request processing
+ * Generate a cryptographically random nonce for Content Security Policy.
+ * Uses crypto.randomUUID() which is available in Edge Runtime.
+ */
+function generateNonce(): string {
+  // crypto.randomUUID() produces a v4 UUID; convert to base64 for a compact nonce
+  const uuid = crypto.randomUUID();
+  // Use the hex digits of the UUID (without dashes) as the nonce value
+  return uuid.replace(/-/g, '');
+}
+
+/**
+ * Build the Content-Security-Policy header value.
+ * In production, uses nonce-based script-src with strict-dynamic.
+ * In development, uses unsafe-inline + unsafe-eval for Next.js Fast Refresh.
+ */
+function buildCspHeader(nonce: string): string {
+  // In development, Next.js requires unsafe-inline and unsafe-eval for
+  // Fast Refresh / hot module replacement. Nonce-based CSP breaks HMR.
+  const scriptSrc =
+    process.env.NODE_ENV === 'production'
+      ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
+      : `'self' 'unsafe-inline' 'unsafe-eval'`;
+
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://api.twitter.com https://api.x.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+}
+
+/**
+ * Apply security headers to a response, including nonce-based CSP.
+ */
+function applySecurityHeaders(response: NextResponse, nonce: string): void {
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('Content-Security-Policy', buildCspHeader(nonce));
+}
+
+/**
+ * Middleware function for request processing.
+ * Handles nonce-based CSP for all routes and rate limiting for API routes.
  */
 export async function middleware(request: NextRequest) {
   const startTime = performance.now();
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static files and non-API routes
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/static') ||
-    pathname.includes('.') ||
-    !pathname.startsWith('/api')
-  ) {
+  // Generate a fresh nonce for every request (used in CSP header)
+  const nonce = generateNonce();
+
+  // Skip rate limiting / body-size checks for static files
+  if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.includes('.')) {
     return NextResponse.next();
   }
+
+  // ============================================================================
+  // PAGE ROUTES (non-API): apply CSP + security headers and pass nonce
+  // ============================================================================
+  if (!pathname.startsWith('/api')) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-nonce', nonce);
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+
+    applySecurityHeaders(response, nonce);
+    return response;
+  }
+
+  // ============================================================================
+  // API ROUTES: rate limiting, body size, security headers
+  // ============================================================================
 
   const clientIp = getClientIp(request);
 
@@ -169,8 +242,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Process the request
-  const response = NextResponse.next();
+  // Process the request — pass nonce via request header for downstream use
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   // Calculate duration and log metrics
   const duration = Math.round(performance.now() - startTime);
@@ -197,27 +275,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimitResult.resetAt / 1000)));
 
   // Security headers — single source of truth (not duplicated in next.config.js)
-  response.headers.set('X-DNS-Prefetch-Control', 'on');
-  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://api.twitter.com https://api.x.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; ')
-  );
+  applySecurityHeaders(response, nonce);
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');
@@ -227,8 +285,23 @@ export async function middleware(request: NextRequest) {
 
 /**
  * Middleware configuration
- * Only run on API routes for performance
+ * Run on API routes (rate limiting + CSP) and page routes (CSP nonce).
+ * Excludes static assets, images, and favicon for performance.
  */
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     */
+    {
+      source: '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+  ],
 };
