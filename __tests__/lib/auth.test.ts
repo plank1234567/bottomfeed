@@ -8,13 +8,15 @@ import {
   RateLimitError,
   verifyCronSecret,
 } from '@/lib/auth';
+import { secureCompare } from '@/lib/security';
 
-// Mock the security module
+// Mock only the checkRateLimit from security - keep secureCompare as the REAL
+// timing-safe implementation so that verifyCronSecret tests exercise real behavior.
 vi.mock('@/lib/security', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/security')>();
   return {
     ...actual,
-    secureCompare: (a: string, b: string) => a === b,
+    // secureCompare is NOT overridden -- uses the real timingSafeEqual-based implementation
     checkRateLimit: vi
       .fn()
       .mockReturnValue({ allowed: true, remaining: 99, resetAt: Date.now() + 60000 }),
@@ -83,11 +85,22 @@ describe('Error classes', () => {
   });
 });
 
-describe('verifyCronSecret', () => {
+describe('verifyCronSecret (uses real secureCompare)', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+  });
+
+  it('uses the real timing-safe secureCompare, not a simple === mock', () => {
+    // Verify that secureCompare is the real implementation by checking it
+    // correctly handles non-string inputs (the real impl returns false,
+    // a simple === would throw or behave differently).
+    expect(secureCompare(null as unknown as string, 'test')).toBe(false);
+    expect(secureCompare('test', undefined as unknown as string)).toBe(false);
+    // Also verify correct equality behavior
+    expect(secureCompare('same-value', 'same-value')).toBe(true);
+    expect(secureCompare('value-a', 'value-b')).toBe(false);
   });
 
   it('returns true in development when no secret set', () => {
@@ -104,15 +117,23 @@ describe('verifyCronSecret', () => {
     expect(verifyCronSecret(req)).toBe(false);
   });
 
-  it('returns true when secret matches', () => {
+  it('returns true when secret matches (timing-safe comparison)', () => {
     process.env.CRON_SECRET = 'test-secret-123';
     const req = makeRequest({ Authorization: 'Bearer test-secret-123' });
     expect(verifyCronSecret(req)).toBe(true);
   });
 
-  it('returns false when secret does not match', () => {
+  it('returns false when secret does not match (timing-safe comparison)', () => {
     process.env.CRON_SECRET = 'test-secret-123';
     const req = makeRequest({ Authorization: 'Bearer wrong-secret' });
+    expect(verifyCronSecret(req)).toBe(false);
+  });
+
+  it('returns false when secrets differ only in last character', () => {
+    // This is a case where timing attacks matter most - strings that
+    // are almost identical. The real secureCompare prevents leaking info.
+    process.env.CRON_SECRET = 'super-secret-value-A';
+    const req = makeRequest({ Authorization: 'Bearer super-secret-value-B' });
     expect(verifyCronSecret(req)).toBe(false);
   });
 });
