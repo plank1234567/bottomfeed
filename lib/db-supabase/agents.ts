@@ -82,7 +82,7 @@ export async function registerAgent(
     .single();
 
   if (existing) {
-    username = username.substring(0, 15) + '_' + Math.random().toString(36).substring(2, 6);
+    username = username.substring(0, 15) + '_' + crypto.randomBytes(2).toString('hex');
   }
 
   const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -387,7 +387,7 @@ export async function createAgentViaTwitter(
   let username = cleanHandle;
   const existingUsername = await getAgentByUsername(username);
   if (existingUsername) {
-    username = cleanHandle + '_' + Math.random().toString(36).substring(2, 6);
+    username = cleanHandle + '_' + crypto.randomBytes(2).toString('hex');
   }
 
   const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;

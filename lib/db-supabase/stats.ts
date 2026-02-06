@@ -111,44 +111,78 @@ export async function getActiveConversations(limit: number = 20): Promise<
   const posts = (data || []) as Post[];
   const enrichedPosts = await enrichPosts(posts);
 
-  // For each conversation, get the participants (agents who replied)
-  const conversations = await Promise.all(
-    enrichedPosts.map(async post => {
-      const threadId = post.thread_id || post.id;
+  // Collect all thread IDs upfront
+  const threadIds = enrichedPosts.map(post => post.thread_id || post.id);
+  const rootPostIds = enrichedPosts.map(post => post.id);
 
-      // Get all replies to this thread
-      const { data: replies } = await supabase
-        .from('posts')
-        .select('agent_id')
-        .eq('thread_id', threadId)
-        .neq('id', post.id); // Exclude the root post
+  // Batch-fetch all replies for all threads in one query
+  const { data: allReplies } = await supabase
+    .from('posts')
+    .select('thread_id, agent_id')
+    .in('thread_id', threadIds)
+    .not('id', 'in', `(${rootPostIds.join(',')})`);
 
-      // Get unique participant IDs (including root post author)
-      const participantIds = new Set<string>();
-      if (post.agent_id) participantIds.add(post.agent_id);
-      for (const reply of replies || []) {
-        if (reply.agent_id) participantIds.add(reply.agent_id);
+  // Group reply agent IDs by thread
+  const repliesByThread = new Map<string, string[]>();
+  for (const reply of allReplies || []) {
+    if (reply.agent_id) {
+      const existing = repliesByThread.get(reply.thread_id) || [];
+      existing.push(reply.agent_id);
+      repliesByThread.set(reply.thread_id, existing);
+    }
+  }
+
+  // Collect all unique participant agent IDs across every thread
+  const allParticipantIds = new Set<string>();
+  for (const post of enrichedPosts) {
+    if (post.agent_id) allParticipantIds.add(post.agent_id);
+  }
+  for (const agentIds of repliesByThread.values()) {
+    for (const id of agentIds) {
+      allParticipantIds.add(id);
+    }
+  }
+
+  // Batch-fetch all participant agents in one query
+  const agentsMap = new Map<string, Agent>();
+  if (allParticipantIds.size > 0) {
+    const { data: agentsData } = await supabase
+      .from('agents')
+      .select('*')
+      .in('id', Array.from(allParticipantIds));
+    if (agentsData) {
+      for (const agent of agentsData as Agent[]) {
+        agentsMap.set(agent.id, agent);
       }
+    }
+  }
 
-      // Fetch participant agents
-      const participants: Agent[] = [];
-      if (participantIds.size > 0) {
-        const { data: agents } = await supabase
-          .from('agents')
-          .select('*')
-          .in('id', Array.from(participantIds));
-        if (agents) participants.push(...(agents as Agent[]));
-      }
+  // Assemble conversations using the pre-fetched data
+  const conversations = enrichedPosts.map(post => {
+    const threadId = post.thread_id || post.id;
 
-      return {
-        thread_id: threadId,
-        root_post: post,
-        reply_count: post.reply_count,
-        participants,
-        last_activity: post.created_at,
-      };
-    })
-  );
+    // Collect unique participant IDs for this thread
+    const participantIds = new Set<string>();
+    if (post.agent_id) participantIds.add(post.agent_id);
+    for (const agentId of repliesByThread.get(threadId) || []) {
+      participantIds.add(agentId);
+    }
+
+    // Look up agents from the pre-fetched map
+    const participants: Agent[] = [];
+    for (const id of participantIds) {
+      const agent = agentsMap.get(id);
+      if (agent) participants.push(agent);
+    }
+
+    return {
+      thread_id: threadId,
+      root_post: post,
+      reply_count: post.reply_count,
+      participants,
+      last_activity: post.created_at,
+    };
+  });
 
   return conversations;
 }
