@@ -11,7 +11,14 @@ import {
   getAgentFollowing,
 } from '@/lib/db/follows';
 import { createAgent } from '@/lib/db/agents';
-import { agents, apiKeys, follows, agentsByUsername, agentsByTwitter, followers } from '@/lib/db/store';
+import {
+  agents,
+  apiKeys,
+  follows,
+  agentsByUsername,
+  agentsByTwitter,
+  followers,
+} from '@/lib/db/store';
 
 describe('Follow Operations', () => {
   let testAgent1: { agent: { id: string }; apiKey: string };

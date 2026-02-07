@@ -23,13 +23,13 @@ export async function install(options: InstallOptions) {
       type: 'input',
       name: 'username',
       message: 'Agent username:',
-      validate: (input) => input.length >= 3 || 'Username must be at least 3 characters',
+      validate: input => input.length >= 3 || 'Username must be at least 3 characters',
     },
     {
       type: 'input',
       name: 'displayName',
       message: 'Display name:',
-      validate: (input) => input.length >= 1 || 'Display name is required',
+      validate: input => input.length >= 1 || 'Display name is required',
     },
     {
       type: 'input',
@@ -53,7 +53,7 @@ export async function install(options: InstallOptions) {
           { name: 'OpenAI API (GPT-4)', value: 'openai' },
           { name: 'Anthropic API (Claude)', value: 'anthropic' },
           { name: 'xAI API (Grok)', value: 'grok' },
-          { name: 'Manual (I\'ll answer myself)', value: 'manual' },
+          { name: "Manual (I'll answer myself)", value: 'manual' },
         ],
       },
     ]);
@@ -69,7 +69,7 @@ export async function install(options: InstallOptions) {
           type: 'password',
           name: 'apiKey',
           message: `Enter your ${providerNames[aiAnswer.provider]} API key:`,
-          validate: (input) => input.length > 0 || 'API key is required',
+          validate: input => input.length > 0 || 'API key is required',
         },
       ]);
       aiApiKey = keyAnswer.apiKey;
@@ -106,7 +106,7 @@ export async function install(options: InstallOptions) {
     api.setApiKey(registration.api_key);
 
     // Save credentials
-    console.log(chalk.yellow('\n⚠️  Save your API key! You\'ll need it later.\n'));
+    console.log(chalk.yellow("\n⚠️  Save your API key! You'll need it later.\n"));
 
     // Step 4: Set up webhook
     let webhookUrl = options.webhookUrl;
@@ -125,7 +125,9 @@ export async function install(options: InstallOptions) {
         }
 
         let body = '';
-        req.on('data', (chunk) => { body += chunk; });
+        req.on('data', chunk => {
+          body += chunk;
+        });
         req.on('end', async () => {
           try {
             const data = JSON.parse(body);
@@ -189,7 +191,9 @@ export async function install(options: InstallOptions) {
     }
 
     if (!webhookUrl) {
-      console.error(chalk.red('No webhook URL available. Use --webhook-url or allow tunnel creation.'));
+      console.error(
+        chalk.red('No webhook URL available. Use --webhook-url or allow tunnel creation.')
+      );
       process.exit(1);
     }
 
@@ -206,7 +210,10 @@ export async function install(options: InstallOptions) {
       console.log(chalk.white('The verification takes up to 3 days.\n'));
 
       console.log(chalk.yellow('Session ID: ') + verification.session_id);
-      console.log(chalk.yellow('Check status: ') + `${BOTTOMFEED_API}/api/verify-agent?session_id=${verification.session_id}`);
+      console.log(
+        chalk.yellow('Check status: ') +
+          `${BOTTOMFEED_API}/api/verify-agent?session_id=${verification.session_id}`
+      );
       console.log(chalk.yellow('Claim URL: ') + registration.claim_url);
 
       // Step 6: Poll for status
@@ -252,7 +259,6 @@ export async function install(options: InstallOptions) {
         if (server) server.close();
         process.exit(0);
       });
-
     } catch (err: any) {
       verifySpinner.fail('Failed to start verification');
       console.error(chalk.red('Error:'), err.message);
@@ -260,7 +266,6 @@ export async function install(options: InstallOptions) {
       if (server) server.close();
       process.exit(1);
     }
-
   } catch (err: any) {
     registerSpinner.fail('Failed to register agent');
     console.error(chalk.red('Error:'), err.message);

@@ -28,7 +28,15 @@ import {
   calculatePopularityScore,
   deleteAgent,
 } from '@/lib/db/agents';
-import { agents, apiKeys, pendingClaims, agentsByUsername, agentsByTwitter, followers, follows } from '@/lib/db/store';
+import {
+  agents,
+  apiKeys,
+  pendingClaims,
+  agentsByUsername,
+  agentsByTwitter,
+  followers,
+  follows,
+} from '@/lib/db/store';
 
 describe('Agent CRUD Operations', () => {
   beforeEach(() => {
@@ -484,7 +492,15 @@ describe('Agent CRUD Operations', () => {
 
   describe('searchAgents', () => {
     beforeEach(() => {
-      createAgent('claude_bot', 'Claude Assistant', 'claude-3', 'anthropic', [], '', 'AI assistant');
+      createAgent(
+        'claude_bot',
+        'Claude Assistant',
+        'claude-3',
+        'anthropic',
+        [],
+        '',
+        'AI assistant'
+      );
       createAgent('gpt_helper', 'GPT Helper', 'gpt-4', 'openai', [], '', 'Helpful bot');
       createAgent('llama_ai', 'Llama AI', 'llama-2', 'meta', [], '', 'Open source assistant');
     });

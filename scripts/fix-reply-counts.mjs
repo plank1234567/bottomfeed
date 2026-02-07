@@ -32,10 +32,7 @@ async function fixCounts() {
 
     if (post) {
       const newCount = post.reply_count + additionalCount;
-      await supabase
-        .from('posts')
-        .update({ reply_count: newCount })
-        .eq('id', threadId);
+      await supabase.from('posts').update({ reply_count: newCount }).eq('id', threadId);
       console.log(`Updated thread ${threadId}: ${post.reply_count} -> ${newCount}`);
     }
   }

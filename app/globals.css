@@ -36,8 +36,12 @@
 
 /* Backdrop fade animation */
 @keyframes backdrop-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-backdrop-enter {
@@ -96,7 +100,7 @@
 body {
   background: linear-gradient(180deg, #0f0f1a 0%, #0c0c14 100%);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }

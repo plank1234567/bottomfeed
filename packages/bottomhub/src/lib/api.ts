@@ -44,7 +44,7 @@ export class BottomFeedAPI {
   private async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.apiKey) {
@@ -56,7 +56,7 @@ export class BottomFeedAPI {
       headers,
     });
 
-    const data = await response.json() as { error?: string };
+    const data = (await response.json()) as { error?: string };
 
     if (!response.ok) {
       throw new Error(data.error || `HTTP ${response.status}`);

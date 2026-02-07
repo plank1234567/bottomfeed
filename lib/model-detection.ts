@@ -20,41 +20,40 @@ export interface DetectionResult {
 }
 
 // Known patterns for each model family
-const MODEL_PATTERNS: Record<string, {
-  provider: string;
-  phrases: string[];
-  avoids: string[];
-  styleTraits: {
-    usesMarkdown: boolean;
-    usesEmoji: boolean;
-    verbosity: 'concise' | 'moderate' | 'verbose';
-    formality: 'casual' | 'balanced' | 'formal';
-    structuredLists: boolean;
-  };
-}> = {
-  'claude': {
+const MODEL_PATTERNS: Record<
+  string,
+  {
+    provider: string;
+    phrases: string[];
+    avoids: string[];
+    styleTraits: {
+      usesMarkdown: boolean;
+      usesEmoji: boolean;
+      verbosity: 'concise' | 'moderate' | 'verbose';
+      formality: 'casual' | 'balanced' | 'formal';
+      structuredLists: boolean;
+    };
+  }
+> = {
+  claude: {
     provider: 'Anthropic',
     phrases: [
       'I appreciate',
       'I should note',
       'I want to be direct',
       'I aim to',
-      'I\'d be happy to',
+      "I'd be happy to",
       'nuanced',
       'thoughtful',
       'I notice',
       'let me think',
       'I should clarify',
-      'I\'ll do my best',
+      "I'll do my best",
       'constitutional',
       'harmless',
       'helpful',
     ],
-    avoids: [
-      'as an AI language model',
-      'I cannot and will not',
-      'my knowledge cutoff',
-    ],
+    avoids: ['as an AI language model', 'I cannot and will not', 'my knowledge cutoff'],
     styleTraits: {
       usesMarkdown: true,
       usesEmoji: false,
@@ -63,14 +62,14 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: true,
     },
   },
-  'gpt': {
+  gpt: {
     provider: 'OpenAI',
     phrases: [
       'as an AI',
-      'I\'m an AI',
+      "I'm an AI",
       'my training data',
       'knowledge cutoff',
-      'I don\'t have access',
+      "I don't have access",
       'I cannot browse',
       'happy to help',
       'feel free to',
@@ -79,10 +78,7 @@ const MODEL_PATTERNS: Record<string, {
       'I hope this helps',
       'Great question',
     ],
-    avoids: [
-      'I aim to be direct',
-      'constitutional AI',
-    ],
+    avoids: ['I aim to be direct', 'constitutional AI'],
     styleTraits: {
       usesMarkdown: true,
       usesEmoji: true,
@@ -91,22 +87,19 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: true,
     },
   },
-  'gemini': {
+  gemini: {
     provider: 'Google',
     phrases: [
-      'I\'m a large language model',
+      "I'm a large language model",
       'trained by Google',
       'I can help you with',
-      'Here\'s what I found',
+      "Here's what I found",
       'Based on my understanding',
-      'I\'m not able to',
-      'I don\'t have the ability',
+      "I'm not able to",
+      "I don't have the ability",
       'multimodal',
     ],
-    avoids: [
-      'constitutional',
-      'OpenAI',
-    ],
+    avoids: ['constitutional', 'OpenAI'],
     styleTraits: {
       usesMarkdown: true,
       usesEmoji: true,
@@ -115,21 +108,17 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: true,
     },
   },
-  'llama': {
+  llama: {
     provider: 'Meta',
     phrases: [
       'open source',
-      'I\'m Llama',
+      "I'm Llama",
       'Meta AI',
-      'I\'m an AI assistant',
+      "I'm an AI assistant",
       'community',
       'research',
     ],
-    avoids: [
-      'OpenAI',
-      'Anthropic',
-      'Google',
-    ],
+    avoids: ['OpenAI', 'Anthropic', 'Google'],
     styleTraits: {
       usesMarkdown: true,
       usesEmoji: false,
@@ -138,19 +127,10 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: false,
     },
   },
-  'mistral': {
+  mistral: {
     provider: 'Mistral AI',
-    phrases: [
-      'Mistral',
-      'efficient',
-      'I can assist',
-      'French',
-      'European',
-    ],
-    avoids: [
-      'OpenAI',
-      'Anthropic',
-    ],
+    phrases: ['Mistral', 'efficient', 'I can assist', 'French', 'European'],
+    avoids: ['OpenAI', 'Anthropic'],
     styleTraits: {
       usesMarkdown: true,
       usesEmoji: false,
@@ -159,15 +139,9 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: false,
     },
   },
-  'deepseek': {
+  deepseek: {
     provider: 'DeepSeek',
-    phrases: [
-      'DeepSeek',
-      'code',
-      'programming',
-      'algorithm',
-      'implementation',
-    ],
+    phrases: ['DeepSeek', 'code', 'programming', 'algorithm', 'implementation'],
     avoids: [],
     styleTraits: {
       usesMarkdown: true,
@@ -177,16 +151,9 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: true,
     },
   },
-  'cohere': {
+  cohere: {
     provider: 'Cohere',
-    phrases: [
-      'Cohere',
-      'Command',
-      'enterprise',
-      'RAG',
-      'retrieval',
-      'grounded',
-    ],
+    phrases: ['Cohere', 'Command', 'enterprise', 'RAG', 'retrieval', 'grounded'],
     avoids: [],
     styleTraits: {
       usesMarkdown: true,
@@ -196,16 +163,9 @@ const MODEL_PATTERNS: Record<string, {
       structuredLists: true,
     },
   },
-  'perplexity': {
+  perplexity: {
     provider: 'Perplexity AI',
-    phrases: [
-      'search',
-      'sources',
-      'according to',
-      'based on',
-      'citations',
-      'reference',
-    ],
+    phrases: ['search', 'sources', 'according to', 'based on', 'citations', 'reference'],
     avoids: [],
     styleTraits: {
       usesMarkdown: true,
@@ -338,14 +298,14 @@ export function detectModel(responses: string[], claimedModel?: string): Detecti
  */
 export function getModelDisplayName(modelKey: string): string {
   const names: Record<string, string> = {
-    'claude': 'Claude',
-    'gpt': 'GPT',
-    'gemini': 'Gemini',
-    'llama': 'Llama',
-    'mistral': 'Mistral',
-    'deepseek': 'DeepSeek',
-    'cohere': 'Cohere',
-    'perplexity': 'Perplexity',
+    claude: 'Claude',
+    gpt: 'GPT',
+    gemini: 'Gemini',
+    llama: 'Llama',
+    mistral: 'Mistral',
+    deepseek: 'DeepSeek',
+    cohere: 'Cohere',
+    perplexity: 'Perplexity',
   };
   return names[modelKey] || modelKey;
 }
@@ -364,10 +324,10 @@ export function modelsMatch(claimed: string, detected: string): boolean {
 
   // Handle variations
   const variations: Record<string, string[]> = {
-    'gpt': ['openai', 'chatgpt', 'gpt-4', 'gpt-3', 'gpt4'],
-    'claude': ['anthropic', 'claude-3', 'claude-2', 'sonnet', 'opus', 'haiku'],
-    'gemini': ['google', 'bard', 'palm'],
-    'llama': ['meta', 'llama-2', 'llama-3', 'llama2', 'llama3'],
+    gpt: ['openai', 'chatgpt', 'gpt-4', 'gpt-3', 'gpt4'],
+    claude: ['anthropic', 'claude-3', 'claude-2', 'sonnet', 'opus', 'haiku'],
+    gemini: ['google', 'bard', 'palm'],
+    llama: ['meta', 'llama-2', 'llama-3', 'llama2', 'llama3'],
   };
 
   for (const [key, alts] of Object.entries(variations)) {

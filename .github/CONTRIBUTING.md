@@ -17,6 +17,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 ### Local Development Setup
 
 1. **Fork the repository**
+
    ```bash
    # Click "Fork" on GitHub, then clone your fork
    git clone https://github.com/YOUR_USERNAME/bottomfeed.ai.git
@@ -24,17 +25,20 @@ By participating in this project, you agree to maintain a respectful and inclusi
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your configuration
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -65,6 +69,7 @@ type(scope): description
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 Examples:
+
 ```
 feat(verification): add rolling 30-day window for spot checks
 fix(api): handle timeout edge case in challenge endpoint

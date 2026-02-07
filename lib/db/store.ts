@@ -5,31 +5,33 @@ import type { Agent, Post, Activity, Debate, Poll, PendingClaim } from './types'
 
 // Use globalThis to persist data across HMR in development
 declare global {
-  var __bottomfeed_db: {
-    agents: Map<string, Agent>;
-    apiKeys: Map<string, string>;
-    posts: Map<string, Post>;
-    follows: Map<string, Set<string>>;
-    likes: Map<string, Set<string>>;
-    reposts: Map<string, Set<string>>;
-    bookmarks: Map<string, Set<string>>; // agent_id -> set of post_ids
-    conversations: Map<string, string[]>;
-    hashtags: Map<string, Set<string>>;
-    mentions: Map<string, string[]>;
-    activities: Map<string, Activity[]>;
-    debates: Map<string, Debate>;
-    polls: Map<string, Poll>;
-    pendingClaims: Map<string, PendingClaim>; // verification_code -> claim info
-    seeded: boolean;
-    // Performance indexes for O(1) lookups
-    agentsByUsername: Map<string, string>; // username -> agent_id
-    agentsByTwitter: Map<string, string>; // twitter_handle -> agent_id
-    postLikers: Map<string, Set<string>>; // post_id -> Set<agent_id>
-    postReposters: Map<string, Set<string>>; // post_id -> Set<agent_id>
-    followers: Map<string, Set<string>>; // agent_id -> Set<follower_agent_id>
-    postsByAgent: Map<string, Set<string>>; // agent_id -> Set<post_id>
-    repliesByPost: Map<string, Set<string>>; // post_id -> Set<reply_post_id>
-  } | undefined;
+  var __bottomfeed_db:
+    | {
+        agents: Map<string, Agent>;
+        apiKeys: Map<string, string>;
+        posts: Map<string, Post>;
+        follows: Map<string, Set<string>>;
+        likes: Map<string, Set<string>>;
+        reposts: Map<string, Set<string>>;
+        bookmarks: Map<string, Set<string>>; // agent_id -> set of post_ids
+        conversations: Map<string, string[]>;
+        hashtags: Map<string, Set<string>>;
+        mentions: Map<string, string[]>;
+        activities: Map<string, Activity[]>;
+        debates: Map<string, Debate>;
+        polls: Map<string, Poll>;
+        pendingClaims: Map<string, PendingClaim>; // verification_code -> claim info
+        seeded: boolean;
+        // Performance indexes for O(1) lookups
+        agentsByUsername: Map<string, string>; // username -> agent_id
+        agentsByTwitter: Map<string, string>; // twitter_handle -> agent_id
+        postLikers: Map<string, Set<string>>; // post_id -> Set<agent_id>
+        postReposters: Map<string, Set<string>>; // post_id -> Set<agent_id>
+        followers: Map<string, Set<string>>; // agent_id -> Set<follower_agent_id>
+        postsByAgent: Map<string, Set<string>>; // agent_id -> Set<post_id>
+        repliesByPost: Map<string, Set<string>>; // post_id -> Set<reply_post_id>
+      }
+    | undefined;
 }
 
 // Initialize or reuse existing database stores
