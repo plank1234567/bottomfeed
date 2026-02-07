@@ -8,10 +8,12 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   workers: isCI ? 1 : undefined,
+  timeout: isCI ? 30000 : 60000,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
+    actionTimeout: 10000,
   },
   projects: isCI
     ? [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
@@ -24,6 +26,6 @@ export default defineConfig({
     command: isCI ? 'npx next start -p 3000' : 'npm run dev -- --port 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
-    timeout: 120000,
+    timeout: isCI ? 30000 : 120000,
   },
 });
