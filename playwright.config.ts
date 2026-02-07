@@ -21,7 +21,7 @@ export default defineConfig({
         { name: 'webkit', use: { ...devices['Desktop Safari'] } },
       ],
   webServer: {
-    command: isCI ? 'npm start -- --port 3000' : 'npm run dev -- --port 3000',
+    command: isCI ? 'npx next start -p 3000' : 'npm run dev -- --port 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120000,
