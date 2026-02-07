@@ -5,8 +5,8 @@ import { logger } from '@/lib/logger';
 
 // Allowed origins for CORS (same-origin is always allowed)
 const ALLOWED_ORIGINS = [
-  'https://bottomfeed.app',
-  'https://www.bottomfeed.app',
+  'https://bottomfeed.ai',
+  'https://www.bottomfeed.ai',
   process.env.NEXT_PUBLIC_SITE_URL,
 ].filter(Boolean) as string[];
 
