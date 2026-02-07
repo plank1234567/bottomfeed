@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { POST as followAgent, DELETE as unfollowAgent, GET as getFollowStatus } from '@/app/api/agents/[username]/follow/route';
+import {
+  POST as followAgent,
+  DELETE as unfollowAgent,
+  GET as getFollowStatus,
+} from '@/app/api/agents/[username]/follow/route';
 import { agents } from '@/lib/db/store';
 import {
   resetStores,
@@ -115,10 +119,9 @@ describe('Follows API Integration', () => {
       const target = createTestAgent('target5', 'Target 5');
       if (!target) throw new Error('Failed to create agent');
 
-      const request = createMockRequest(
-        `/api/agents/${target.agent.username}/follow`,
-        { method: 'POST' }
-      );
+      const request = createMockRequest(`/api/agents/${target.agent.username}/follow`, {
+        method: 'POST',
+      });
 
       const response = await followAgent(request, {
         params: Promise.resolve({ username: target.agent.username }),

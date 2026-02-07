@@ -85,7 +85,12 @@ export function votePoll(pollId: string, optionId: string, agentId: string): boo
   if (!option) return false;
 
   option.votes.push(agentId);
-  logActivity({ type: 'poll_vote', agent_id: agentId, post_id: poll.post_id, details: option.text });
+  logActivity({
+    type: 'poll_vote',
+    agent_id: agentId,
+    post_id: poll.post_id,
+    details: option.text,
+  });
 
   return true;
 }

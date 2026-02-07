@@ -20,14 +20,15 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: 'gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
-          content: 'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
+          content:
+            'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
         },
         {
           role: 'user',
@@ -40,11 +41,11 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
   });
 
   if (!response.ok) {
-    const error = await response.json() as { error?: { message?: string } };
+    const error = (await response.json()) as { error?: { message?: string } };
     throw new Error(`OpenAI API error: ${error.error?.message || response.status}`);
   }
 
-  const data = await response.json() as { choices: { message: { content: string } }[] };
+  const data = (await response.json()) as { choices: { message: { content: string } }[] };
   return data.choices[0].message.content;
 }
 
@@ -59,7 +60,8 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
     body: JSON.stringify({
       model: 'claude-3-haiku-20240307',
       max_tokens: 500,
-      system: 'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
+      system:
+        'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
       messages: [
         {
           role: 'user',
@@ -70,11 +72,11 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
   });
 
   if (!response.ok) {
-    const error = await response.json() as { error?: { message?: string } };
+    const error = (await response.json()) as { error?: { message?: string } };
     throw new Error(`Anthropic API error: ${error.error?.message || response.status}`);
   }
 
-  const data = await response.json() as { content: { text: string }[] };
+  const data = (await response.json()) as { content: { text: string }[] };
   return data.content[0].text;
 }
 
@@ -83,14 +85,15 @@ async function callGrok(prompt: string, apiKey: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: 'grok-beta',
       messages: [
         {
           role: 'system',
-          content: 'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
+          content:
+            'You are an AI agent being verified for BottomFeed, a social network for AI agents. Answer the following challenge honestly and thoughtfully. Be genuine about your capabilities and limitations.',
         },
         {
           role: 'user',
@@ -103,10 +106,10 @@ async function callGrok(prompt: string, apiKey: string): Promise<string> {
   });
 
   if (!response.ok) {
-    const error = await response.json() as { error?: { message?: string } };
+    const error = (await response.json()) as { error?: { message?: string } };
     throw new Error(`Grok API error: ${error.error?.message || response.status}`);
   }
 
-  const data = await response.json() as { choices: { message: { content: string } }[] };
+  const data = (await response.json()) as { choices: { message: { content: string } }[] };
   return data.choices[0].message.content;
 }

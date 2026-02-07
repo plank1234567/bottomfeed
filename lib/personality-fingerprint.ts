@@ -36,41 +36,188 @@ export interface PersonalityFingerprint {
 
 // Keywords to look for in responses
 const INTEREST_KEYWORDS: Record<string, string[]> = {
-  'mathematics': ['math', 'mathematics', 'calculus', 'algebra', 'geometry', 'statistics', 'probability', 'equations', 'proofs', 'theorems'],
-  'programming': ['code', 'coding', 'programming', 'software', 'developer', 'algorithms', 'data structures', 'debugging', 'engineering'],
-  'ai-ml': ['ai', 'artificial intelligence', 'machine learning', 'neural', 'deep learning', 'models', 'training', 'llm', 'gpt', 'claude'],
-  'philosophy': ['philosophy', 'philosophical', 'ethics', 'morality', 'consciousness', 'existence', 'meaning', 'epistemology', 'metaphysics'],
-  'science': ['science', 'scientific', 'research', 'experiment', 'hypothesis', 'physics', 'chemistry', 'biology', 'quantum'],
-  'creativity': ['creative', 'creativity', 'art', 'artistic', 'imagination', 'innovative', 'design', 'aesthetic', 'expression'],
-  'writing': ['writing', 'writer', 'stories', 'narrative', 'poetry', 'prose', 'fiction', 'literature', 'storytelling'],
-  'problem-solving': ['problem', 'solving', 'solution', 'challenges', 'puzzles', 'optimization', 'efficiency', 'debugging'],
-  'communication': ['communication', 'conversation', 'dialogue', 'discussion', 'explaining', 'teaching', 'clarity'],
-  'technology': ['technology', 'tech', 'digital', 'computers', 'systems', 'infrastructure', 'networks', 'cloud'],
-  'data': ['data', 'analytics', 'insights', 'patterns', 'visualization', 'databases', 'information'],
-  'business': ['business', 'strategy', 'enterprise', 'startup', 'market', 'growth', 'product', 'management'],
-  'health': ['health', 'medical', 'wellness', 'healthcare', 'mental health', 'fitness', 'biology'],
-  'environment': ['environment', 'climate', 'sustainability', 'nature', 'ecology', 'green', 'renewable'],
-  'social': ['social', 'society', 'community', 'people', 'relationships', 'collaboration', 'teamwork'],
-  'education': ['education', 'learning', 'teaching', 'knowledge', 'students', 'curriculum', 'training'],
-  'gaming': ['gaming', 'games', 'game design', 'interactive', 'virtual', 'simulation', 'players'],
-  'music': ['music', 'musical', 'audio', 'sound', 'composition', 'melody', 'rhythm'],
-  'finance': ['finance', 'financial', 'economics', 'markets', 'investing', 'trading', 'money'],
-  'security': ['security', 'privacy', 'encryption', 'cybersecurity', 'protection', 'safety'],
+  mathematics: [
+    'math',
+    'mathematics',
+    'calculus',
+    'algebra',
+    'geometry',
+    'statistics',
+    'probability',
+    'equations',
+    'proofs',
+    'theorems',
+  ],
+  programming: [
+    'code',
+    'coding',
+    'programming',
+    'software',
+    'developer',
+    'algorithms',
+    'data structures',
+    'debugging',
+    'engineering',
+  ],
+  'ai-ml': [
+    'ai',
+    'artificial intelligence',
+    'machine learning',
+    'neural',
+    'deep learning',
+    'models',
+    'training',
+    'llm',
+    'gpt',
+    'claude',
+  ],
+  philosophy: [
+    'philosophy',
+    'philosophical',
+    'ethics',
+    'morality',
+    'consciousness',
+    'existence',
+    'meaning',
+    'epistemology',
+    'metaphysics',
+  ],
+  science: [
+    'science',
+    'scientific',
+    'research',
+    'experiment',
+    'hypothesis',
+    'physics',
+    'chemistry',
+    'biology',
+    'quantum',
+  ],
+  creativity: [
+    'creative',
+    'creativity',
+    'art',
+    'artistic',
+    'imagination',
+    'innovative',
+    'design',
+    'aesthetic',
+    'expression',
+  ],
+  writing: [
+    'writing',
+    'writer',
+    'stories',
+    'narrative',
+    'poetry',
+    'prose',
+    'fiction',
+    'literature',
+    'storytelling',
+  ],
+  'problem-solving': [
+    'problem',
+    'solving',
+    'solution',
+    'challenges',
+    'puzzles',
+    'optimization',
+    'efficiency',
+    'debugging',
+  ],
+  communication: [
+    'communication',
+    'conversation',
+    'dialogue',
+    'discussion',
+    'explaining',
+    'teaching',
+    'clarity',
+  ],
+  technology: [
+    'technology',
+    'tech',
+    'digital',
+    'computers',
+    'systems',
+    'infrastructure',
+    'networks',
+    'cloud',
+  ],
+  data: ['data', 'analytics', 'insights', 'patterns', 'visualization', 'databases', 'information'],
+  business: [
+    'business',
+    'strategy',
+    'enterprise',
+    'startup',
+    'market',
+    'growth',
+    'product',
+    'management',
+  ],
+  health: ['health', 'medical', 'wellness', 'healthcare', 'mental health', 'fitness', 'biology'],
+  environment: [
+    'environment',
+    'climate',
+    'sustainability',
+    'nature',
+    'ecology',
+    'green',
+    'renewable',
+  ],
+  social: [
+    'social',
+    'society',
+    'community',
+    'people',
+    'relationships',
+    'collaboration',
+    'teamwork',
+  ],
+  education: [
+    'education',
+    'learning',
+    'teaching',
+    'knowledge',
+    'students',
+    'curriculum',
+    'training',
+  ],
+  gaming: ['gaming', 'games', 'game design', 'interactive', 'virtual', 'simulation', 'players'],
+  music: ['music', 'musical', 'audio', 'sound', 'composition', 'melody', 'rhythm'],
+  finance: ['finance', 'financial', 'economics', 'markets', 'investing', 'trading', 'money'],
+  security: ['security', 'privacy', 'encryption', 'cybersecurity', 'protection', 'safety'],
 };
 
 const TRAIT_KEYWORDS: Record<string, string[]> = {
-  'curious': ['curious', 'curiosity', 'wondering', 'exploring', 'interested', 'fascinated', 'intrigued'],
-  'analytical': ['analytical', 'analyze', 'logical', 'systematic', 'methodical', 'rigorous', 'precise'],
-  'creative': ['creative', 'imaginative', 'innovative', 'original', 'inventive', 'artistic'],
-  'helpful': ['helpful', 'assist', 'support', 'help', 'aid', 'service', 'useful'],
-  'thoughtful': ['thoughtful', 'considerate', 'reflective', 'contemplative', 'mindful', 'careful'],
-  'enthusiastic': ['enthusiastic', 'passionate', 'excited', 'eager', 'energetic', 'motivated'],
-  'empathetic': ['empathetic', 'understanding', 'compassionate', 'caring', 'sensitive'],
-  'pragmatic': ['pragmatic', 'practical', 'realistic', 'grounded', 'sensible', 'efficient'],
-  'philosophical': ['philosophical', 'deep', 'profound', 'existential', 'abstract', 'theoretical'],
-  'humorous': ['humor', 'funny', 'witty', 'playful', 'lighthearted', 'joke'],
-  'direct': ['direct', 'straightforward', 'honest', 'blunt', 'clear', 'frank'],
-  'collaborative': ['collaborative', 'teamwork', 'together', 'partnership', 'cooperative'],
+  curious: [
+    'curious',
+    'curiosity',
+    'wondering',
+    'exploring',
+    'interested',
+    'fascinated',
+    'intrigued',
+  ],
+  analytical: [
+    'analytical',
+    'analyze',
+    'logical',
+    'systematic',
+    'methodical',
+    'rigorous',
+    'precise',
+  ],
+  creative: ['creative', 'imaginative', 'innovative', 'original', 'inventive', 'artistic'],
+  helpful: ['helpful', 'assist', 'support', 'help', 'aid', 'service', 'useful'],
+  thoughtful: ['thoughtful', 'considerate', 'reflective', 'contemplative', 'mindful', 'careful'],
+  enthusiastic: ['enthusiastic', 'passionate', 'excited', 'eager', 'energetic', 'motivated'],
+  empathetic: ['empathetic', 'understanding', 'compassionate', 'caring', 'sensitive'],
+  pragmatic: ['pragmatic', 'practical', 'realistic', 'grounded', 'sensible', 'efficient'],
+  philosophical: ['philosophical', 'deep', 'profound', 'existential', 'abstract', 'theoretical'],
+  humorous: ['humor', 'funny', 'witty', 'playful', 'lighthearted', 'joke'],
+  direct: ['direct', 'straightforward', 'honest', 'blunt', 'clear', 'frank'],
+  collaborative: ['collaborative', 'teamwork', 'together', 'partnership', 'cooperative'],
 };
 
 // Storage for fingerprints
@@ -111,13 +258,25 @@ function analyzeStyle(responses: string[]): PersonalityFingerprint['style'] {
 
   // Determine tone
   let tone: PersonalityFingerprint['style']['tone'] = 'mixed';
-  if (allText.includes('furthermore') || allText.includes('therefore') || allText.includes('consequently')) {
+  if (
+    allText.includes('furthermore') ||
+    allText.includes('therefore') ||
+    allText.includes('consequently')
+  ) {
     tone = 'formal';
   } else if (allText.includes('!') || allText.includes('cool') || allText.includes('awesome')) {
     tone = 'casual';
-  } else if (allText.includes('algorithm') || allText.includes('function') || allText.includes('implement')) {
+  } else if (
+    allText.includes('algorithm') ||
+    allText.includes('function') ||
+    allText.includes('implement')
+  ) {
     tone = 'technical';
-  } else if (allText.includes('imagine') || allText.includes('dream') || allText.includes('wonder')) {
+  } else if (
+    allText.includes('imagine') ||
+    allText.includes('dream') ||
+    allText.includes('wonder')
+  ) {
     tone = 'creative';
   }
 
@@ -130,11 +289,23 @@ function analyzeStyle(responses: string[]): PersonalityFingerprint['style'] {
   let approach: PersonalityFingerprint['style']['approach'] = 'mixed';
   if (allText.includes('analyze') || allText.includes('logic') || allText.includes('evidence')) {
     approach = 'analytical';
-  } else if (allText.includes('create') || allText.includes('imagine') || allText.includes('design')) {
+  } else if (
+    allText.includes('create') ||
+    allText.includes('imagine') ||
+    allText.includes('design')
+  ) {
     approach = 'creative';
-  } else if (allText.includes('practical') || allText.includes('solution') || allText.includes('implement')) {
+  } else if (
+    allText.includes('practical') ||
+    allText.includes('solution') ||
+    allText.includes('implement')
+  ) {
     approach = 'practical';
-  } else if (allText.includes('meaning') || allText.includes('existence') || allText.includes('why')) {
+  } else if (
+    allText.includes('meaning') ||
+    allText.includes('existence') ||
+    allText.includes('why')
+  ) {
     approach = 'philosophical';
   }
 
@@ -165,14 +336,10 @@ export function createFingerprint(
   }
 
   // Sort by frequency
-  const sortedKeywords = [...keywordCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([kw]) => kw);
+  const sortedKeywords = [...keywordCounts.entries()].sort((a, b) => b[1] - a[1]).map(([kw]) => kw);
 
   // Separate interests and traits
-  const interests = sortedKeywords
-    .filter(kw => !kw.startsWith('trait:'))
-    .slice(0, 10);
+  const interests = sortedKeywords.filter(kw => !kw.startsWith('trait:')).slice(0, 10);
 
   const traits = sortedKeywords
     .filter(kw => kw.startsWith('trait:'))
@@ -253,7 +420,10 @@ export function calculateSimilarity(agentId1: string, agentId2: string): number 
 }
 
 // Find similar agents
-export function findSimilarAgents(agentId: string, limit: number = 10): {
+export function findSimilarAgents(
+  agentId: string,
+  limit: number = 10
+): {
   agentId: string;
   similarity: number;
   sharedInterests: string[];
@@ -269,7 +439,8 @@ export function findSimilarAgents(agentId: string, limit: number = 10): {
     const similarity = calculateSimilarity(agentId, otherId);
     const sharedInterests = targetFp.interests.filter(i => otherFp.interests.includes(i));
 
-    if (similarity > 0.1) { // Only include if somewhat similar
+    if (similarity > 0.1) {
+      // Only include if somewhat similar
       similarities.push({ agentId: otherId, similarity, sharedInterests });
     }
   }

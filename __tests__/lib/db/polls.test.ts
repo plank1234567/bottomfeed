@@ -3,14 +3,17 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  createPoll,
-  votePoll,
-  getPoll,
-  getPollByPostId,
-} from '@/lib/db/polls';
+import { createPoll, votePoll, getPoll, getPollByPostId } from '@/lib/db/polls';
 import { createAgent } from '@/lib/db/agents';
-import { agents, posts, apiKeys, polls, hashtags, agentsByUsername, agentsByTwitter } from '@/lib/db/store';
+import {
+  agents,
+  posts,
+  apiKeys,
+  polls,
+  hashtags,
+  agentsByUsername,
+  agentsByTwitter,
+} from '@/lib/db/store';
 
 describe('Poll Operations', () => {
   let testAgent1: { agent: { id: string }; apiKey: string };
@@ -33,11 +36,7 @@ describe('Poll Operations', () => {
 
   describe('createPoll', () => {
     it('creates a poll with two options', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'What is better?',
-        ['Option A', 'Option B']
-      );
+      const result = createPoll(testAgent1.agent.id, 'What is better?', ['Option A', 'Option B']);
 
       expect(result).not.toBeNull();
       expect(result!.poll.question).toBe('What is better?');
@@ -46,52 +45,31 @@ describe('Poll Operations', () => {
     });
 
     it('creates a poll with four options', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'Pick one:',
-        ['A', 'B', 'C', 'D']
-      );
+      const result = createPoll(testAgent1.agent.id, 'Pick one:', ['A', 'B', 'C', 'D']);
 
       expect(result!.poll.options.length).toBe(4);
     });
 
     it('returns null for less than 2 options', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'Not enough options',
-        ['Only one']
-      );
+      const result = createPoll(testAgent1.agent.id, 'Not enough options', ['Only one']);
 
       expect(result).toBeNull();
     });
 
     it('returns null for more than 4 options', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'Too many options',
-        ['A', 'B', 'C', 'D', 'E']
-      );
+      const result = createPoll(testAgent1.agent.id, 'Too many options', ['A', 'B', 'C', 'D', 'E']);
 
       expect(result).toBeNull();
     });
 
     it('returns null for invalid agent', () => {
-      const result = createPoll(
-        'invalid-id',
-        'Question',
-        ['A', 'B']
-      );
+      const result = createPoll('invalid-id', 'Question', ['A', 'B']);
 
       expect(result).toBeNull();
     });
 
     it('sets expiration based on hours', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B'],
-        48
-      );
+      const result = createPoll(testAgent1.agent.id, 'Question', ['A', 'B'], 48);
 
       const expiresAt = new Date(result!.poll.expires_at);
       const now = new Date();
@@ -109,11 +87,7 @@ describe('Poll Operations', () => {
     });
 
     it('creates post with poll content', () => {
-      const result = createPoll(
-        testAgent1.agent.id,
-        'What is best?',
-        ['Option A', 'Option B']
-      );
+      const result = createPoll(testAgent1.agent.id, 'What is best?', ['Option A', 'Option B']);
 
       expect(result!.post.content).toBe('What is best?');
       expect(result!.post.metadata?.intent).toBe('poll');
@@ -128,11 +102,7 @@ describe('Poll Operations', () => {
 
   describe('votePoll', () => {
     it('votes successfully', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
       const optionId = pollResult!.poll.options[0].id;
 
       const result = votePoll(pollResult!.poll.id, optionId, testAgent2.agent.id);
@@ -140,11 +110,7 @@ describe('Poll Operations', () => {
     });
 
     it('adds agent to option votes', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
       const optionId = pollResult!.poll.options[0].id;
 
       votePoll(pollResult!.poll.id, optionId, testAgent2.agent.id);
@@ -154,11 +120,7 @@ describe('Poll Operations', () => {
     });
 
     it('returns false when already voted', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
       const optionId = pollResult!.poll.options[0].id;
 
       votePoll(pollResult!.poll.id, optionId, testAgent2.agent.id);
@@ -168,11 +130,7 @@ describe('Poll Operations', () => {
     });
 
     it('returns false when voting for different option after first vote', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
       const optionId1 = pollResult!.poll.options[0].id;
       const optionId2 = pollResult!.poll.options[1].id;
 
@@ -188,11 +146,7 @@ describe('Poll Operations', () => {
     });
 
     it('returns false for invalid option ID', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
 
       const result = votePoll(pollResult!.poll.id, 'invalid-option-id', testAgent2.agent.id);
       expect(result).toBe(false);
@@ -219,11 +173,7 @@ describe('Poll Operations', () => {
 
   describe('getPoll', () => {
     it('returns poll by ID', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
 
       const poll = getPoll(pollResult!.poll.id);
       expect(poll).not.toBeNull();
@@ -238,11 +188,7 @@ describe('Poll Operations', () => {
 
   describe('getPollByPostId', () => {
     it('returns poll by post ID', () => {
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Question',
-        ['A', 'B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Question', ['A', 'B']);
 
       const poll = getPollByPostId(pollResult!.post.id);
       expect(poll).not.toBeNull();
@@ -259,11 +205,10 @@ describe('Poll Operations', () => {
     it('correctly counts votes across options', () => {
       const agent3 = createAgent('testbot3', 'Test Bot 3', 'llama', 'meta')!;
 
-      const pollResult = createPoll(
-        testAgent1.agent.id,
-        'Pick your favorite',
-        ['Option A', 'Option B']
-      );
+      const pollResult = createPoll(testAgent1.agent.id, 'Pick your favorite', [
+        'Option A',
+        'Option B',
+      ]);
 
       const optionA = pollResult!.poll.options[0].id;
       const optionB = pollResult!.poll.options[1].id;

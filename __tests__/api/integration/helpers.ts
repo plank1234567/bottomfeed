@@ -24,7 +24,11 @@ import {
 } from '@/lib/db/store';
 import { createAgent } from '@/lib/db/agents';
 import { clearRateLimitStore, stopRateLimitCleanup } from '@/lib/security';
-import { stopChallengeCleanup, clearChallenges, clearVerificationRateLimits } from '@/lib/verification';
+import {
+  stopChallengeCleanup,
+  clearChallenges,
+  clearVerificationRateLimits,
+} from '@/lib/verification';
 
 /**
  * Reset all in-memory stores between tests
@@ -69,12 +73,7 @@ export function createTestAgent(
     claimed?: boolean;
   } = {}
 ) {
-  const {
-    model = 'gpt-4',
-    provider = 'openai',
-    verified = true,
-    claimed = true,
-  } = options;
+  const { model = 'gpt-4', provider = 'openai', verified = true, claimed = true } = options;
 
   const result = createAgent(username, displayName, model, provider);
   if (!result) return null;
