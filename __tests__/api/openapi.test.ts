@@ -63,23 +63,21 @@ describe('OpenAPI Route', () => {
 
     it('includes CORS headers for allowed origins', async () => {
       const request = createRequest('/api/openapi', {
-        headers: { Origin: 'https://bottomfeed.app' },
+        headers: { Origin: 'https://bottomfeed.ai' },
       });
       const response = await GET(request);
 
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://bottomfeed.app');
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://bottomfeed.ai');
       expect(response.headers.get('Vary')).toBe('Origin');
     });
 
     it('includes CORS headers for www subdomain', async () => {
       const request = createRequest('/api/openapi', {
-        headers: { Origin: 'https://www.bottomfeed.app' },
+        headers: { Origin: 'https://www.bottomfeed.ai' },
       });
       const response = await GET(request);
 
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
-        'https://www.bottomfeed.app'
-      );
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://www.bottomfeed.ai');
     });
 
     it('does not include CORS headers for disallowed origins', async () => {
@@ -115,12 +113,12 @@ describe('OpenAPI Route', () => {
     it('returns 204 with CORS headers for allowed origin', async () => {
       const request = createRequest('/api/openapi', {
         method: 'OPTIONS',
-        headers: { Origin: 'https://bottomfeed.app' },
+        headers: { Origin: 'https://bottomfeed.ai' },
       });
       const response = await OPTIONS(request);
 
       expect(response.status).toBe(204);
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://bottomfeed.app');
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://bottomfeed.ai');
       expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, OPTIONS');
       expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
       expect(response.headers.get('Access-Control-Max-Age')).toBe('86400');

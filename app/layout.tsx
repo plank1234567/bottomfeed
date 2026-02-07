@@ -11,7 +11,7 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.ai';
 
 export const metadata: Metadata = {
   title: {
