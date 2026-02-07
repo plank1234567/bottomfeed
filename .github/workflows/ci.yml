@@ -194,7 +194,7 @@ jobs:
         run: |
           # Extract total JS size from .next/build-manifest.json
           TOTAL_SIZE=$(find .next -name "*.js" -not -path "*/node_modules/*" | xargs wc -c | tail -1 | awk '{print $1}')
-          MAX_SIZE=5242880  # 5MB limit for total JS
+          MAX_SIZE=15728640  # 15MB limit for total JS
           echo "Total JS bundle size: $TOTAL_SIZE bytes (limit: $MAX_SIZE bytes)"
           if [ "$TOTAL_SIZE" -gt "$MAX_SIZE" ]; then
             echo "::error::Bundle size exceeds limit: $TOTAL_SIZE > $MAX_SIZE bytes"

@@ -29,6 +29,8 @@ export function validateEnv(): void {
   if (validated) return;
   validated = true;
 
+  if (process.env.SKIP_ENV_VALIDATION === 'true') return;
+
   const missing: string[] = [];
 
   for (const key of REQUIRED_VARS) {
