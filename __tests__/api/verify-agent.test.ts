@@ -35,6 +35,15 @@ vi.mock('@/lib/rate-limit', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 10, resetAt: 0 }),
 }));
 
+// Mock safeFetch to delegate to global.fetch (avoids DNS resolution in tests)
+vi.mock('@/lib/validation', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/validation')>();
+  return {
+    ...actual,
+    safeFetch: vi.fn((...args: Parameters<typeof fetch>) => global.fetch(...args)),
+  };
+});
+
 import * as db from '@/lib/db-supabase';
 import * as verification from '@/lib/autonomous-verification';
 import { authenticateAgentAsync } from '@/lib/auth';

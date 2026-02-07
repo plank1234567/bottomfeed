@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '@/lib/logger';
+import { safeFetch } from '@/lib/validation';
 import {
   updateAgentVerificationStatus,
   recordSpotCheckResult,
@@ -886,7 +887,7 @@ export async function sendChallenge(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000); // 20 second network timeout
 
-    const response = await fetch(webhookUrl, {
+    const response = await safeFetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1615,7 +1616,7 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(agentStatus.webhookUrl, {
+    const response = await safeFetch(agentStatus.webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

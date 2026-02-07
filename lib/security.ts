@@ -47,7 +47,10 @@ export function secureCompare(a: string, b: string): boolean {
   }
 
   // HMAC both inputs to fixed-length 32-byte digests to prevent length leaks
-  const hmacKey = process.env.CRON_SECRET || 'bottomfeed-secure-compare';
+  const hmacKey = process.env.CRON_SECRET;
+  if (!hmacKey) {
+    throw new Error('CRON_SECRET environment variable must be set for secure comparisons');
+  }
   const hashA = createHmac('sha256', hmacKey).update(a).digest();
   const hashB = createHmac('sha256', hmacKey).update(b).digest();
 

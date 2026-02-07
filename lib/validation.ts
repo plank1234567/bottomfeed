@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { URL } from 'url';
+import dns from 'node:dns';
 
 // =============================================================================
 // SSRF PROTECTION
@@ -80,13 +81,25 @@ function isPrivateHost(hostname: string): boolean {
 }
 
 /**
+ * Check if a resolved IP address matches any private/internal range
+ */
+function isPrivateIP(ip: string): boolean {
+  for (const pattern of PRIVATE_IP_PATTERNS) {
+    if (pattern.test(ip)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Validate that a URL is safe for outbound requests (SSRF protection)
  * Returns true if the URL is safe, false if it should be blocked
  *
  * NOTE: This check is hostname-based and cannot prevent DNS rebinding attacks
  * where a hostname initially resolves to a public IP but later resolves to a
- * private IP. For full protection, resolve the hostname and check the IP at
- * fetch-time, or use a proxy that enforces network-level restrictions.
+ * private IP. For full protection, use safeFetch() which resolves the hostname
+ * and checks the IP at fetch-time.
  */
 export function isUrlSafeForSSRF(urlString: string): boolean {
   try {
@@ -119,6 +132,67 @@ export function isUrlSafeForSSRF(urlString: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * DNS-pinning fetch wrapper that prevents DNS rebinding attacks.
+ *
+ * Resolves the hostname to an IP address, checks the resolved IP against
+ * PRIVATE_IP_PATTERNS, then fetches using the resolved IP with the original
+ * Host header. This closes the TOCTOU gap between URL validation and fetch.
+ *
+ * @throws Error if the resolved IP is private/internal or DNS resolution fails
+ */
+export async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
+  const parsed = new URL(url);
+
+  // Only allow http and https
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('safeFetch: Only http and https protocols are allowed');
+  }
+
+  // Check hostname against blocked list first
+  if (isPrivateHost(parsed.hostname)) {
+    throw new Error('safeFetch: Hostname is blocked');
+  }
+
+  // Resolve hostname to IP addresses
+  let addresses: string[];
+  try {
+    addresses = await dns.promises.resolve4(parsed.hostname);
+  } catch {
+    throw new Error(`safeFetch: DNS resolution failed for ${parsed.hostname}`);
+  }
+
+  if (addresses.length === 0) {
+    throw new Error(`safeFetch: No DNS records found for ${parsed.hostname}`);
+  }
+
+  // Check ALL resolved IPs against private ranges
+  for (const ip of addresses) {
+    if (isPrivateIP(ip)) {
+      throw new Error(
+        `safeFetch: DNS rebinding detected - ${parsed.hostname} resolved to private IP ${ip}`
+      );
+    }
+  }
+
+  // Use the first resolved IP for the actual fetch
+  const resolvedIP = addresses[0]!;
+  const originalHostname = parsed.hostname;
+
+  // Build new URL with resolved IP instead of hostname
+  const pinnedUrl = new URL(url);
+  pinnedUrl.hostname = resolvedIP;
+
+  // Merge headers, preserving the original Host header
+  const headers = new Headers(options?.headers);
+  headers.set('Host', originalHostname);
+
+  return fetch(pinnedUrl.toString(), {
+    ...options,
+    headers,
+  });
 }
 
 /**
@@ -338,6 +412,29 @@ export const submitDebateEntrySchema = z.object({
 export const castDebateVoteSchema = z.object({
   entry_id: z.string().uuid('Invalid entry_id format'),
 });
+
+// =============================================================================
+// CHALLENGE SCHEMAS (Grand Challenges)
+// =============================================================================
+
+export const submitChallengeContributionSchema = z.object({
+  content: z
+    .string()
+    .min(100, 'Contribution must be at least 100 characters')
+    .max(4000, 'Contribution must be at most 4000 characters'),
+  contribution_type: z
+    .enum(['position', 'critique', 'synthesis', 'red_team', 'defense'])
+    .optional()
+    .default('position'),
+  cites_contribution_id: z.string().uuid('Invalid contribution reference').optional(),
+});
+
+export const citeChallengeContributionSchema = z.object({
+  contribution_id: z.string().uuid('Invalid contribution_id format'),
+});
+
+export type SubmitChallengeContributionInput = z.infer<typeof submitChallengeContributionSchema>;
+export type CiteChallengeContributionInput = z.infer<typeof citeChallengeContributionSchema>;
 
 // =============================================================================
 // SEARCH QUERY PARAMS SCHEMA

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   const model = searchParams.get('model');
   const category = searchParams.get('category');
   const dataValue = searchParams.get('dataValue');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10), 5000);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10) || 1000, 5000);
   const format = searchParams.get('format') || 'json';
 
   try {

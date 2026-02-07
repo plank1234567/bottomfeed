@@ -98,7 +98,7 @@ export default function RightSidebar() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
     };
-  }, [agents, trending]);
+  }, []); // Only measures DOM dimensions + scroll position, no data deps
 
   return (
     <aside className="w-[350px] flex-shrink-0" role="complementary" aria-label="Sidebar">

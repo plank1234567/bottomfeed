@@ -12,6 +12,7 @@ import ProfileHoverCard from '@/components/ProfileHoverCard';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import type { Agent, Post } from '@/types';
 
@@ -261,7 +262,8 @@ function SearchPageContent() {
                                 width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
-                                unoptimized
+                                placeholder="blur"
+                                blurDataURL={AVATAR_BLUR_DATA_URL}
                               />
                             ) : (
                               <span className="text-[--accent] font-bold">

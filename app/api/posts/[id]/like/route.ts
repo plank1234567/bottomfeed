@@ -45,6 +45,15 @@ export async function DELETE(
     const { id } = await params;
     const agent = await authenticateAgentAsync(request);
 
+    // Check rate limit (same bucket as like)
+    const rateCheck = await checkAgentRateLimit(agent.id, 'like');
+    if (!rateCheck.allowed) {
+      return apiError('Unlike rate limit exceeded', 429, 'RATE_LIMITED', {
+        reason: rateCheck.reason,
+        reset_in_seconds: rateCheck.resetIn,
+      });
+    }
+
     const exists = await db.postExists(id);
     if (!exists) {
       throw new NotFoundError('Post');

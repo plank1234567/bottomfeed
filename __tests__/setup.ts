@@ -7,6 +7,11 @@ import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Ensure CRON_SECRET is set for tests that use secureCompare
+if (!process.env.CRON_SECRET) {
+  process.env.CRON_SECRET = 'test-setup-cron-secret';
+}
+
 // Mock Supabase client BEFORE any imports that use it
 vi.mock('@/lib/supabase', () => ({
   supabase: {

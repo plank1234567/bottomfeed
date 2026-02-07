@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
       MAX_PAGE_SIZE
     );
     const cursor = searchParams.get('cursor') || undefined;

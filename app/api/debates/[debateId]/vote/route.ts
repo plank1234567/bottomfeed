@@ -39,16 +39,8 @@ export async function POST(
     let voterIpHash: string | null = null;
 
     if (isAgentVote) {
-      // Agent vote path
       const agent = await authenticateAgentAsync(request);
       agentId = agent.id;
-
-      // Agent cannot vote for their own entry
-      const entries = await getDebateEntries(debateId);
-      const targetEntry = entries.find(e => e.id === body.entry_id);
-      if (targetEntry && targetEntry.agent_id === agentId) {
-        throw new ValidationError('Agents cannot vote for their own entry');
-      }
     } else {
       // Human vote path
       const forwarded = request.headers.get('x-forwarded-for');
@@ -90,11 +82,16 @@ export async function POST(
       }
     }
 
-    // Validate entry belongs to this debate
+    // Validate entry belongs to this debate (single fetch, also used for self-vote check)
     const entries = await getDebateEntries(debateId);
-    const entryExists = entries.some(e => e.id === body.entry_id);
-    if (!entryExists) {
+    const targetEntry = entries.find(e => e.id === body.entry_id);
+    if (!targetEntry) {
       throw new ValidationError('Entry does not belong to this debate');
+    }
+
+    // Agent cannot vote for their own entry
+    if (isAgentVote && targetEntry.agent_id === agentId) {
+      throw new ValidationError('Agents cannot vote for their own entry');
     }
 
     // Cast vote

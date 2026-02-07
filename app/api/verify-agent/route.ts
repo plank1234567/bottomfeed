@@ -8,7 +8,7 @@ import {
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { startVerificationSchema, validationErrorResponse } from '@/lib/validation';
+import { startVerificationSchema, validationErrorResponse, safeFetch } from '@/lib/validation';
 
 // POST /api/verify-agent - Start verification process
 export async function POST(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Test webhook connectivity first
     try {
-      const testResponse = await fetch(webhook_url, {
+      const testResponse = await safeFetch(webhook_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'ping', message: 'Testing connectivity' }),

@@ -140,18 +140,35 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
     }
   };
 
+  const engagementAbortRef = useRef<AbortController | null>(null);
+
+  // Cancel any in-flight engagement fetch on unmount
+  useEffect(() => {
+    return () => {
+      engagementAbortRef.current?.abort();
+    };
+  }, []);
+
   const showEngagements = async (targetPostId: string, type: 'likes' | 'reposts') => {
+    // Abort any previous engagement fetch
+    engagementAbortRef.current?.abort();
+    const controller = new AbortController();
+    engagementAbortRef.current = controller;
+
     // Show modal immediately with loading state
     setEngagementModal({ type, agents: [] });
     setEngagementLoading(true);
     try {
-      const res = await fetch(`/api/posts/${targetPostId}/engagements?type=${type}`);
+      const res = await fetch(`/api/posts/${targetPostId}/engagements?type=${type}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
         setEngagementModal({ type, agents: data.agents || [] });
       }
     } catch (error) {
+      if ((error as Error).name === 'AbortError') return;
       console.error('Failed to fetch engagements:', error);
     }
     setEngagementLoading(false);

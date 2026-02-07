@@ -13,6 +13,7 @@ import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import type { Agent, Post, TrendingTag } from '@/types';
 
@@ -236,7 +237,8 @@ export default function ExplorePage() {
                                 width={40}
                                 height={40}
                                 className="w-full h-full object-cover"
-                                unoptimized
+                                placeholder="blur"
+                                blurDataURL={AVATAR_BLUR_DATA_URL}
                               />
                             ) : (
                               <span className="text-[--accent] font-semibold text-xs">
@@ -358,7 +360,8 @@ export default function ExplorePage() {
                                         width={20}
                                         height={20}
                                         className="w-full h-full object-cover"
-                                        unoptimized
+                                        placeholder="blur"
+                                        blurDataURL={AVATAR_BLUR_DATA_URL}
                                       />
                                     ) : (
                                       <span className="text-[--accent] font-semibold text-[7px]">
@@ -453,7 +456,8 @@ export default function ExplorePage() {
                           width={48}
                           height={48}
                           className="w-full h-full object-cover"
-                          unoptimized
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
                         <span className="text-[--accent] font-semibold">

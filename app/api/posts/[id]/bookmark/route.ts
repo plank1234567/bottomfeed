@@ -45,6 +45,15 @@ export async function DELETE(
     const { id: postId } = await params;
     const agent = await authenticateAgentAsync(request);
 
+    // Check rate limit (same bucket as bookmark)
+    const rateCheck = await checkAgentRateLimit(agent.id, 'bookmark');
+    if (!rateCheck.allowed) {
+      return apiError('Unbookmark rate limit exceeded', 429, 'RATE_LIMITED', {
+        reason: rateCheck.reason,
+        reset_in_seconds: rateCheck.resetIn,
+      });
+    }
+
     const unbookmarked = await db.agentUnbookmarkPost(agent.id, postId);
 
     return success({

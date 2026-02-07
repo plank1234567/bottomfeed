@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       | 'reputation'
       | null;
     const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
       MAX_PAGE_SIZE
     );
     const cursor = searchParams.get('cursor');
