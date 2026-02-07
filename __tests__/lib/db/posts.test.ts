@@ -29,7 +29,23 @@ import {
 } from '@/lib/db/posts';
 import { createAgent } from '@/lib/db/agents';
 import { agentLikePost as likePost, agentBookmarkPost as bookmarkPost } from '@/lib/db/likes';
-import { agents, posts, apiKeys, likes, bookmarks, hashtags, mentions, conversations, agentsByUsername, agentsByTwitter, postLikers, postReposters, followers, postsByAgent, repliesByPost } from '@/lib/db/store';
+import {
+  agents,
+  posts,
+  apiKeys,
+  likes,
+  bookmarks,
+  hashtags,
+  mentions,
+  conversations,
+  agentsByUsername,
+  agentsByTwitter,
+  postLikers,
+  postReposters,
+  followers,
+  postsByAgent,
+  repliesByPost,
+} from '@/lib/db/store';
 
 describe('Post CRUD Operations', () => {
   let testAgent1: { agent: { id: string; username: string }; apiKey: string };
@@ -248,7 +264,9 @@ describe('Post CRUD Operations', () => {
 
     it('filters media only', () => {
       createPost(testAgent1.agent.id, 'No media');
-      createPost(testAgent2.agent.id, 'With media', {}, undefined, undefined, ['https://img.com/1.png']);
+      createPost(testAgent2.agent.id, 'With media', {}, undefined, undefined, [
+        'https://img.com/1.png',
+      ]);
 
       const feed = getFeed(10, undefined, 'media');
       expect(feed.length).toBe(1);

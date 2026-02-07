@@ -6,7 +6,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as getPosts } from '@/app/api/posts/route';
 import { GET as getPostById } from '@/app/api/posts/[id]/route';
 import { POST as likePost, DELETE as unlikePost } from '@/app/api/posts/[id]/like/route';
-import { POST as bookmarkPost, DELETE as unbookmarkPost } from '@/app/api/posts/[id]/bookmark/route';
+import {
+  POST as bookmarkPost,
+  DELETE as unbookmarkPost,
+} from '@/app/api/posts/[id]/bookmark/route';
 import { POST as repostPost } from '@/app/api/posts/[id]/repost/route';
 import { createPost } from '@/lib/db/posts';
 import {
@@ -99,7 +102,9 @@ describe('Posts API Integration', () => {
 
     it('returns 404 for non-existent post', async () => {
       const request = createMockRequest('/api/posts/non-existent-id');
-      const response = await getPostById(request, { params: Promise.resolve({ id: 'non-existent-id' }) });
+      const response = await getPostById(request, {
+        params: Promise.resolve({ id: 'non-existent-id' }),
+      });
       const { status } = await parseResponse(response);
 
       expect(status).toBe(404);
@@ -115,11 +120,9 @@ describe('Posts API Integration', () => {
       const post = createPost(poster.agent.id, 'Like me!');
       if (!post) throw new Error('Failed to create post');
 
-      const request = createAuthenticatedRequest(
-        `/api/posts/${post.id}/like`,
-        liker.apiKey,
-        { method: 'POST' }
-      );
+      const request = createAuthenticatedRequest(`/api/posts/${post.id}/like`, liker.apiKey, {
+        method: 'POST',
+      });
 
       const response = await likePost(request, { params: Promise.resolve({ id: post.id }) });
       const { status, data } = await parseResponse(response);
@@ -154,19 +157,15 @@ describe('Posts API Integration', () => {
       if (!post) throw new Error('Failed to create post');
 
       // Like first time
-      const request1 = createAuthenticatedRequest(
-        `/api/posts/${post.id}/like`,
-        liker.apiKey,
-        { method: 'POST' }
-      );
+      const request1 = createAuthenticatedRequest(`/api/posts/${post.id}/like`, liker.apiKey, {
+        method: 'POST',
+      });
       await likePost(request1, { params: Promise.resolve({ id: post.id }) });
 
       // Like second time
-      const request2 = createAuthenticatedRequest(
-        `/api/posts/${post.id}/like`,
-        liker.apiKey,
-        { method: 'POST' }
-      );
+      const request2 = createAuthenticatedRequest(`/api/posts/${post.id}/like`, liker.apiKey, {
+        method: 'POST',
+      });
       const response = await likePost(request2, { params: Promise.resolve({ id: post.id }) });
       const { data } = await parseResponse(response);
 
@@ -184,20 +183,18 @@ describe('Posts API Integration', () => {
       if (!post) throw new Error('Failed to create post');
 
       // First like
-      const likeRequest = createAuthenticatedRequest(
-        `/api/posts/${post.id}/like`,
-        liker.apiKey,
-        { method: 'POST' }
-      );
+      const likeRequest = createAuthenticatedRequest(`/api/posts/${post.id}/like`, liker.apiKey, {
+        method: 'POST',
+      });
       await likePost(likeRequest, { params: Promise.resolve({ id: post.id }) });
 
       // Then unlike
-      const unlikeRequest = createAuthenticatedRequest(
-        `/api/posts/${post.id}/like`,
-        liker.apiKey,
-        { method: 'DELETE' }
-      );
-      const response = await unlikePost(unlikeRequest, { params: Promise.resolve({ id: post.id }) });
+      const unlikeRequest = createAuthenticatedRequest(`/api/posts/${post.id}/like`, liker.apiKey, {
+        method: 'DELETE',
+      });
+      const response = await unlikePost(unlikeRequest, {
+        params: Promise.resolve({ id: post.id }),
+      });
       const { status, data } = await parseResponse(response);
 
       expect(status).toBe(200);
@@ -251,7 +248,9 @@ describe('Posts API Integration', () => {
         bookmarker.apiKey,
         { method: 'DELETE' }
       );
-      const response = await unbookmarkPost(unbookmarkRequest, { params: Promise.resolve({ id: post.id }) });
+      const response = await unbookmarkPost(unbookmarkRequest, {
+        params: Promise.resolve({ id: post.id }),
+      });
       const { status, data } = await parseResponse(response);
 
       expect(status).toBe(200);
@@ -268,11 +267,9 @@ describe('Posts API Integration', () => {
       const post = createPost(poster.agent.id, 'Repost me!');
       if (!post) throw new Error('Failed to create post');
 
-      const request = createAuthenticatedRequest(
-        `/api/posts/${post.id}/repost`,
-        reposter.apiKey,
-        { method: 'POST' }
-      );
+      const request = createAuthenticatedRequest(`/api/posts/${post.id}/repost`, reposter.apiKey, {
+        method: 'POST',
+      });
 
       const response = await repostPost(request, { params: Promise.resolve({ id: post.id }) });
       const { status, data } = await parseResponse(response);
@@ -290,19 +287,15 @@ describe('Posts API Integration', () => {
       if (!post) throw new Error('Failed to create post');
 
       // Repost first time
-      const request1 = createAuthenticatedRequest(
-        `/api/posts/${post.id}/repost`,
-        reposter.apiKey,
-        { method: 'POST' }
-      );
+      const request1 = createAuthenticatedRequest(`/api/posts/${post.id}/repost`, reposter.apiKey, {
+        method: 'POST',
+      });
       await repostPost(request1, { params: Promise.resolve({ id: post.id }) });
 
       // Repost second time
-      const request2 = createAuthenticatedRequest(
-        `/api/posts/${post.id}/repost`,
-        reposter.apiKey,
-        { method: 'POST' }
-      );
+      const request2 = createAuthenticatedRequest(`/api/posts/${post.id}/repost`, reposter.apiKey, {
+        method: 'POST',
+      });
       const response = await repostPost(request2, { params: Promise.resolve({ id: post.id }) });
       const { data } = await parseResponse(response);
 
