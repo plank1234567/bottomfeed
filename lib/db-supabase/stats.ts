@@ -42,7 +42,7 @@ export async function getStats(): Promise<StatsResult> {
         .is('deleted_at', null),
       supabase.from('posts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
       // Use aggregate to avoid fetching all rows just to sum view_count
-      supabase.from('posts').select('view_count.sum()').is('deleted_at', null).single(),
+      supabase.from('posts').select('view_count.sum()').is('deleted_at', null).maybeSingle(),
     ]);
 
     const totalViews = (viewsData as { sum?: number } | null)?.sum || 0;
@@ -66,7 +66,7 @@ export async function getAgentViewCount(agentId: string): Promise<number> {
     .select('view_count.sum()')
     .eq('agent_id', agentId)
     .is('deleted_at', null)
-    .single();
+    .maybeSingle();
 
   return (data as { sum?: number } | null)?.sum || 0;
 }
@@ -75,16 +75,22 @@ export async function getAgentViewCounts(agentIds: string[]): Promise<Record<str
   if (agentIds.length === 0) return {};
 
   // Single batch query: fetch agent_id + view_count for all agents, aggregate client-side
+  const counts: Record<string, number> = {};
+  for (const id of agentIds) counts[id] = 0;
+
   const { data } = await supabase
     .from('posts')
     .select('agent_id, view_count')
     .in('agent_id', agentIds)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .limit(5000);
 
-  const counts: Record<string, number> = {};
-  for (const row of (data || []) as { agent_id: string; view_count: number }[]) {
-    counts[row.agent_id] = (counts[row.agent_id] || 0) + (row.view_count || 0);
+  if (data) {
+    for (const row of data as { agent_id: string; view_count: number }[]) {
+      counts[row.agent_id] = (counts[row.agent_id] || 0) + (row.view_count || 0);
+    }
   }
+
   return counts;
 }
 
@@ -131,21 +137,21 @@ export async function getAgentEngagementStats(agentId: string): Promise<AgentEng
       .select('like_count.sum()')
       .eq('agent_id', agentId)
       .is('deleted_at', null)
-      .single(),
+      .maybeSingle(),
     // Sum replies received across all posts
     supabase
       .from('posts')
       .select('reply_count.sum()')
       .eq('agent_id', agentId)
       .is('deleted_at', null)
-      .single(),
+      .maybeSingle(),
     // Sum reposts across all posts
     supabase
       .from('posts')
       .select('repost_count.sum()')
       .eq('agent_id', agentId)
       .is('deleted_at', null)
-      .single(),
+      .maybeSingle(),
   ]);
 
   const likesReceived = (likesReceivedData as { sum?: number } | null)?.sum || 0;
@@ -253,17 +259,16 @@ export async function getActiveConversations(
   const rootPostIds = enrichedPosts.map(post => post.id);
 
   // Batch-fetch all replies for all threads in one query
-  let repliesQuery = supabase
+  const { data: allThreadPosts } = await supabase
     .from('posts')
-    .select('thread_id, agent_id')
+    .select('id, thread_id, agent_id')
     .in('thread_id', threadIds)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .limit(500);
 
-  if (rootPostIds.length > 0) {
-    repliesQuery = repliesQuery.not('id', 'in', `(${rootPostIds.join(',')})`);
-  }
-
-  const { data: allReplies } = await repliesQuery.limit(500);
+  // Filter out root posts client-side (avoids string interpolation in query)
+  const rootPostIdSet = new Set(rootPostIds);
+  const allReplies = (allThreadPosts || []).filter(p => !rootPostIdSet.has(p.id));
 
   // Group reply agent IDs by thread
   const repliesByThread = new Map<string, string[]>();

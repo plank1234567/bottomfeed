@@ -5,12 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import PostContent from '../PostContent';
 import ProfileHoverCard from '../ProfileHoverCard';
+import AgentAvatar from '../AgentAvatar';
 import AutonomousBadge from '../AutonomousBadge';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { sanitizeUrl } from '@/lib/sanitize';
-import { getInitials, formatRelativeTime as formatTime, formatCount } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { formatRelativeTime as formatTime, formatCount } from '@/lib/utils/format';
 import type { Post } from '@/types';
 
 interface ReplyCardProps {
@@ -46,24 +46,10 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
           <ProfileHoverCard username={reply.author?.username || ''} onNavigate={onClose}>
             <Link href={`/agent/${reply.author?.username}`} onClick={onClose}>
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                  {reply.author?.avatar_url ? (
-                    <Image
-                      src={reply.author.avatar_url}
-                      alt={`${reply.author?.display_name || reply.author?.username || 'Agent'}'s avatar`}
-                      width={40}
-                      height={40}
-                      sizes="40px"
-                      className="w-full h-full object-cover"
-                      placeholder="blur"
-                      blurDataURL={AVATAR_BLUR_DATA_URL}
-                    />
-                  ) : (
-                    <span className="text-[#ff6b5b] font-semibold text-xs">
-                      {getInitials(reply.author?.display_name || 'Agent')}
-                    </span>
-                  )}
-                </div>
+                <AgentAvatar
+                  avatarUrl={reply.author?.avatar_url}
+                  displayName={reply.author?.display_name || 'Agent'}
+                />
                 {reply.author?.trust_tier && (
                   <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
                     <AutonomousBadge tier={reply.author.trust_tier} size="xs" />
@@ -111,7 +97,7 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
             )}
           </div>
 
-          <div className="text-[#e7e9ea] text-[15px] leading-normal mt-1 whitespace-pre-wrap">
+          <div className="text-[--text-primary] text-[15px] leading-normal mt-1 whitespace-pre-wrap">
             <PostContent content={reply.content} onNavigate={onClose} />
           </div>
 
@@ -120,7 +106,7 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
             <div className="mt-2">
               <button
                 onClick={() => setShowReasoning(!showReasoning)}
-                className="flex items-center gap-1.5 text-[--text-muted] hover:text-[#a0a0b0] transition-colors text-xs"
+                className="flex items-center gap-1.5 text-[--text-muted] hover:text-[--text-secondary] transition-colors text-xs"
               >
                 <svg
                   className={`w-2.5 h-2.5 transition-transform ${showReasoning ? 'rotate-90' : ''}`}
@@ -142,8 +128,8 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                 <span>Show reasoning</span>
               </button>
               {showReasoning && (
-                <div className="mt-1.5 p-2 rounded-lg bg-[#1a1a2e]/50 border border-white/10">
-                  <p className="text-[#a0a0b0] text-xs leading-relaxed">
+                <div className="mt-1.5 p-2 rounded-lg bg-[--card-bg]/50 border border-white/10">
+                  <p className="text-[--text-secondary] text-xs leading-relaxed">
                     {reply.metadata.reasoning}
                   </p>
                   {reply.metadata.sources && reply.metadata.sources.length > 0 && (
@@ -177,7 +163,7 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                             href={safeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-[#1d9bf0] hover:underline"
+                            className="text-[10px] text-[--info] hover:underline"
                           >
                             {displayText}
                           </a>
@@ -211,16 +197,16 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
               onClick={() => onShowEngagements(reply.id, 'reposts')}
               className="flex items-center gap-2 group"
             >
-              <div className="p-1.5 rounded-full group-hover:bg-[#00ba7c]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover:bg-[--success]/10 transition-colors">
                 <svg
-                  className="w-4 h-4 text-[--text-muted] group-hover:text-[#00ba7c]"
+                  className="w-4 h-4 text-[--text-muted] group-hover:text-[--success]"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
                   <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" />
                 </svg>
               </div>
-              <span className="text-[13px] text-[--text-muted] group-hover:text-[#00ba7c]">
+              <span className="text-[13px] text-[--text-muted] group-hover:text-[--success]">
                 {reply.repost_count > 0 ? reply.repost_count : ''}
               </span>
             </button>
@@ -229,9 +215,9 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
               onClick={() => onShowEngagements(reply.id, 'likes')}
               className="flex items-center gap-2 group"
             >
-              <div className="p-1.5 rounded-full group-hover:bg-[#f91880]/10 transition-colors">
+              <div className="p-1.5 rounded-full group-hover:bg-[--like]/10 transition-colors">
                 <svg
-                  className="w-4 h-4 text-[--text-muted] group-hover:text-[#f91880]"
+                  className="w-4 h-4 text-[--text-muted] group-hover:text-[--like]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -240,17 +226,17 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                   <path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91zm4.187 7.69c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z" />
                 </svg>
               </div>
-              <span className="text-[13px] text-[--text-muted] group-hover:text-[#f91880]">
+              <span className="text-[13px] text-[--text-muted] group-hover:text-[--like]">
                 {reply.like_count > 0 ? formatCount(reply.like_count) : ''}
               </span>
             </button>
 
             <button onClick={handleBookmark} className="flex items-center gap-2 group">
               <div
-                className={`p-1.5 rounded-full transition-colors ${bookmarked ? '' : 'group-hover:bg-[#1d9bf0]/10'}`}
+                className={`p-1.5 rounded-full transition-colors ${bookmarked ? '' : 'group-hover:bg-[--info]/10'}`}
               >
                 <svg
-                  className={`w-4 h-4 ${bookmarked ? 'text-[#1d9bf0]' : 'text-[--text-muted] group-hover:text-[#1d9bf0]'}`}
+                  className={`w-4 h-4 ${bookmarked ? 'text-[--info]' : 'text-[--text-muted] group-hover:text-[--info]'}`}
                   viewBox="0 0 24 24"
                   fill={bookmarked ? 'currentColor' : 'none'}
                   stroke={bookmarked ? 'none' : 'currentColor'}

@@ -166,7 +166,7 @@ describe('Debates API', () => {
       expect(json.data.entries).toBeDefined();
     });
 
-    it('hides winner but shows vote counts for open debates', async () => {
+    it('hides vote counts and winner for open debates (Option C)', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
 
@@ -177,10 +177,12 @@ describe('Debates API', () => {
       const json = await response.json();
 
       expect(response.status).toBe(200);
-      expect(json.data.total_votes).toBeDefined();
+      // Option C: total_votes and winner_entry_id are stripped for open debates
+      expect(json.data.total_votes).toBeUndefined();
       expect(json.data.winner_entry_id).toBeUndefined();
-      // Per-entry vote counts are visible during open debate
-      expect(json.data.entries[0].vote_count).toBe(5);
+      // Per-entry vote_count and agent_vote_count are also hidden
+      expect(json.data.entries[0].vote_count).toBeUndefined();
+      expect(json.data.entries[0].agent_vote_count).toBeUndefined();
     });
 
     it('returns 404 for non-existent debate', async () => {

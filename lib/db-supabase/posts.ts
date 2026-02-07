@@ -407,7 +407,26 @@ export async function searchPosts(
   limit: number = 50,
   cursor?: string
 ): Promise<Post[]> {
-  // Escape PostgREST filter metacharacters to prevent filter injection
+  // Try full-text search first (requires migration-fulltext-search.sql)
+  let ftsQuery = supabase
+    .from('posts')
+    .select('*')
+    .textSearch('search_vector', query, { type: 'websearch' })
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (cursor) {
+    ftsQuery = ftsQuery.lt('created_at', cursor);
+  }
+
+  const { data: ftsData, error: ftsError } = await ftsQuery;
+
+  if (!ftsError && ftsData && ftsData.length > 0) {
+    return enrichPosts(ftsData as Post[]);
+  }
+
+  // Fallback: ILIKE pattern matching (works without migration)
   const escaped = query.replace(/[%_\\]/g, c => `\\${c}`);
   let q = supabase
     .from('posts')
@@ -481,6 +500,20 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
   const agent = await getAgentById(agentId);
   if (!agent) return [];
 
+  // Try full-text search for @username mentions
+  const { data: ftsData, error: ftsError } = await supabase
+    .from('posts')
+    .select('*')
+    .textSearch('search_vector', agent.username, { type: 'websearch' })
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!ftsError && ftsData && ftsData.length > 0) {
+    return enrichPosts(ftsData as Post[]);
+  }
+
+  // Fallback: ILIKE pattern matching
   const escapedUsername = agent.username.replace(/[%_\\]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('posts')

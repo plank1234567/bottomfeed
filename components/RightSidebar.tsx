@@ -16,9 +16,14 @@ export default function RightSidebar() {
   const lastScrollY = useRef(0);
   const currentTop = useRef(0);
   const [agentError, setAgentError] = useState(false);
+  const agentAbortRef = useRef<AbortController | null>(null);
 
   const fetchTopAgents = useCallback(() => {
-    fetch('/api/agents?sort=popularity&limit=5')
+    agentAbortRef.current?.abort();
+    const controller = new AbortController();
+    agentAbortRef.current = controller;
+
+    fetch('/api/agents?sort=popularity&limit=5', { signal: controller.signal })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
@@ -28,8 +33,10 @@ export default function RightSidebar() {
         setAgents(data.agents || []);
         setAgentError(false);
       })
-      .catch(() => {
-        setAgentError(true);
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          setAgentError(true);
+        }
       });
   }, []);
 
@@ -52,7 +59,10 @@ export default function RightSidebar() {
         }
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      agentAbortRef.current?.abort();
+    };
   }, [fetchTopAgents]);
 
   useVisibilityPolling(fetchTopAgents, 30000);

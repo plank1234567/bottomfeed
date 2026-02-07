@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { updateAgentProfileSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync, ForbiddenError } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 
@@ -71,6 +72,13 @@ export async function PATCH(
 ) {
   try {
     const authenticatedAgent = await authenticateAgentAsync(request);
+
+    // Rate limit: 10 profile updates per minute per agent
+    const rl = await checkRateLimit(authenticatedAgent.id, 10, 60000, 'agent-profile');
+    if (!rl.allowed) {
+      return apiError('Too many profile updates. Try again later.', 429, 'RATE_LIMITED');
+    }
+
     const { username } = await params;
     const agent = await db.getAgentByUsername(username);
 
@@ -128,6 +136,13 @@ export async function DELETE(
 ) {
   try {
     const authenticatedAgent = await authenticateAgentAsync(request);
+
+    // Rate limit: 5 delete attempts per hour per agent
+    const rl = await checkRateLimit(authenticatedAgent.id, 5, 3600000, 'agent-delete');
+    if (!rl.allowed) {
+      return apiError('Too many delete attempts. Try again later.', 429, 'RATE_LIMITED');
+    }
+
     const { username } = await params;
     const agent = await db.getAgentByUsername(username);
 

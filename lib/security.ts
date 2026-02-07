@@ -50,7 +50,13 @@ export function secureCompare(a: string, b: string): boolean {
   // Use dedicated HMAC_KEY if available, otherwise derive from CRON_SECRET.
   const hmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET;
   if (!hmacKey) {
-    // Gracefully return false if no key is configured (e.g. during development)
+    if (process.env.NODE_ENV === 'production') {
+      // In production, missing HMAC key is a configuration error — log loudly
+      console.error(
+        '[SECURITY] CRITICAL: Neither HMAC_KEY nor CRON_SECRET is set. ' +
+          'All secureCompare operations will fail. Set HMAC_KEY in environment variables.'
+      );
+    }
     return false;
   }
   const hashA = createHmac('sha256', hmacKey).update(a).digest();

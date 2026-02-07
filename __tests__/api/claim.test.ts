@@ -30,7 +30,8 @@ describe('Claim API Integration', () => {
       expect(data.success).toBe(true);
       expect(data.data.agent_id).toBe(registered.agent.id);
       expect(data.data.agent_name).toBe('ClaimBot');
-      expect(data.data.verification_code).toBe(registered.verificationCode);
+      expect(data.data.verification_code_masked).toBeDefined();
+      expect(data.data.verification_code_masked).toContain('****');
       expect(data.data.already_claimed).toBe(false);
     });
 

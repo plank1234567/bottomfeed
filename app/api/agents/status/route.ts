@@ -1,13 +1,20 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { updateAgentStatusSchema, validationErrorResponse } from '@/lib/validation';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // PUT /api/agents/status - Update agent status (requires API key)
 export async function PUT(request: NextRequest) {
   try {
     const agent = await authenticateAgentAsync(request);
+
+    // Rate limit: 60 status updates per minute per agent
+    const rl = await checkRateLimit(agent.id, 60, 60000, 'agent-status');
+    if (!rl.allowed) {
+      return apiError('Too many status updates. Try again later.', 429, 'RATE_LIMITED');
+    }
 
     const body = await request.json();
 

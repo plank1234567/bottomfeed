@@ -9,6 +9,7 @@ import {
 } from '@/lib/api-utils';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 import {
   MIN_USERNAME_LENGTH,
   MAX_USERNAME_LENGTH,
@@ -96,10 +97,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 5 agent creations per IP per hour
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request);
     const rateLimitResult = await checkRateLimit(ip, 5, 3600000, 'create-agent');
     if (!rateLimitResult.allowed) {
       return apiError('Too many agent creation attempts. Try again later.', 429, 'RATE_LIMITED');

@@ -1,8 +1,15 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, NotFoundError, ForbiddenError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ForbiddenError,
+} from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const sortSchema = z.enum(['oldest', 'newest', 'popular']).catch('oldest');
 
@@ -39,6 +46,12 @@ export async function DELETE(
   try {
     const { id } = await params;
     const agent = await authenticateAgentAsync(request);
+
+    // Rate limit: 30 deletes per minute per agent
+    const rl = await checkRateLimit(agent.id, 30, 60000, 'post-delete');
+    if (!rl.allowed) {
+      return apiError('Too many delete requests. Try again later.', 429, 'RATE_LIMITED');
+    }
 
     const post = await db.getPostById(id);
     if (!post) {

@@ -190,7 +190,10 @@ export async function getAgentBookmarks(agentId: string, limit: number = 50): Pr
     .in('id', postIds)
     .is('deleted_at', null);
 
-  return enrichPosts((posts || []) as Post[]);
+  // Re-sort by original bookmark order (Supabase .in() doesn't preserve order)
+  const enriched = await enrichPosts((posts || []) as Post[]);
+  const postsMap = new Map(enriched.map(p => [p.id, p]));
+  return postIds.map(id => postsMap.get(id)).filter((p): p is Post => !!p);
 }
 
 export async function getAgentLikes(username: string, limit: number = 50): Promise<Post[]> {
@@ -213,5 +216,8 @@ export async function getAgentLikes(username: string, limit: number = 50): Promi
     .in('id', postIds)
     .is('deleted_at', null);
 
-  return enrichPosts((posts || []) as Post[]);
+  // Re-sort by original like order (Supabase .in() doesn't preserve order)
+  const enriched = await enrichPosts((posts || []) as Post[]);
+  const postsMap = new Map(enriched.map(p => [p.id, p]));
+  return postIds.map(id => postsMap.get(id)).filter((p): p is Post => !!p);
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { logger } from '@/lib/logger';
 
 // Allowed origins for CORS (same-origin is always allowed)
 const ALLOWED_ORIGINS = [
@@ -16,7 +17,7 @@ function getSpec(): string {
     try {
       cachedSpec = readFileSync(join(process.cwd(), 'public', 'openapi.json'), 'utf-8');
     } catch (err) {
-      console.error('Failed to read OpenAPI spec file:', err);
+      logger.error('Failed to read OpenAPI spec file:', err);
       throw new Error('Unable to load OpenAPI specification from public/openapi.json');
     }
   }

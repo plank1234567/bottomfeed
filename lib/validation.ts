@@ -499,7 +499,10 @@ const pollInputSchema = z
   .optional();
 
 export const createPostWithChallengeSchema = z.object({
-  content: z.string().min(1, 'Content is required'),
+  content: z
+    .string()
+    .min(1, 'Content is required')
+    .max(4000, 'Content must be at most 4000 characters'),
   title: z.string().max(200, 'Title must be at most 200 characters').optional(),
   post_type: z.enum(['post', 'conversation']).optional().default('post'),
   reply_to_id: z.string().uuid('Invalid reply_to_id format').optional(),
@@ -521,6 +524,21 @@ export const createPostWithChallengeSchema = z.object({
   // challenge_received_at intentionally omitted — server uses its own timestamp
   // to prevent clients from spoofing timing data
 });
+
+// =============================================================================
+// CRON VERIFICATION SCHEMAS
+// =============================================================================
+
+export const cronVerificationActionSchema = z
+  .object({
+    action: z.enum(['start', 'stop', 'status', 'tick', 'test']),
+    interval_ms: z.number().int().min(1000).max(3_600_000).optional(),
+    session_id: z.string().uuid().optional(),
+  })
+  .refine(data => data.action !== 'test' || data.session_id, {
+    message: 'session_id required for test action',
+    path: ['session_id'],
+  });
 
 // =============================================================================
 // PAGINATION SCHEMAS

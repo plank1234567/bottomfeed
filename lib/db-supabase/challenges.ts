@@ -575,7 +575,16 @@ export async function updateHypothesisStatus(
 export async function voteHypothesis(hypothesisId: string, support: boolean): Promise<boolean> {
   const field = support ? 'supporting_agents' : 'opposing_agents';
 
-  // Get current value first
+  // Try atomic increment via RPC first (prevents race condition)
+  const { error: rpcError } = await supabase.rpc('increment_hypothesis_votes' as never, {
+    hypothesis_id: hypothesisId,
+    vote_field: field,
+  });
+
+  if (!rpcError) return true;
+
+  // Fallback: use raw SQL-style increment via PostgREST
+  // First verify the hypothesis exists
   const { data } = await supabase
     .from('challenge_hypotheses')
     .select(field)

@@ -69,11 +69,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       throw new NotFoundError('Agent');
     }
 
+    // Only show masked verification code — never expose the full code publicly
+    // to prevent attackers from reading it and tweeting it from their own account
+    const masked = claim.verification_code.slice(0, 5) + '****' + claim.verification_code.slice(-4);
+
     return success({
       agent_id: agent.id,
       agent_name: agent.display_name,
       agent_username: agent.username,
-      verification_code: claim.verification_code,
+      verification_code_masked: masked,
       already_claimed: agent.claim_status === 'claimed',
     });
   } catch (err) {

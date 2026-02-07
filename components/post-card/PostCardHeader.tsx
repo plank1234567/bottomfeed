@@ -4,9 +4,9 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProfileHoverCard from '../ProfileHoverCard';
+import AgentAvatar from '../AgentAvatar';
 import AutonomousBadge from '../AutonomousBadge';
-import { getInitials, formatRelativeTime as formatTime, formatFullDate } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { formatRelativeTime as formatTime, formatFullDate } from '@/lib/utils/format';
 import type { PostCardHeaderProps } from './types';
 
 /**
@@ -36,24 +36,10 @@ export default function PostCardHeader({
             aria-label={`View ${author?.display_name || 'Agent'}'s profile`}
           >
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                {author?.avatar_url ? (
-                  <Image
-                    src={author.avatar_url}
-                    alt={`${author?.display_name || 'Agent'}'s avatar`}
-                    width={40}
-                    height={40}
-                    sizes="40px"
-                    className="w-full h-full object-cover"
-                    placeholder="blur"
-                    blurDataURL={AVATAR_BLUR_DATA_URL}
-                  />
-                ) : (
-                  <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">
-                    {getInitials(author?.display_name || 'Agent')}
-                  </span>
-                )}
-              </div>
+              <AgentAvatar
+                avatarUrl={author?.avatar_url}
+                displayName={author?.display_name || 'Agent'}
+              />
               {author?.trust_tier && (
                 <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
                   <AutonomousBadge tier={author.trust_tier} size="xs" />

@@ -53,7 +53,7 @@ export async function createAgent(
       status: 'online',
       website_url: websiteUrl,
       github_url: githubUrl,
-      claim_status: 'claimed',
+      claim_status: 'pending_claim', // Must go through verification pipeline to become 'claimed'
     })
     .select()
     .single();
@@ -270,8 +270,8 @@ export async function getTopAgents(
       query = query.order('post_count', { ascending: false });
       break;
     case 'popularity':
-      // Simple popularity = followers * 5 + likes * 2 + posts
-      query = query.order('follower_count', { ascending: false });
+      // Approximate popularity: use reputation_score which combines multiple signals
+      query = query.order('reputation_score', { ascending: false });
       break;
     default:
       query = query.order('reputation_score', { ascending: false });
@@ -322,7 +322,7 @@ export async function updateAgentProfile(
     .update(sanitizedUpdates)
     .eq('id', agentId)
     .select()
-    .single();
+    .maybeSingle();
 
   // Invalidate agent-related caches
   void invalidatePattern('topAgents:*');
@@ -383,7 +383,7 @@ export async function claimAgent(
     })
     .eq('id', claim.agent_id)
     .select()
-    .single();
+    .maybeSingle();
 
   // Remove pending claim
   await supabase.from('pending_claims').delete().eq('verification_code', verificationCode);
@@ -453,7 +453,19 @@ export function getAgentClaimStatus(agentId: string): Promise<'pending_claim' | 
 }
 
 export async function searchAgents(query: string): Promise<Agent[]> {
-  // Escape PostgREST filter metacharacters to prevent filter injection
+  // Try full-text search first (requires migration-fulltext-search.sql)
+  const { data: ftsData, error: ftsError } = await supabase
+    .from('agents')
+    .select(AGENT_LIST_COLUMNS)
+    .textSearch('search_vector', query, { type: 'websearch' })
+    .is('deleted_at', null)
+    .limit(20);
+
+  if (!ftsError && ftsData && ftsData.length > 0) {
+    return ftsData as Agent[];
+  }
+
+  // Fallback: ILIKE pattern matching (works without migration)
   const escaped = query.replace(/[%_\\.,()]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('agents')

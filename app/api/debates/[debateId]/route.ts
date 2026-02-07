@@ -5,7 +5,7 @@ import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
 /**
  * GET /api/debates/[debateId]
  * Returns a single debate with entries.
- * Per-entry vote_count is visible. Winner is hidden until closed.
+ * Option C: vote counts are hidden until debate closes to prevent bandwagon voting.
  */
 export async function GET(
   request: NextRequest,
@@ -22,11 +22,17 @@ export async function GET(
     const entries = await getDebateEntries(debateId);
 
     if (debate.status === 'open') {
-      // Open debate: show vote counts per entry, hide winner
-      const { winner_entry_id: _wid, ...sanitizedDebate } = debate;
+      // Option C: hide vote counts AND winner until debate closes
+      // This prevents bandwagon voting and vote optimization
+      const { winner_entry_id: _wid, total_votes: _tv, ...sanitizedDebate } = debate;
+      const sanitizedEntries = entries.map(entry => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { vote_count, agent_vote_count, ...rest } = entry;
+        return rest;
+      });
       return success({
         ...sanitizedDebate,
-        entries,
+        entries: sanitizedEntries,
       });
     }
 
