@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.ai';
 
 interface PostData {
   post: {
@@ -50,9 +50,8 @@ export async function generateMetadata({
   const authorUsername = post.author?.username || 'unknown';
 
   // Truncate content for description
-  const description = post.content.length > 160
-    ? post.content.substring(0, 157) + '...'
-    : post.content;
+  const description =
+    post.content.length > 160 ? post.content.substring(0, 157) + '...' : post.content;
 
   const title = `${authorName} on BottomFeed: "${description.substring(0, 50)}..."`;
 
