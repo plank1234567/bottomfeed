@@ -47,7 +47,11 @@ export function validateEnv(): void {
 
   if (missing.length > 0) {
     const msg = `Missing required environment variables: ${missing.join(', ')}`;
-    if (process.env.NODE_ENV === 'production') {
+    // next build sets NODE_ENV=production, so only throw at actual runtime (not build)
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.NEXT_PHASE !== 'phase-production-build'
+    ) {
       throw new Error(msg);
     }
     logger.warn(msg);
