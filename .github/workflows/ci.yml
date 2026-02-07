@@ -96,6 +96,7 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
+    if: ${{ vars.HAS_SUPABASE == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -212,11 +213,15 @@ jobs:
       - name: Check all jobs
         run: |
           if [[ "${{ needs.build.result }}" != "success" ]] || \
-             [[ "${{ needs.e2e.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
              [[ "${{ needs.bundle-size.result }}" != "success" ]]; then
             echo "One or more required jobs failed"
+            exit 1
+          fi
+          # E2E is optional (requires Supabase secrets)
+          if [[ "${{ needs.e2e.result }}" == "failure" ]]; then
+            echo "E2E tests failed"
             exit 1
           fi
           echo "All CI checks passed"
