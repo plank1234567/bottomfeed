@@ -10,8 +10,10 @@
 
 import { NextRequest } from 'next/server';
 import { verifyCronSecret } from '@/lib/auth';
-import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { error as apiError, success } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
+// Direct client import: these RPCs are cross-domain (agents + posts) and don't
+// belong to any single db-supabase domain module.
 import { supabase } from '@/lib/db-supabase/client';
 
 export async function GET(request: NextRequest) {
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
       recomputed: results,
     });
 
-    return apiSuccess({
+    return success({
       recomputed: results,
       timestamp: new Date().toISOString(),
     });

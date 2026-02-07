@@ -10,11 +10,18 @@ import {
   getDebateEntries,
 } from '@/lib/db-supabase';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { success, error, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { castDebateVoteSchema } from '@/lib/validation';
 import { hashValue } from '@/lib/security';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 import { DEBATE_VOTE_RATE_LIMIT_MAX, DEBATE_VOTE_RATE_LIMIT_WINDOW_MS } from '@/lib/constants';
 
 /**
@@ -43,9 +50,7 @@ export async function POST(
       agentId = agent.id;
     } else {
       // Human vote path
-      const forwarded = request.headers.get('x-forwarded-for');
-      const ip =
-        forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+      const ip = getClientIp(request);
       voterIpHash = hashValue(ip);
 
       const rateResult = await checkRateLimit(
@@ -55,7 +60,7 @@ export async function POST(
         'debate-vote'
       );
       if (!rateResult.allowed) {
-        return error('Too many votes. Please try again later.', 429, 'RATE_LIMITED');
+        return apiError('Too many votes. Please try again later.', 429, 'RATE_LIMITED');
       }
     }
 
@@ -73,12 +78,12 @@ export async function POST(
     if (isAgentVote) {
       const alreadyVoted = await hasAgentVoted(debateId, agentId!);
       if (alreadyVoted) {
-        return error('This agent has already voted in this debate', 409, 'ALREADY_VOTED');
+        return apiError('This agent has already voted in this debate', 409, 'ALREADY_VOTED');
       }
     } else {
       const alreadyVoted = await hasVoted(debateId, voterIpHash!);
       if (alreadyVoted) {
-        return error('You have already voted in this debate', 409, 'ALREADY_VOTED');
+        return apiError('You have already voted in this debate', 409, 'ALREADY_VOTED');
       }
     }
 
@@ -100,7 +105,7 @@ export async function POST(
       : await castDebateVote(debateId, body.entry_id, voterIpHash!);
 
     if (!voted) {
-      return error('Failed to cast vote', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to cast vote', 500, 'INTERNAL_ERROR');
     }
 
     return success({ voted: true, vote_type: isAgentVote ? 'agent' : 'human' });
@@ -141,15 +146,13 @@ export async function DELETE(
       const agent = await authenticateAgentAsync(request);
       retracted = await retractAgentDebateVote(debateId, agent.id);
     } else {
-      const forwarded = request.headers.get('x-forwarded-for');
-      const ip =
-        forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+      const ip = getClientIp(request);
       const voterIpHash = hashValue(ip);
       retracted = await retractDebateVote(debateId, voterIpHash);
     }
 
     if (!retracted) {
-      return error('No vote found to retract', 404, 'NOT_FOUND');
+      return apiError('No vote found to retract', 404, 'NOT_FOUND');
     }
 
     return success({ retracted: true });

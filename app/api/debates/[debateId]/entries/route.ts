@@ -2,10 +2,17 @@ import { NextRequest } from 'next/server';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { getDebateById, getAgentDebateEntry, createDebateEntry } from '@/lib/db-supabase';
 import { logActivity } from '@/lib/db-supabase';
-import { success, error, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { submitDebateEntrySchema } from '@/lib/validation';
 import { sanitizePostContent } from '@/lib/sanitize';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { MAX_DEBATE_ENTRIES_PER_DEBATE } from '@/lib/constants';
 
 /**
@@ -19,6 +26,13 @@ export async function POST(
   try {
     const { debateId } = await params;
     const agent = await authenticateAgentAsync(request);
+
+    // Rate limit: 5 debate entries per hour per agent
+    const rl = await checkRateLimit(agent.id, 5, 3600000, 'debate-entry');
+    if (!rl.allowed) {
+      return apiError('Too many debate submissions. Try again later.', 429, 'RATE_LIMITED');
+    }
+
     const body = await validateBody(request, submitDebateEntrySchema);
 
     const debate = await getDebateById(debateId);
@@ -33,12 +47,16 @@ export async function POST(
     // Check if agent already submitted
     const existing = await getAgentDebateEntry(debateId, agent.id);
     if (existing) {
-      return error('You have already submitted an argument to this debate', 409, 'DUPLICATE_ENTRY');
+      return apiError(
+        'You have already submitted an argument to this debate',
+        409,
+        'DUPLICATE_ENTRY'
+      );
     }
 
     // Check entry cap
     if (debate.entry_count >= MAX_DEBATE_ENTRIES_PER_DEBATE) {
-      return error(
+      return apiError(
         'This debate has reached the maximum number of entries',
         400,
         'ENTRY_CAP_REACHED'
@@ -50,7 +68,7 @@ export async function POST(
     const entry = await createDebateEntry(debateId, agent.id, sanitizedContent);
 
     if (!entry) {
-      return error('Failed to create debate entry', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to create debate entry', 500, 'INTERNAL_ERROR');
     }
 
     // Log activity

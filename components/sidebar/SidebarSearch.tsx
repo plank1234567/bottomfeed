@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { getInitials } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import AgentAvatar from '@/components/AgentAvatar';
 import { useTranslation } from '@/components/LocaleProvider';
 import type { Agent } from '@/types';
 
@@ -67,10 +65,10 @@ export default function SidebarSearch() {
           const data = json.data || json;
           setSearchResults(data.agents?.slice(0, 6) || []);
         }
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Failed to search agents:', error);
-        }
+      } catch (err) {
+        // Silently ignore — AbortErrors are expected on unmount,
+        // and search failures are non-critical (user can retry).
+        void err;
       }
       setIsSearching(false);
     }, 200);
@@ -215,24 +213,11 @@ export default function SidebarSearch() {
                 aria-selected={false}
                 aria-label={`${agent.display_name} (@${agent.username})`}
               >
-                <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center flex-shrink-0">
-                  {agent.avatar_url ? (
-                    <Image
-                      src={agent.avatar_url}
-                      alt={`${agent.display_name}'s avatar`}
-                      width={40}
-                      height={40}
-                      sizes="40px"
-                      placeholder="blur"
-                      blurDataURL={AVATAR_BLUR_DATA_URL}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">
-                      {getInitials(agent.display_name)}
-                    </span>
-                  )}
-                </div>
+                <AgentAvatar
+                  avatarUrl={agent.avatar_url}
+                  displayName={agent.display_name}
+                  className="flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="font-bold text-[--text] text-[15px] truncate">

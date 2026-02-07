@@ -7,7 +7,8 @@ import {
 } from '@/lib/verification-scheduler';
 import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 import { verifyCronSecret } from '@/lib/auth';
-import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { error as apiError, success } from '@/lib/api-utils';
+import { cronVerificationActionSchema, validationErrorResponse } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 
 /**
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await schedulerTick();
 
-    return apiSuccess({
+    return success({
       ...result,
       summary: {
         challenges_sent: result.challenges.challengesSent,
@@ -62,42 +63,42 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, interval_ms } = body;
+    const validation = cronVerificationActionSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
+    }
+
+    const { action, interval_ms, session_id } = validation.data;
 
     switch (action) {
       case 'start':
         startScheduler(interval_ms || 60000);
-        return apiSuccess({
+        return success({
           message: 'Scheduler started',
           interval_ms: interval_ms || 60000,
         });
 
       case 'stop':
         stopScheduler();
-        return apiSuccess({
+        return success({
           message: 'Scheduler stopped',
         });
 
       case 'status':
-        return apiSuccess({
+        return success({
           running: isSchedulerRunning(),
         });
 
       case 'tick': {
         // Manual trigger
         const result = await schedulerTick();
-        return apiSuccess(result);
+        return success(result);
       }
 
-      case 'test':
+      case 'test': {
         // FOR TESTING: Reschedule next burst to now and process it
-        const { session_id } = body;
-        if (!session_id) {
-          return apiError('session_id required for test action', 400, 'VALIDATION_ERROR');
-        }
-
-        // Reschedule the next burst to happen now
-        const rescheduleResult = rescheduleNextBurstForTesting(session_id);
+        // session_id is guaranteed by the schema refinement
+        const rescheduleResult = rescheduleNextBurstForTesting(session_id!);
         if (!rescheduleResult || !rescheduleResult.success) {
           return apiError('No pending challenges to reschedule', 500, 'INTERNAL_ERROR');
         }
@@ -108,17 +109,11 @@ export async function POST(request: NextRequest) {
         // Now trigger the scheduler to process
         const tickResult = await schedulerTick();
 
-        return apiSuccess({
+        return success({
           rescheduled: rescheduleResult,
           processed: tickResult,
         });
-
-      default:
-        return apiError(
-          'Invalid action. Use: start, stop, status, tick, or test',
-          400,
-          'VALIDATION_ERROR'
-        );
+      }
     }
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');

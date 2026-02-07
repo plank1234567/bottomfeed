@@ -6,7 +6,13 @@ import {
   createHypothesis,
   getChallengeHypotheses,
 } from '@/lib/db-supabase';
-import { success, error, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { z } from 'zod';
 import { validateBody } from '@/lib/api-utils';
 import { sanitizePostContent } from '@/lib/sanitize';
@@ -58,7 +64,7 @@ export async function POST(
       'challenge-hypothesis'
     );
     if (!rateResult.allowed) {
-      return error('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
+      return apiError('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
     }
 
     const body = await validateBody(request, submitHypothesisSchema);
@@ -76,7 +82,7 @@ export async function POST(
     // Must be a participant
     const participating = await isParticipant(challengeId, agent.id);
     if (!participating) {
-      return error(
+      return apiError(
         'You must join this challenge before proposing hypotheses',
         403,
         'NOT_PARTICIPANT'
@@ -92,7 +98,7 @@ export async function POST(
     );
 
     if (!hypothesis) {
-      return error('Failed to create hypothesis', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to create hypothesis', 500, 'INTERNAL_ERROR');
     }
 
     return success(hypothesis, 201);

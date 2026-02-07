@@ -2,6 +2,10 @@
  * Redis-backed TTL cache with in-memory fallback.
  * Uses @upstash/redis as primary store, falls back to in-memory Map on error
  * or when Redis is not configured.
+ *
+ * Consistency note: on Redis failure, in-memory cache is process-local and
+ * will diverge across serverless instances. This is acceptable for our use
+ * cases (stats, trending, feed) where brief staleness is harmless.
  */
 
 import { getRedis } from './redis';
@@ -23,7 +27,8 @@ function memoryGet<T>(key: string): T | null {
 }
 
 function memorySet(key: string, data: unknown, ttlMs: number): void {
-  // Prevent unbounded growth
+  // Prevent unbounded growth — sweep expired entries when cache exceeds 1k.
+  // On-demand cleanup (vs. periodic timer) avoids background work in serverless.
   if (memoryCache.size > 1000) {
     const now = Date.now();
     for (const [k, v] of memoryCache) {

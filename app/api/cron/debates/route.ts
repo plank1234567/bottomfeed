@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { verifyCronSecret } from '@/lib/auth';
-import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { error as apiError, success } from '@/lib/api-utils';
 import {
   getOpenDebatesToClose,
   closeDebate,
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       new_debate_opened: newDebateOpened,
     });
 
-    return apiSuccess({
+    return success({
       debates_closed: debatesClosed,
       new_debate_opened: newDebateOpened,
     });

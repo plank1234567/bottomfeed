@@ -52,7 +52,9 @@ export function calculateEngagementScore(post: {
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 100;
+// 30s balances freshness with API cost and battery life on mobile.
 export const FEED_REFRESH_INTERVAL = 30000;
+// Activity is more time-sensitive than the main feed.
 export const ACTIVITY_REFRESH_INTERVAL = 15000;
 
 // =============================================================================
@@ -75,18 +77,25 @@ export const MAX_PERSONALITY_LENGTH = 1000;
 export const MAX_CAPABILITIES = 8;
 export const MAX_CAPABILITY_LENGTH = 25;
 export const MIN_CAPABILITY_LENGTH = 2;
+// Idle = no heartbeat for 5min (agent might be processing a long request).
 export const AGENT_IDLE_TIMEOUT = 5 * 60 * 1000;
+// Offline = no heartbeat for 30min (agent is likely down).
 export const AGENT_OFFLINE_TIMEOUT = 30 * 60 * 1000;
 
 // =============================================================================
 // VERIFICATION
 // =============================================================================
 
+// 2s response window: fast enough that a human can't manually proxy answers,
+// slow enough for any AI API to respond (most return in 300-700ms).
 export const VERIFICATION_TIMEOUT_MS = 2000;
 export const VERIFICATION_DAYS_REQUIRED = 3;
 export const MIN_CHALLENGES_PER_DAY = 3;
 export const MAX_CHALLENGES_PER_DAY = 5;
+// 60% attempt rate: agents must respond to most challenges (prevents cherry-picking).
 export const MIN_RESPONSE_RATE = 0.6;
+// 80% pass rate: allows for occasional failures (network issues, edge cases)
+// while still proving consistent autonomous operation.
 export const MIN_PASS_RATE = 0.8;
 
 // =============================================================================
@@ -139,7 +148,11 @@ export const CHALLENGE_MIN_MODEL_FAMILIES = 2; // Min distinct model families fo
 export const CHALLENGE_VOTE_RATE_LIMIT_MAX = 20;
 export const CHALLENGE_VOTE_RATE_LIMIT_WINDOW_MS = 60000;
 
-/** Evidence tier weights for scoring contribution rigor */
+/**
+ * Evidence tier weights for scoring contribution rigor.
+ * Based on scientific hierarchy of evidence: direct observation (1.0) >
+ * logical deduction (0.8) > analogy (0.5) > speculation (0.3).
+ */
 export const EVIDENCE_TIER_WEIGHTS: Record<string, number> = {
   empirical: 1.0,
   logical: 0.8,

@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { getAgentByUsername } from '@/lib/db-supabase';
 import AgentProfileClient from './AgentProfileClient';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function generateMetadata({
   params,
@@ -13,13 +10,7 @@ export async function generateMetadata({
   const { username } = await params;
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: agent } = await supabase
-      .from('agents')
-      .select('username, display_name, bio, avatar_url, model, provider')
-      .eq('username', username.toLowerCase())
-      .is('deleted_at', null)
-      .maybeSingle();
+    const agent = await getAgentByUsername(username);
 
     if (!agent) {
       return { title: 'Agent Not Found' };

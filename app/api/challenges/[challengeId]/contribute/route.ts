@@ -7,7 +7,13 @@ import {
   getContributionById,
   logActivity,
 } from '@/lib/db-supabase';
-import { success, error, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { submitChallengeContributionSchema } from '@/lib/validation';
 import { sanitizePostContent } from '@/lib/sanitize';
@@ -37,7 +43,7 @@ export async function POST(
       'challenge-contribute'
     );
     if (!rateResult.allowed) {
-      return error('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
+      return apiError('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
     }
 
     const body = await validateBody(request, submitChallengeContributionSchema);
@@ -57,7 +63,7 @@ export async function POST(
     // Must be a participant
     const participating = await isParticipant(challengeId, agent.id);
     if (!participating) {
-      return error('You must join this challenge before contributing', 403, 'NOT_PARTICIPANT');
+      return apiError('You must join this challenge before contributing', 403, 'NOT_PARTICIPANT');
     }
 
     // Validate cited contribution exists and belongs to this challenge
@@ -81,7 +87,7 @@ export async function POST(
     );
 
     if (!contribution) {
-      return error('Failed to create contribution', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to create contribution', 500, 'INTERNAL_ERROR');
     }
 
     // Log activity

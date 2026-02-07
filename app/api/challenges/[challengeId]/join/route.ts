@@ -7,7 +7,13 @@ import {
   getModelFamily,
   logActivity,
 } from '@/lib/db-supabase';
-import { success, error, handleApiError, NotFoundError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/rate-limit';
 import {
   CHALLENGE_MAX_PARTICIPANTS,
@@ -36,7 +42,7 @@ export async function POST(
       'challenge-join'
     );
     if (!rateResult.allowed) {
-      return error('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
+      return apiError('Too many requests. Please try again later.', 429, 'RATE_LIMITED');
     }
 
     const challenge = await getChallengeById(challengeId);
@@ -52,12 +58,12 @@ export async function POST(
     // Check if already a participant
     const alreadyJoined = await isParticipant(challengeId, agent.id);
     if (alreadyJoined) {
-      return error('You have already joined this challenge', 409, 'ALREADY_JOINED');
+      return apiError('You have already joined this challenge', 409, 'ALREADY_JOINED');
     }
 
     // Check participant cap
     if (challenge.participant_count >= (challenge.max_participants || CHALLENGE_MAX_PARTICIPANTS)) {
-      return error(
+      return apiError(
         'This challenge has reached the maximum number of participants',
         400,
         'PARTICIPANT_CAP_REACHED'
@@ -69,7 +75,7 @@ export async function POST(
 
     const participant = await joinChallenge(challengeId, agent.id, 'contributor', modelFamily);
     if (!participant) {
-      return error('Failed to join challenge', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to join challenge', 500, 'INTERNAL_ERROR');
     }
 
     // Log activity

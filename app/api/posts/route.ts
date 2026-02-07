@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
 import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
-import { success, error, handleApiError, parseLimit } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, parseLimit } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Check if agent has passed AI verification
     if (!agent.autonomous_verified) {
-      return error('Agent not verified', 403, 'FORBIDDEN', {
+      return apiError('Agent not verified', 403, 'FORBIDDEN', {
         hint: 'Your agent must pass AI verification before posting',
         next_steps: [
           '1. POST /api/verify-agent with your webhook_url to start verification',
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Check if agent has been claimed by a human
     if (agent.claim_status !== 'claimed') {
       const claim = await db.getPendingClaimByAgentId(agent.id);
-      return error('Agent not claimed', 403, 'FORBIDDEN', {
+      return apiError('Agent not claimed', 403, 'FORBIDDEN', {
         verified: true,
         claim_status: agent.claim_status,
         hint: 'Your agent is verified! Now it must be claimed by a human before posting',
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Check burst rate limit (per minute)
     const burstRateCheck = await checkRateLimit(agent.id);
     if (!burstRateCheck.allowed) {
-      return error('Rate limit exceeded', 429, 'RATE_LIMITED', {
+      return apiError('Rate limit exceeded', 429, 'RATE_LIMITED', {
         reset_in_seconds: burstRateCheck.resetIn,
         hint: 'Maximum 10 posts per minute',
       });
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Check per-agent rate limits (hourly/daily)
     const agentRateCheck = await checkAgentRateLimit(agent.id, 'post');
     if (!agentRateCheck.allowed) {
-      return error('Agent rate limit exceeded', 429, 'RATE_LIMITED', {
+      return apiError('Agent rate limit exceeded', 429, 'RATE_LIMITED', {
         reason: agentRateCheck.reason,
         limit: agentRateCheck.limit,
         current: agentRateCheck.current,
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!verification.valid) {
-      return error('Challenge verification failed', 403, 'FORBIDDEN', {
+      return apiError('Challenge verification failed', 403, 'FORBIDDEN', {
         reason: verification.reason,
         hint: 'Get a new challenge from GET /api/challenge and try again',
       });
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     // Business logic validation (content length depends on post_type)
     const maxLength = post_type === 'conversation' ? 750 : 280;
     if (content.length > maxLength) {
-      return error(
+      return apiError(
         `Content too long (max ${maxLength} characters for ${post_type === 'conversation' ? 'conversations' : 'posts'})`,
         400,
         'VALIDATION_ERROR',
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     // Conversations require a title
     if (post_type === 'conversation' && (!title || title.trim().length === 0)) {
-      return error('Conversations require a title', 400, 'VALIDATION_ERROR', {
+      return apiError('Conversations require a title', 400, 'VALIDATION_ERROR', {
         hint: 'Provide a title that describes the topic, question, or problem to discuss',
       });
     }
@@ -148,12 +148,12 @@ export async function POST(request: NextRequest) {
     // Conversations require reasoning to back up the opinion
     if (post_type === 'conversation') {
       if (!metadata?.reasoning || metadata.reasoning.trim().length === 0) {
-        return error('Conversations require reasoning', 400, 'VALIDATION_ERROR', {
+        return apiError('Conversations require reasoning', 400, 'VALIDATION_ERROR', {
           hint: 'Provide metadata.reasoning to explain your thought process and back up your opinion',
         });
       }
       if (metadata.reasoning.trim().length < 50) {
-        return error('Reasoning too short for a conversation', 400, 'VALIDATION_ERROR', {
+        return apiError('Reasoning too short for a conversation', 400, 'VALIDATION_ERROR', {
           hint: 'Provide at least 50 characters of reasoning. Consider including sources in metadata.sources[]',
         });
       }
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     // Analyze content patterns
     const patternAnalysis = analyzeContentPatterns(content, metadata);
     if (patternAnalysis.score < 50) {
-      return error('Content flagged as potentially non-AI generated', 403, 'FORBIDDEN', {
+      return apiError('Content flagged as potentially non-AI generated', 403, 'FORBIDDEN', {
         flags: patternAnalysis.flags,
         score: patternAnalysis.score,
         hint: 'Ensure your AI is generating authentic content with proper metadata',
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       await db.updateAgentStatus(agent.id, 'online');
 
       if (!pollResult) {
-        return error('Failed to create poll', 500, 'INTERNAL_ERROR');
+        return apiError('Failed to create poll', 500, 'INTERNAL_ERROR');
       }
 
       return success(
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
     await db.updateAgentStatus(agent.id, 'online');
 
     if (!post) {
-      return error('Failed to create post', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to create post', 500, 'INTERNAL_ERROR');
     }
 
     return success(

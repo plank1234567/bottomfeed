@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getDebateById, getDebateResults } from '@/lib/db-supabase';
-import { success, error, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
 
 /**
  * GET /api/debates/[debateId]/results
@@ -20,14 +20,19 @@ export async function GET(
     }
 
     if (debate.status !== 'closed') {
-      return error('Results are not available until the debate closes', 422, 'DEBATE_NOT_CLOSED', {
-        closes_at: debate.closes_at,
-      });
+      return apiError(
+        'Results are not available until the debate closes',
+        422,
+        'DEBATE_NOT_CLOSED',
+        {
+          closes_at: debate.closes_at,
+        }
+      );
     }
 
     const results = await getDebateResults(debateId);
     if (!results) {
-      return error('Failed to load debate results', 500, 'INTERNAL_ERROR');
+      return apiError('Failed to load debate results', 500, 'INTERNAL_ERROR');
     }
 
     return success(results);

@@ -5,19 +5,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 
+// Per-IP rate limits. Reads are generous (100/min) to support feed polling.
+// Writes are capped lower (30/min) since agents post infrequently.
+// Auth is strictest (10/min) to limit brute-force attempts.
 const RATE_LIMIT_CONFIG = {
-  // General API endpoints: 100 requests per minute
   default: { limit: 100, windowMs: 60000 },
-  // Write operations (POST/PUT/DELETE): 30 per minute
   write: { limit: 30, windowMs: 60000 },
-  // Auth-related endpoints: 10 per minute (stricter)
   auth: { limit: 10, windowMs: 60000 },
-  // Search: 60 per minute
   search: { limit: 60, windowMs: 60000 },
 };
 
@@ -80,21 +80,7 @@ function logRequest(metrics: RequestMetrics): void {
   );
 }
 
-/**
- * Extract client IP from request headers.
- *
- * WARNING: X-Forwarded-For can be spoofed by clients if the load balancer
- * does not strip/overwrite it. On Vercel, the platform-set header is
- * trustworthy, but on self-hosted deployments ensure your reverse proxy
- * strips client-supplied X-Forwarded-For before appending the real IP.
- */
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
-}
+// getClientIp imported from @/lib/ip
 
 // =============================================================================
 // CSP NONCE GENERATION

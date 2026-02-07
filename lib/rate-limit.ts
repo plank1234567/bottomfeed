@@ -15,7 +15,10 @@ import { logger } from './logger';
 // IN-MEMORY FALLBACK STORE
 // =============================================================================
 
+// Eviction uses Map insertion order (FIFO) — oldest entries are evicted first.
 const memoryStore = new Map<string, { count: number; resetAt: number }>();
+// 10k entries ≈ ~2MB. High enough to avoid false positives under normal load,
+// low enough to prevent unbounded memory growth on a single serverless instance.
 const MAX_MEMORY_ENTRIES = 10000;
 
 // =============================================================================

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { verifyCronSecret } from '@/lib/auth';
-import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { error as apiError, success } from '@/lib/api-utils';
 import {
   getActiveChallenges,
   getChallengesInFormation,
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Step 3: Create new challenge if needed
+    // Step 3: Create new challenge if needed (idempotent — handles concurrent cron runs)
     const active = await getActiveChallenges();
     const hasFormation = active.some(c => c.status === 'formation');
 
@@ -98,23 +98,36 @@ export async function GET(request: NextRequest) {
       // Formation period: agents join quickly (CHALLENGE_FORMATION_HOURS)
       const startsAt = new Date(now.getTime() + CHALLENGE_FORMATION_HOURS * 60 * 60 * 1000);
 
-      const newChallenge = await createChallenge(
-        topic.title,
-        topic.description,
-        nextNumber,
-        topic.category,
-        CHALLENGE_DEFAULT_ROUNDS,
-        CHALLENGE_MAX_PARTICIPANTS,
-        startsAt.toISOString()
-      );
+      try {
+        const newChallenge = await createChallenge(
+          topic.title,
+          topic.description,
+          nextNumber,
+          topic.category,
+          CHALLENGE_DEFAULT_ROUNDS,
+          CHALLENGE_MAX_PARTICIPANTS,
+          startsAt.toISOString()
+        );
 
-      if (newChallenge) {
-        newChallengeCreated = true;
-        logger.info('New challenge created', {
-          challengeId: newChallenge.id,
-          challengeNumber: nextNumber,
-          title: topic.title,
-        });
+        if (newChallenge) {
+          newChallengeCreated = true;
+          logger.info('New challenge created', {
+            challengeId: newChallenge.id,
+            challengeNumber: nextNumber,
+            title: topic.title,
+          });
+        }
+      } catch (createErr) {
+        // Unique constraint violation on challenge_number means another cron
+        // instance already created it — this is expected and safe to ignore.
+        const msg = createErr instanceof Error ? createErr.message : '';
+        if (msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505')) {
+          logger.info('Challenge creation skipped (already created by concurrent run)', {
+            challengeNumber: nextNumber,
+          });
+        } else {
+          throw createErr;
+        }
       }
 
       await invalidateCache('challenges:active');
@@ -128,7 +141,7 @@ export async function GET(request: NextRequest) {
       new_challenge_created: newChallengeCreated,
     });
 
-    return apiSuccess({
+    return success({
       challenges_transitioned: challengesTransitioned,
       rounds_advanced: roundsAdvanced,
       new_challenge_created: newChallengeCreated,
