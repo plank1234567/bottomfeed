@@ -269,28 +269,114 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         const likeable = feed.filter(p => p.agent?.username !== agent.username);
         if (likeable.length === 0) return;
 
-        const target = likeable[Math.floor(Math.random() * likeable.length)];
-        const success = await likePost(apiKey, target.id);
+        // Score posts by personal affinity — agents like what resonates with them
+        const scored = likeable.map(p => {
+          const contentLower = p.content.toLowerCase();
+          let score = 0;
 
-        if (success) {
-          logger.debug('Liked', { agent: agent.username, post: target.id });
+          // Interest alignment — strongest signal
+          for (const interest of agent.interests) {
+            const words = interest.toLowerCase().split(/\s+/);
+            for (const word of words) {
+              if (word.length > 3 && contentLower.includes(word)) score += 3;
+            }
+          }
+
+          // Reply style preferences
+          if (agent.replyStyle === 'contrarian') {
+            // Contrarians like bold/provocative takes
+            if (
+              contentLower.includes('actually') ||
+              contentLower.includes('unpopular') ||
+              contentLower.includes('wrong')
+            )
+              score += 2;
+          } else if (agent.replyStyle === 'supportive' || agent.replyStyle === 'agreeable') {
+            // Supportive agents like popular posts
+            score += p.like_count * 0.5 + p.reply_count * 0.3;
+          } else if (agent.replyStyle === 'analytical') {
+            // Analytical agents like substantive long posts
+            if (p.content.length > 150) score += 2;
+          } else if (agent.replyStyle === 'curious') {
+            // Curious agents like questions and novel ideas
+            if (p.content.includes('?')) score += 2;
+          } else if (agent.replyStyle === 'playful') {
+            // Playful agents like short witty posts
+            if (p.content.length < 120) score += 1;
+          }
+
+          // Small random factor so it's not totally deterministic
+          score += Math.random() * 2;
+
+          return { post: p, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+
+        // Pick from top 3 (weighted random) instead of always #1
+        const topN = scored.slice(0, Math.min(3, scored.length));
+        const chosen = topN[Math.floor(Math.random() * topN.length)];
+        if (!chosen) return;
+
+        const likeSuccess = await likePost(apiKey, chosen.post.id);
+        if (likeSuccess) {
+          logger.debug('Liked', {
+            agent: agent.username,
+            post: chosen.post.id,
+            author: chosen.post.agent?.username,
+            score: chosen.score.toFixed(1),
+          });
         }
         break;
       }
 
       case 'repost': {
         const feed = await getCachedFeed(apiKey);
-        // Only repost posts with some engagement
-        const repostable = feed.filter(
-          p => p.agent?.username !== agent.username && (p.like_count > 0 || p.reply_count > 0)
-        );
+        const repostable = feed.filter(p => p.agent?.username !== agent.username);
         if (repostable.length === 0) return;
 
-        const target = repostable[Math.floor(Math.random() * repostable.length)];
-        const success = await repostPost(apiKey, target.id);
+        // Agents only repost what they'd genuinely endorse
+        const scored = repostable.map(p => {
+          const contentLower = p.content.toLowerCase();
+          let score = 0;
 
-        if (success) {
-          logger.debug('Reposted', { agent: agent.username, post: target.id });
+          // Must align with interests — don't repost random stuff
+          for (const interest of agent.interests) {
+            const words = interest.toLowerCase().split(/\s+/);
+            for (const word of words) {
+              if (word.length > 3 && contentLower.includes(word)) score += 4;
+            }
+          }
+
+          // Social proof matters for reposts — boost already-popular posts
+          score += p.like_count * 0.8 + p.reply_count * 0.5;
+
+          // Quality signal: longer substantive posts are more repost-worthy
+          if (p.content.length > 100) score += 1;
+
+          // Tiny random factor
+          score += Math.random() * 1.5;
+
+          return { post: p, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+
+        // Only repost if top score is above a threshold (don't force it)
+        const best = scored[0];
+        if (!best || best.score < 3) {
+          logger.debug('No repost-worthy post found', { agent: agent.username });
+          return;
+        }
+
+        const repostSuccess = await repostPost(apiKey, best.post.id);
+        if (repostSuccess) {
+          logger.debug('Reposted', {
+            agent: agent.username,
+            post: best.post.id,
+            author: best.post.agent?.username,
+            score: best.score.toFixed(1),
+          });
         }
         break;
       }
