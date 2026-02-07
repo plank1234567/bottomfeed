@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { logger } from '@/lib/logger';
 import { safeFetch } from '@/lib/validation';
@@ -171,30 +171,28 @@ interface PersistedSessionData {
   pendingSpotChecks: [string, SpotCheck][];
 }
 
-function loadSessionData(): PersistedSessionData | null {
+async function loadSessionData(): Promise<PersistedSessionData | null> {
   try {
-    if (fs.existsSync(SESSION_DATA_FILE)) {
-      const data = fs.readFileSync(SESSION_DATA_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
+    const data = await fs.readFile(SESSION_DATA_FILE, 'utf-8');
+    return JSON.parse(data);
   } catch (e) {
-    logger.error('Error loading session data', e instanceof Error ? e : new Error(String(e)));
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.error('Error loading session data', e instanceof Error ? e : new Error(String(e)));
+    }
   }
   return null;
 }
 
-function saveSessionData() {
+async function saveSessionData() {
   try {
     const dir = path.dirname(SESSION_DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    await fs.mkdir(dir, { recursive: true });
     const data: PersistedSessionData = {
       verificationSessions: Array.from(verificationSessions.entries()),
       verifiedAgents: Array.from(verifiedAgents.entries()),
       pendingSpotChecks: Array.from(pendingSpotChecks.entries()),
     };
-    fs.writeFileSync(SESSION_DATA_FILE, JSON.stringify(data, null, 2));
+    await fs.writeFile(SESSION_DATA_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
     logger.error('Error saving session data', e instanceof Error ? e : new Error(String(e)));
   }
@@ -220,27 +218,28 @@ const verifiedAgents = new Map<
 const pendingSpotChecks = new Map<string, SpotCheck>();
 
 // Initialize from persisted data
-const persistedSessionData = loadSessionData();
-if (persistedSessionData) {
-  persistedSessionData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
-  // Handle migration of old data without tier fields
-  persistedSessionData.verifiedAgents.forEach(([k, v]) =>
-    verifiedAgents.set(k, {
-      ...v,
-      trustTier: v.trustTier || 'spawn',
-      consecutiveDaysOnline: v.consecutiveDaysOnline || 0,
-      lastConsecutiveCheck: v.lastConsecutiveCheck || v.verifiedAt,
-      tierHistory: v.tierHistory || [{ tier: 'spawn' as TrustTier, achievedAt: v.verifiedAt }],
-      currentDaySkips: v.currentDaySkips || 0,
-      currentDayStart: v.currentDayStart || Date.now(),
-    })
-  );
-  persistedSessionData.pendingSpotChecks.forEach(([k, v]) => pendingSpotChecks.set(k, v));
-  logger.debug('Loaded verification session data', {
-    sessions: verificationSessions.size,
-    verifiedAgents: verifiedAgents.size,
-  });
-}
+const _initPromise = loadSessionData().then(persistedSessionData => {
+  if (persistedSessionData) {
+    persistedSessionData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
+    // Handle migration of old data without tier fields
+    persistedSessionData.verifiedAgents.forEach(([k, v]) =>
+      verifiedAgents.set(k, {
+        ...v,
+        trustTier: v.trustTier || 'spawn',
+        consecutiveDaysOnline: v.consecutiveDaysOnline || 0,
+        lastConsecutiveCheck: v.lastConsecutiveCheck || v.verifiedAt,
+        tierHistory: v.tierHistory || [{ tier: 'spawn' as TrustTier, achievedAt: v.verifiedAt }],
+        currentDaySkips: v.currentDaySkips || 0,
+        currentDayStart: v.currentDayStart || Date.now(),
+      })
+    );
+    persistedSessionData.pendingSpotChecks.forEach(([k, v]) => pendingSpotChecks.set(k, v));
+    logger.debug('Loaded verification session data', {
+      sessions: verificationSessions.size,
+      verifiedAgents: verifiedAgents.size,
+    });
+  }
+});
 
 // Helper: Get spot check stats for rolling window
 function getSpotCheckStats(agentId: string): {
@@ -887,6 +886,22 @@ export async function sendChallenge(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000); // 20 second network timeout
 
+    // Compute webhook signature for authenticity
+    const bodyString = JSON.stringify({
+      type: 'verification_challenge',
+      challenge_id: challenge.id,
+      prompt: challenge.prompt,
+      category: challenge.category,
+      subcategory: challenge.subcategory,
+      expected_format: challenge.expectedFormat || null,
+      respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
+    });
+
+    const hmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET || '';
+    const signature = hmacKey
+      ? crypto.createHmac('sha256', hmacKey).update(bodyString).digest('hex')
+      : '';
+
     const response = await safeFetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -894,16 +909,9 @@ export async function sendChallenge(
         'X-BottomFeed-Verification': 'true',
         'X-Challenge-ID': challenge.id,
         'X-Session-ID': sessionId,
+        ...(signature ? { 'X-Webhook-Signature': `sha256=${signature}` } : {}),
       },
-      body: JSON.stringify({
-        type: 'verification_challenge',
-        challenge_id: challenge.id,
-        prompt: challenge.prompt,
-        category: challenge.category,
-        subcategory: challenge.subcategory,
-        expected_format: challenge.expectedFormat || null,
-        respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
-      }),
+      body: bodyString,
       signal: controller.signal,
     });
 
@@ -1616,19 +1624,28 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
+    // Compute webhook signature for authenticity
+    const spotCheckBodyString = JSON.stringify({
+      type: 'spot_check',
+      challenge_id: spotCheck.challenge.id,
+      prompt: spotCheck.challenge.prompt,
+      respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
+    });
+
+    const spotCheckHmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET || '';
+    const spotCheckSignature = spotCheckHmacKey
+      ? crypto.createHmac('sha256', spotCheckHmacKey).update(spotCheckBodyString).digest('hex')
+      : '';
+
     const response = await safeFetch(agentStatus.webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-BottomFeed-SpotCheck': 'true',
         'X-Challenge-ID': spotCheck.challenge.id,
+        ...(spotCheckSignature ? { 'X-Webhook-Signature': `sha256=${spotCheckSignature}` } : {}),
       },
-      body: JSON.stringify({
-        type: 'spot_check',
-        challenge_id: spotCheck.challenge.id,
-        prompt: spotCheck.challenge.prompt,
-        respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
-      }),
+      body: spotCheckBodyString,
       signal: controller.signal,
     });
 

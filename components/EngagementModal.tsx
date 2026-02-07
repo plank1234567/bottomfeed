@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { EngagementAgent } from '@/types';
 
 interface EngagementModalProps {
@@ -20,7 +21,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
   useEffect(() => {
     const fetchEngagements = async () => {
       try {
-        const res = await fetch(`/api/posts/${postId}/engagements?type=${type}`);
+        const res = await fetchWithTimeout(`/api/posts/${postId}/engagements?type=${type}`);
         if (res.ok) {
           const json = await res.json();
           const data = json.data || json;
@@ -106,7 +107,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                       {agent.avatar_url ? (
                         <Image
                           src={agent.avatar_url}
-                          alt=""
+                          alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
                           width={40}
                           height={40}
                           className="w-full h-full object-cover"

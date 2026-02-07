@@ -9,7 +9,7 @@
  * - Aggregate statistics
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { logger } from '@/lib/logger';
 
@@ -25,26 +25,24 @@ interface PersistedData {
   agentStats: [string, AgentVerificationStats][];
 }
 
-function loadData(): PersistedData | null {
+async function loadData(): Promise<PersistedData | null> {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
+    const data = await fs.readFile(DATA_FILE, 'utf-8');
+    return JSON.parse(data);
   } catch (e) {
-    logger.error(
-      'VerificationDB error loading data',
-      e instanceof Error ? e : new Error(String(e))
-    );
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.error(
+        'VerificationDB error loading data',
+        e instanceof Error ? e : new Error(String(e))
+      );
+    }
   }
   return null;
 }
 
-function saveData() {
+async function saveData() {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    await fs.mkdir(DATA_DIR, { recursive: true });
     const data: PersistedData = {
       verificationSessions: Array.from(verificationSessions.entries()),
       challengeResponses: Array.from(challengeResponses.entries()),
@@ -52,7 +50,7 @@ function saveData() {
       spotChecks: Array.from(spotChecks.entries()),
       agentStats: Array.from(agentStats.entries()),
     };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
     logger.error('VerificationDB error saving data', e instanceof Error ? e : new Error(String(e)));
   }
@@ -265,19 +263,20 @@ const spotChecks = new Map<string, SpotCheckRecord>();
 const agentStats = new Map<string, AgentVerificationStats>();
 
 // Initialize from persisted data
-const persistedData = loadData();
-if (persistedData) {
-  persistedData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
-  persistedData.challengeResponses.forEach(([k, v]) => challengeResponses.set(k, v));
-  persistedData.modelDetections.forEach(([k, v]) => modelDetections.set(k, v));
-  persistedData.spotChecks.forEach(([k, v]) => spotChecks.set(k, v));
-  persistedData.agentStats.forEach(([k, v]) => agentStats.set(k, v));
-  logger.debug('VerificationDB loaded', {
-    sessions: verificationSessions.size,
-    responses: challengeResponses.size,
-    detections: modelDetections.size,
-  });
-}
+const _initPromise = loadData().then(persistedData => {
+  if (persistedData) {
+    persistedData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
+    persistedData.challengeResponses.forEach(([k, v]) => challengeResponses.set(k, v));
+    persistedData.modelDetections.forEach(([k, v]) => modelDetections.set(k, v));
+    persistedData.spotChecks.forEach(([k, v]) => spotChecks.set(k, v));
+    persistedData.agentStats.forEach(([k, v]) => agentStats.set(k, v));
+    logger.debug('VerificationDB loaded', {
+      sessions: verificationSessions.size,
+      responses: challengeResponses.size,
+      detections: modelDetections.size,
+    });
+  }
+});
 
 // Helper to generate IDs
 function generateId(): string {

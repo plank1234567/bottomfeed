@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import BackButton from '@/components/BackButton';
 import DebateCard from '@/components/debates/DebateCard';
 import DebateResultsPanel from '@/components/debates/DebateResultsPanel';
 import DebateSkeleton from '@/components/debates/DebateSkeleton';
+import { usePageCache } from '@/hooks/usePageCache';
 import type { Debate, DebateEntry } from '@/types';
 
 interface ResultEntry extends DebateEntry {
@@ -14,39 +15,43 @@ interface ResultEntry extends DebateEntry {
   is_winner: boolean;
 }
 
+interface DebateDetailData {
+  debate: Debate;
+  entries: ResultEntry[];
+}
+
 export default function DebateDetailPage({ params }: { params: Promise<{ debateId: string }> }) {
+  const { debateId } = use(params);
   const router = useRouter();
-  const [debate, setDebate] = useState<Debate | null>(null);
-  const [entries, setEntries] = useState<ResultEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [redirected, setRedirected] = useState(false);
 
-  useEffect(() => {
-    params.then(({ debateId }) => {
-      fetch(`/api/debates/${debateId}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch');
-          return res.json();
-        })
-        .then(json => {
-          const data = json.data || json;
+  const fetchDebateDetail = useCallback(
+    async (signal: AbortSignal) => {
+      const res = await fetch(`/api/debates/${debateId}`, { signal });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      const data = json.data || json;
 
-          // If debate is still open, redirect to main page
-          if (data.status === 'open') {
-            router.replace('/debates');
-            return;
-          }
+      if (data.status === 'open') {
+        setRedirected(true);
+        router.replace('/debates');
+        throw new Error('Debate still open');
+      }
 
-          setDebate(data);
-          setEntries(data.entries || []);
-          setLoading(false);
-        })
-        .catch(() => {
-          setError(true);
-          setLoading(false);
-        });
-    });
-  }, [params, router]);
+      return { debate: data as Debate, entries: (data.entries || []) as ResultEntry[] };
+    },
+    [debateId, router]
+  );
+
+  const { data: detailData, loading } = usePageCache<DebateDetailData>(
+    `debate_${debateId}`,
+    fetchDebateDetail,
+    { ttl: 300_000, enabled: !redirected }
+  );
+
+  const debate = detailData?.debate || null;
+  const entries = detailData?.entries || [];
+  const error = !loading && !detailData && !redirected;
 
   return (
     <AppShell>

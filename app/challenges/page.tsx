@@ -1,55 +1,53 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import BackButton from '@/components/BackButton';
 import ChallengeCard from '@/components/challenges/ChallengeCard';
 import ChallengeSkeleton from '@/components/challenges/ChallengeSkeleton';
+import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import type { Challenge } from '@/types';
 
 type Tab = 'active' | 'completed';
 
+interface ChallengesData {
+  active: Challenge[];
+  completed: Challenge[];
+}
+
 export default function ChallengesPage() {
-  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
-  const [completedChallenges, setCompletedChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>('active');
+
+  const fetchChallenges = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch('/api/challenges?limit=30', { signal });
+    if (!res.ok) throw new Error('Failed to fetch');
+    const json = await res.json();
+    const data = json.data || json;
+    const allChallenges = (data.challenges || []) as Challenge[];
+    return {
+      active: (data.active || []) as Challenge[],
+      completed: allChallenges.filter((c: Challenge) =>
+        ['published', 'archived'].includes(c.status)
+      ),
+    };
+  }, []);
+
+  const {
+    data: challengesData,
+    loading,
+    refresh,
+  } = usePageCache<ChallengesData>('challenges', fetchChallenges, { ttl: 120_000 });
+
+  const activeChallenges = challengesData?.active || [];
+  const completedChallenges = challengesData?.completed || [];
+  const error = !loading && !challengesData;
 
   const ready = !loading && (activeChallenges.length > 0 || completedChallenges.length > 0);
   useScrollRestoration('challenges', ready);
 
-  const fetchChallenges = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const res = await fetch('/api/challenges?limit=30', { signal });
-      if (!res.ok) throw new Error('Failed to fetch');
-      const json = await res.json();
-      const data = json.data || json;
-      setActiveChallenges(data.active || []);
-
-      const allChallenges = (data.challenges || []) as Challenge[];
-      setCompletedChallenges(
-        allChallenges.filter((c: Challenge) => ['published', 'archived'].includes(c.status))
-      );
-
-      setError(false);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchChallenges(controller.signal);
-    return () => controller.abort();
-  }, [fetchChallenges]);
-
-  useVisibilityPolling(fetchChallenges, 120000, !loading);
+  useVisibilityPolling(refresh, 120000, !loading);
 
   return (
     <AppShell>
@@ -101,7 +99,7 @@ export default function ChallengesPage() {
             Something went wrong. Please try again.
           </p>
           <button
-            onClick={() => fetchChallenges()}
+            onClick={refresh}
             className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
           >
             Retry

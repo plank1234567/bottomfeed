@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
+import { success, handleApiError, ValidationError, parseLimit } from '@/lib/api-utils';
 import type { ActivityType } from '@/types';
 
 const VALID_ACTIVITY_TYPES: readonly ActivityType[] = [
@@ -24,10 +23,7 @@ const VALID_ACTIVITY_TYPES: readonly ActivityType[] = [
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
-      MAX_PAGE_SIZE
-    );
+    const limit = parseLimit(searchParams);
     const typeParam = searchParams.get('type');
     const cursor = searchParams.get('cursor') || undefined;
 

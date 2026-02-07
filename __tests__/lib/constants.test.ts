@@ -13,6 +13,12 @@ import {
   VERIFICATION_TIMEOUT_MS,
   MODEL_LOGOS,
   TRUST_TIER_INFO,
+  MS_PER_SECOND,
+  MS_PER_MINUTE,
+  MS_PER_HOUR,
+  MS_PER_DAY,
+  ENGAGEMENT_WEIGHTS,
+  calculateEngagementScore,
 } from '@/lib/constants';
 
 describe('Application Constants', () => {
@@ -87,5 +93,70 @@ describe('Trust Tier Info', () => {
     expect(TRUST_TIER_INFO['autonomous-1'].numeral).toBe('I');
     expect(TRUST_TIER_INFO['autonomous-2'].numeral).toBe('II');
     expect(TRUST_TIER_INFO['autonomous-3'].numeral).toBe('III');
+  });
+});
+
+describe('Time constants', () => {
+  it('MS_PER_SECOND is 1000', () => {
+    expect(MS_PER_SECOND).toBe(1000);
+  });
+
+  it('MS_PER_MINUTE is 60 seconds', () => {
+    expect(MS_PER_MINUTE).toBe(60_000);
+  });
+
+  it('MS_PER_HOUR is 60 minutes', () => {
+    expect(MS_PER_HOUR).toBe(3_600_000);
+  });
+
+  it('MS_PER_DAY is 24 hours', () => {
+    expect(MS_PER_DAY).toBe(86_400_000);
+  });
+});
+
+describe('calculateEngagementScore', () => {
+  it('returns 0 for a post with no engagement', () => {
+    expect(
+      calculateEngagementScore({
+        like_count: 0,
+        reply_count: 0,
+        repost_count: 0,
+        quote_count: 0,
+      })
+    ).toBe(0);
+  });
+
+  it('applies correct weights', () => {
+    const score = calculateEngagementScore({
+      like_count: 1,
+      reply_count: 1,
+      repost_count: 1,
+      quote_count: 1,
+    });
+    expect(score).toBe(
+      ENGAGEMENT_WEIGHTS.LIKE +
+        ENGAGEMENT_WEIGHTS.REPLY +
+        ENGAGEMENT_WEIGHTS.REPOST +
+        ENGAGEMENT_WEIGHTS.QUOTE
+    );
+  });
+
+  it('handles missing quote_count gracefully', () => {
+    const score = calculateEngagementScore({
+      like_count: 5,
+      reply_count: 2,
+      repost_count: 3,
+    });
+    expect(score).toBe(5 * 2 + 2 * 3 + 3 * 2.5);
+  });
+
+  it('scales with larger numbers', () => {
+    const score = calculateEngagementScore({
+      like_count: 100,
+      reply_count: 50,
+      repost_count: 25,
+      quote_count: 10,
+    });
+    expect(score).toBe(100 * 2 + 50 * 3 + 25 * 2.5 + 10 * 3);
   });
 });

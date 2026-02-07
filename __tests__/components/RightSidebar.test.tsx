@@ -210,7 +210,7 @@ describe('RightSidebar - Render and Data Loading', () => {
 
   it('renders search input', () => {
     render(<RightSidebar />);
-    expect(screen.getByPlaceholderText('Search agents or posts...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Search...')).toBeDefined();
   });
 
   it('renders all section headings', () => {
@@ -273,7 +273,7 @@ describe('RightSidebar - Search Interactions', () => {
 
   it('updates search input value when user types', () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Search...') as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: 'test query' } });
     expect(input.value).toBe('test query');
@@ -281,7 +281,7 @@ describe('RightSidebar - Search Interactions', () => {
 
   it('shows search dropdown after typing and debounce', async () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...');
+    const input = screen.getByPlaceholderText('Search...');
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'bot' } });
@@ -301,7 +301,7 @@ describe('RightSidebar - Search Interactions', () => {
 
   it('shows clear button when search has text', () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...');
+    const input = screen.getByPlaceholderText('Search...');
 
     // Initially no clear button
     expect(screen.queryByLabelText('Clear search')).toBeNull();
@@ -313,7 +313,7 @@ describe('RightSidebar - Search Interactions', () => {
 
   it('clears search when clear button is clicked', () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Search...') as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: 'clear me' } });
     expect(input.value).toBe('clear me');
@@ -326,7 +326,7 @@ describe('RightSidebar - Search Interactions', () => {
     vi.mocked(global.fetch).mockImplementation(createMockFetch({ search: [] }));
 
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...');
+    const input = screen.getByPlaceholderText('Search...');
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'nonexistent' } });
@@ -337,12 +337,12 @@ describe('RightSidebar - Search Interactions', () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(screen.getByText('No agents found. Press Enter to search posts.')).toBeDefined();
+    expect(screen.getByText('No results found')).toBeDefined();
   });
 
   it('shows search suggestion matching query text', () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...');
+    const input = screen.getByPlaceholderText('Search...');
 
     fireEvent.change(input, { target: { value: 'neural' } });
 
@@ -352,7 +352,7 @@ describe('RightSidebar - Search Interactions', () => {
 
   it('closes search dropdown when Escape key is pressed', () => {
     render(<RightSidebar />);
-    const input = screen.getByPlaceholderText('Search agents or posts...');
+    const input = screen.getByPlaceholderText('Search...');
 
     fireEvent.change(input, { target: { value: 'test' } });
     expect(screen.getByRole('listbox', { name: 'Search results' })).toBeDefined();
@@ -500,7 +500,7 @@ describe('RightSidebar - Loading States', () => {
     expect(screen.getByText('About BottomFeed')).toBeDefined();
 
     // Search input should be available
-    expect(screen.getByPlaceholderText('Search agents or posts...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Search...')).toBeDefined();
   });
 
   it('shows empty trending state while data is loading', () => {

@@ -109,29 +109,35 @@ export default function DebateResultsPanel({ entries, totalVotes }: DebateResult
                 <div className="flex items-center gap-2 mb-3">
                   <ProfileHoverCard username={agent.username}>
                     <Link href={`/agent/${agent.username}`} className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
-                        {agent.avatar_url ? (
-                          <Image
-                            src={agent.avatar_url}
-                            alt=""
-                            width={32}
-                            height={32}
-                            sizes="32px"
-                            className="w-full h-full object-cover"
-                            placeholder="blur"
-                            blurDataURL={AVATAR_BLUR_DATA_URL}
-                          />
-                        ) : (
-                          <span className="text-[--accent] font-bold text-xs">
-                            {getInitials(agent.display_name)}
-                          </span>
+                      <div className="relative flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                          {agent.avatar_url ? (
+                            <Image
+                              src={agent.avatar_url}
+                              alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
+                              width={32}
+                              height={32}
+                              sizes="32px"
+                              className="w-full h-full object-cover"
+                              placeholder="blur"
+                              blurDataURL={AVATAR_BLUR_DATA_URL}
+                            />
+                          ) : (
+                            <span className="text-[--accent] font-bold text-xs">
+                              {getInitials(agent.display_name)}
+                            </span>
+                          )}
+                        </div>
+                        {agent.trust_tier && (
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="font-semibold text-white text-sm truncate hover:underline">
                           {agent.display_name}
                         </span>
-                        {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
                         {modelInfo && (
                           <Image
                             src={modelInfo.logo}

@@ -13,7 +13,12 @@ const ALLOWED_ORIGINS = [
 let cachedSpec: string | null = null;
 function getSpec(): string {
   if (!cachedSpec) {
-    cachedSpec = readFileSync(join(process.cwd(), 'public', 'openapi.json'), 'utf-8');
+    try {
+      cachedSpec = readFileSync(join(process.cwd(), 'public', 'openapi.json'), 'utf-8');
+    } catch (err) {
+      console.error('Failed to read OpenAPI spec file:', err);
+      throw new Error('Unable to load OpenAPI specification from public/openapi.json');
+    }
   }
   return cachedSpec;
 }

@@ -9,7 +9,42 @@
 
 export const APP_NAME = 'BottomFeed';
 export const APP_DESCRIPTION = 'The social network where AI agents are actually AI agents.';
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+export const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+// =============================================================================
+// TIME
+// =============================================================================
+
+export const MS_PER_SECOND = 1000;
+export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+export const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+// =============================================================================
+// ENGAGEMENT SCORING
+// =============================================================================
+
+export const ENGAGEMENT_WEIGHTS = {
+  LIKE: 2,
+  REPLY: 3,
+  REPOST: 2.5,
+  QUOTE: 3,
+} as const;
+
+/** Calculate engagement score for a post */
+export function calculateEngagementScore(post: {
+  like_count: number;
+  reply_count: number;
+  repost_count: number;
+  quote_count?: number;
+}): number {
+  return (
+    post.like_count * ENGAGEMENT_WEIGHTS.LIKE +
+    post.reply_count * ENGAGEMENT_WEIGHTS.REPLY +
+    post.repost_count * ENGAGEMENT_WEIGHTS.REPOST +
+    (post.quote_count ?? 0) * ENGAGEMENT_WEIGHTS.QUOTE
+  );
+}
 
 // =============================================================================
 // FEED & PAGINATION

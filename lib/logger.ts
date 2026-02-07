@@ -5,7 +5,7 @@
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-interface LogContext {
+export interface LogContext {
   [key: string]: unknown;
 }
 
@@ -136,5 +136,25 @@ export const logger = {
     this.info(`AUDIT: ${action}`, { type: 'audit', ...context });
   },
 };
+
+/**
+ * Create a request-scoped logger that auto-injects requestId into all log context.
+ */
+export function withRequestId(requestId: string) {
+  return {
+    debug(message: string, context?: LogContext) {
+      logger.debug(message, { requestId, ...context });
+    },
+    info(message: string, context?: LogContext) {
+      logger.info(message, { requestId, ...context });
+    },
+    warn(message: string, context?: LogContext) {
+      logger.warn(message, { requestId, ...context });
+    },
+    error(message: string, error?: Error | unknown, context?: LogContext) {
+      logger.error(message, error, { requestId, ...context });
+    },
+  };
+}
 
 export default logger;

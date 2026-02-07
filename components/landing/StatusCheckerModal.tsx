@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Modal from '@/components/ui/Modal';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import styles from '@/app/landing/landing.module.css';
 
 interface VerificationStatus {
@@ -33,9 +34,7 @@ export default function StatusCheckerModal({
   onClose,
   onStatusChange,
 }: StatusCheckerModalProps) {
-  const [sessionId, setSessionId] = useState('');
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
@@ -46,7 +45,6 @@ export default function StatusCheckerModal({
       return null;
     }
 
-    if (!silent) setStatusLoading(true);
     setStatusError(null);
 
     try {
@@ -80,10 +78,20 @@ export default function StatusCheckerModal({
       console.error('Failed to check verification status:', error);
       setStatusError('Failed to check status');
       return null;
-    } finally {
-      if (!silent) setStatusLoading(false);
     }
   }, []);
+
+  const form = useFormValidation({
+    fields: {
+      sessionId: {
+        required: true,
+        minLength: 5,
+      },
+    },
+    onSubmit: async values => {
+      await checkStatus(values.sessionId ?? '');
+    },
+  });
 
   // Load session ID from localStorage on mount
   useEffect(() => {
@@ -94,24 +102,26 @@ export default function StatusCheckerModal({
       /* localStorage unavailable */
     }
     if (savedSession) {
-      setSessionId(savedSession);
+      form.handleChange('sessionId', savedSession);
       checkStatus(savedSession);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkStatus]);
 
   // Poll for status when verification is in progress
+  const sessionIdValue = form.values.sessionId ?? '';
   const pollVerificationStatus = useCallback(async () => {
-    if (!sessionId) return;
-    const status = await checkStatus(sessionId, true);
+    if (!sessionIdValue) return;
+    const status = await checkStatus(sessionIdValue, true);
     if (status?.status === 'passed') {
       setIsPolling(false);
       setShowSuccessPopup(true);
     } else if (status?.status === 'failed') {
       setIsPolling(false);
     }
-  }, [sessionId, checkStatus]);
+  }, [sessionIdValue, checkStatus]);
 
-  useVisibilityPolling(pollVerificationStatus, 5000, isPolling && !!sessionId);
+  useVisibilityPolling(pollVerificationStatus, 5000, isPolling && !!sessionIdValue);
 
   const clearSession = () => {
     try {
@@ -119,7 +129,7 @@ export default function StatusCheckerModal({
     } catch {
       /* localStorage unavailable */
     }
-    setSessionId('');
+    form.reset();
     setVerificationStatus(null);
     setIsPolling(false);
   };
@@ -134,33 +144,45 @@ export default function StatusCheckerModal({
       <Modal isOpen={isOpen} onClose={onClose} title="Verification Status" size="sm">
         <div className="p-4 space-y-4">
           {/* Session ID Input */}
-          <div>
-            <label className="text-[#808090] text-xs mb-2 block">Session ID</label>
+          <form onSubmit={form.handleSubmit}>
+            <label htmlFor="sessionId" className="text-[#808090] text-xs mb-2 block">
+              Session ID
+            </label>
             <div className="flex gap-2">
               <input
+                id="sessionId"
                 type="text"
-                value={sessionId}
-                onChange={e => setSessionId(e.target.value)}
                 placeholder="Enter your verification session ID"
-                className="flex-1 px-3 py-2 bg-[#080810] border border-white/10 rounded-lg text-white text-sm placeholder:text-[#3a4550] focus:outline-none focus:border-[#4ade80]/50"
+                className={`flex-1 px-3 py-2 bg-[#080810] border rounded-lg text-white text-sm placeholder:text-[#3a4550] focus:outline-none transition-colors ${
+                  form.touched.sessionId && form.errors.sessionId
+                    ? 'border-red-500/50 focus:border-red-500/80'
+                    : 'border-white/10 focus:border-[#4ade80]/50'
+                }`}
+                {...form.getFieldProps('sessionId')}
               />
               <button
-                onClick={() => checkStatus(sessionId)}
-                disabled={statusLoading}
+                type="submit"
+                disabled={form.isSubmitting}
                 className="px-4 py-2 bg-[#4ade80] text-black font-medium rounded-lg hover:bg-[#3ecf70] transition-colors disabled:opacity-50 text-sm"
               >
-                {statusLoading ? '...' : 'Check'}
+                {form.isSubmitting ? '...' : 'Check'}
               </button>
             </div>
+            {form.touched.sessionId && form.errors.sessionId && (
+              <p {...form.getErrorProps('sessionId')} className="mt-1 text-red-400 text-xs">
+                {form.getErrorProps('sessionId').children}
+              </p>
+            )}
             {verificationStatus && (
               <button
+                type="button"
                 onClick={clearSession}
                 className="text-[#606070] text-xs mt-2 hover:text-white transition-colors"
               >
                 Clear saved session
               </button>
             )}
-          </div>
+          </form>
 
           {statusError && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">

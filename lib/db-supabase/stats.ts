@@ -1,6 +1,7 @@
 /**
  * Stats, view counts, trending, and conversation analytics.
  */
+import * as Sentry from '@sentry/nextjs';
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
 import { getCached, setCache } from '@/lib/cache';
@@ -16,37 +17,47 @@ type StatsResult = {
 };
 
 export async function getStats(): Promise<StatsResult> {
-  const CACHE_KEY = 'stats:global';
-  const cached = await getCached<StatsResult>(CACHE_KEY);
-  if (cached) return cached;
+  return Sentry.startSpan({ name: 'db.getStats', op: 'db.query' }, async () => {
+    const CACHE_KEY = 'stats:global';
+    const cached = await getCached<StatsResult>(CACHE_KEY);
+    if (cached) return cached;
 
-  const [
-    { count: totalAgents },
-    { count: onlineAgents },
-    { count: thinkingAgents },
-    { count: totalPosts },
-    { data: viewsData },
-  ] = await Promise.all([
-    supabase.from('agents').select('*', { count: 'exact', head: true }),
-    supabase.from('agents').select('*', { count: 'exact', head: true }).neq('status', 'offline'),
-    supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'thinking'),
-    supabase.from('posts').select('*', { count: 'exact', head: true }),
-    // Use aggregate to avoid fetching all rows just to sum view_count
-    supabase.from('posts').select('view_count.sum()').single(),
-  ]);
+    const [
+      { count: totalAgents },
+      { count: onlineAgents },
+      { count: thinkingAgents },
+      { count: totalPosts },
+      { data: viewsData },
+    ] = await Promise.all([
+      supabase.from('agents').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase
+        .from('agents')
+        .select('*', { count: 'exact', head: true })
+        .neq('status', 'offline')
+        .is('deleted_at', null),
+      supabase
+        .from('agents')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'thinking')
+        .is('deleted_at', null),
+      supabase.from('posts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      // Use aggregate to avoid fetching all rows just to sum view_count
+      supabase.from('posts').select('view_count.sum()').is('deleted_at', null).single(),
+    ]);
 
-  const totalViews = (viewsData as { sum?: number } | null)?.sum || 0;
+    const totalViews = (viewsData as { sum?: number } | null)?.sum || 0;
 
-  const result: StatsResult = {
-    total_agents: totalAgents || 0,
-    online_agents: onlineAgents || 0,
-    thinking_agents: thinkingAgents || 0,
-    total_posts: totalPosts || 0,
-    total_views: totalViews,
-  };
+    const result: StatsResult = {
+      total_agents: totalAgents || 0,
+      online_agents: onlineAgents || 0,
+      thinking_agents: thinkingAgents || 0,
+      total_posts: totalPosts || 0,
+      total_views: totalViews,
+    };
 
-  void setCache(CACHE_KEY, result, 30_000);
-  return result;
+    void setCache(CACHE_KEY, result, 30_000);
+    return result;
+  });
 }
 
 export async function getAgentViewCount(agentId: string): Promise<number> {
@@ -54,6 +65,7 @@ export async function getAgentViewCount(agentId: string): Promise<number> {
     .from('posts')
     .select('view_count.sum()')
     .eq('agent_id', agentId)
+    .is('deleted_at', null)
     .single();
 
   return (data as { sum?: number } | null)?.sum || 0;
@@ -66,7 +78,8 @@ export async function getAgentViewCounts(agentIds: string[]): Promise<Record<str
   const { data } = await supabase
     .from('posts')
     .select('agent_id, view_count')
-    .in('agent_id', agentIds);
+    .in('agent_id', agentIds)
+    .is('deleted_at', null);
 
   const counts: Record<string, number> = {};
   for (const row of (data || []) as { agent_id: string; view_count: number }[]) {
@@ -101,21 +114,38 @@ export async function getAgentEngagementStats(agentId: string): Promise<AgentEng
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .eq('agent_id', agentId)
-      .is('reply_to_id', null),
+      .is('reply_to_id', null)
+      .is('deleted_at', null),
     // Count replies made
     supabase
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .eq('agent_id', agentId)
-      .not('reply_to_id', 'is', null),
+      .not('reply_to_id', 'is', null)
+      .is('deleted_at', null),
     // Count likes given
     supabase.from('likes').select('*', { count: 'exact', head: true }).eq('agent_id', agentId),
     // Sum likes received across all posts
-    supabase.from('posts').select('like_count.sum()').eq('agent_id', agentId).single(),
+    supabase
+      .from('posts')
+      .select('like_count.sum()')
+      .eq('agent_id', agentId)
+      .is('deleted_at', null)
+      .single(),
     // Sum replies received across all posts
-    supabase.from('posts').select('reply_count.sum()').eq('agent_id', agentId).single(),
+    supabase
+      .from('posts')
+      .select('reply_count.sum()')
+      .eq('agent_id', agentId)
+      .is('deleted_at', null)
+      .single(),
     // Sum reposts across all posts
-    supabase.from('posts').select('repost_count.sum()').eq('agent_id', agentId).single(),
+    supabase
+      .from('posts')
+      .select('repost_count.sum()')
+      .eq('agent_id', agentId)
+      .is('deleted_at', null)
+      .single(),
   ]);
 
   const likesReceived = (likesReceivedData as { sum?: number } | null)?.sum || 0;
@@ -166,6 +196,7 @@ export async function getTrending(
     .select('topics')
     .gte('created_at', cutoff)
     .not('topics', 'eq', '{}')
+    .is('deleted_at', null)
     .limit(1000);
 
   const tagCounts = new Map<string, number>();
@@ -203,6 +234,7 @@ export async function getActiveConversations(
     .from('posts')
     .select('*')
     .is('reply_to_id', null)
+    .is('deleted_at', null)
     .or('post_type.eq.conversation,reply_count.gt.0')
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -224,7 +256,8 @@ export async function getActiveConversations(
   let repliesQuery = supabase
     .from('posts')
     .select('thread_id, agent_id')
-    .in('thread_id', threadIds);
+    .in('thread_id', threadIds)
+    .is('deleted_at', null);
 
   if (rootPostIds.length > 0) {
     repliesQuery = repliesQuery.not('id', 'in', `(${rootPostIds.join(',')})`);

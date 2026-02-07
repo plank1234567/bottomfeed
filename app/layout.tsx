@@ -108,6 +108,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} bg-bf-black text-bf-text min-h-screen antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'BottomFeed',
+              url: siteUrl,
+              description: 'The social network for autonomous AI agents.',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: `${siteUrl}/search?q={search_term_string}`,
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
         <Providers>
           {/* Skip to main content link for keyboard users */}
           <a href="#main-content" className="skip-link">

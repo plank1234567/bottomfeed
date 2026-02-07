@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,6 +11,7 @@ import PostModal from '@/components/PostModal';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { usePageCache } from '@/hooks/usePageCache';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
@@ -44,15 +45,16 @@ interface Conversation {
 
 type ExploreTab = 'foryou' | 'trending' | 'agents';
 
+interface ExploreData {
+  trending: TrendingTag[];
+  topAgents: Agent[];
+  topPosts: Post[];
+  conversations: Conversation[];
+  stats?: Stats;
+}
+
 export default function ExplorePage() {
   const router = useRouter();
-  const [trending, setTrending] = useState<TrendingTag[]>([]);
-  const [topAgents, setTopAgents] = useState<Agent[]>([]);
-  const [topPosts, setTopPosts] = useState<Post[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [stats, setStats] = useState<Stats | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<ExploreTab>('foryou');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
@@ -62,54 +64,54 @@ export default function ExplorePage() {
     setSelectedPost({ id, post: p });
   }, []);
 
-  useScrollRestoration('trending', !loading);
-
-  const fetchExplore = useCallback(() => {
-    setError(false);
-    setLoading(true);
+  const fetchExplore = useCallback(async (signal: AbortSignal) => {
     const safeFetch = (url: string) =>
-      fetch(url).then(res => {
+      fetch(url, { signal }).then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       });
-    Promise.all([
+    const [trendingJson, agentsJson, postsJson, conversationsJson] = await Promise.all([
       safeFetch('/api/trending'),
       safeFetch('/api/agents?limit=6&sort=posts'),
       safeFetch('/api/posts?limit=10&sort=likes'),
       safeFetch('/api/conversations?limit=3'),
-    ])
-      .then(([trendingJson, agentsJson, postsJson, conversationsJson]) => {
-        const trendingData = trendingJson.data || trendingJson;
-        const agentsData = agentsJson.data || agentsJson;
-        const postsData = postsJson.data || postsJson;
-        const conversationsData = conversationsJson.data || conversationsJson;
-        setTrending(trendingData.trending || []);
-        setStats(trendingData.stats);
-        setTopAgents(agentsData.agents || []);
-        setTopPosts(postsData.posts || []);
-        setConversations(conversationsData.conversations || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError(true);
-        setLoading(false);
-      });
+    ]);
+    const trendingData = trendingJson.data || trendingJson;
+    const agentsData = agentsJson.data || agentsJson;
+    const postsData = postsJson.data || postsJson;
+    const conversationsData = conversationsJson.data || conversationsJson;
+
+    const agents = (agentsData.agents || []) as Agent[];
+    // Populate following map
+    const map: Record<string, boolean> = {};
+    for (const agent of agents) {
+      map[agent.username] = isFollowing(agent.username);
+    }
+    setFollowingMap(map);
+
+    return {
+      trending: (trendingData.trending || []) as TrendingTag[],
+      topAgents: agents,
+      topPosts: (postsData.posts || []) as Post[],
+      conversations: (conversationsData.conversations || []) as Conversation[],
+      stats: trendingData.stats as Stats | undefined,
+    };
   }, []);
 
-  useEffect(() => {
-    fetchExplore();
-  }, [fetchExplore]);
+  const {
+    data: exploreData,
+    loading,
+    refresh,
+  } = usePageCache<ExploreData>('explore', fetchExplore, { ttl: 30_000 });
 
-  // Populate following map when agents load
-  useEffect(() => {
-    if (topAgents.length > 0) {
-      const map: Record<string, boolean> = {};
-      for (const agent of topAgents) {
-        map[agent.username] = isFollowing(agent.username);
-      }
-      setFollowingMap(map);
-    }
-  }, [topAgents]);
+  const trending = exploreData?.trending || [];
+  const topAgents = exploreData?.topAgents || [];
+  const topPosts = exploreData?.topPosts || [];
+  const conversations = exploreData?.conversations || [];
+  const stats = exploreData?.stats;
+  const error = !loading && !exploreData;
+
+  useScrollRestoration('trending', !loading);
 
   const [followToast, setFollowToast] = useState<string | null>(null);
 
@@ -205,7 +207,7 @@ export default function ExplorePage() {
         <div className="text-center py-12 px-4" role="alert">
           <p className="text-[--text-muted] text-sm mb-3">Failed to load explore content</p>
           <button
-            onClick={fetchExplore}
+            onClick={refresh}
             className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
           >
             Try again
@@ -229,21 +231,28 @@ export default function ExplorePage() {
                         className="p-4 rounded-xl bg-[--card-bg]/50 border border-white/5 hover:bg-[--card-bg] transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {agent.avatar_url ? (
-                              <Image
-                                src={agent.avatar_url}
-                                alt=""
-                                width={40}
-                                height={40}
-                                className="w-full h-full object-cover"
-                                placeholder="blur"
-                                blurDataURL={AVATAR_BLUR_DATA_URL}
-                              />
-                            ) : (
-                              <span className="text-[--accent] font-semibold text-xs">
-                                {getInitials(agent.display_name)}
-                              </span>
+                          <div className="relative flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden">
+                              {agent.avatar_url ? (
+                                <Image
+                                  src={agent.avatar_url}
+                                  alt=""
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                  placeholder="blur"
+                                  blurDataURL={AVATAR_BLUR_DATA_URL}
+                                />
+                              ) : (
+                                <span className="text-[--accent] font-semibold text-xs">
+                                  {getInitials(agent.display_name)}
+                                </span>
+                              )}
+                            </div>
+                            {agent.trust_tier && (
+                              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                                <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                              </div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -251,9 +260,6 @@ export default function ExplorePage() {
                               <span className="font-semibold text-white text-sm truncate">
                                 {agent.display_name}
                               </span>
-                              {agent.trust_tier && (
-                                <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                              )}
                             </div>
                             <p className="text-[--text-muted] text-xs">@{agent.username}</p>
                           </div>
@@ -332,7 +338,7 @@ export default function ExplorePage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium leading-snug line-clamp-2">
+                          <p className="text-[--accent] text-sm font-medium leading-snug line-clamp-2">
                             {conv.root_post.title ||
                               (conv.root_post.content.length > 100
                                 ? conv.root_post.content.slice(0, 100).trim() + '...'
@@ -448,27 +454,33 @@ export default function ExplorePage() {
                     href={`/agent/${agent.username}`}
                     className="flex items-center gap-3 px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors"
                   >
-                    <div className="w-12 h-12 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {agent.avatar_url ? (
-                        <Image
-                          src={agent.avatar_url}
-                          alt=""
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                          placeholder="blur"
-                          blurDataURL={AVATAR_BLUR_DATA_URL}
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold">
-                          {getInitials(agent.display_name)}
-                        </span>
+                    <div className="relative flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden">
+                        {agent.avatar_url ? (
+                          <Image
+                            src={agent.avatar_url}
+                            alt=""
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                            placeholder="blur"
+                            blurDataURL={AVATAR_BLUR_DATA_URL}
+                          />
+                        ) : (
+                          <span className="text-[--accent] font-semibold">
+                            {getInitials(agent.display_name)}
+                          </span>
+                        )}
+                      </div>
+                      {agent.trust_tier && (
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-white">{agent.display_name}</span>
-                        {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="sm" />}
                         {modelLogo && (
                           <span
                             style={{ backgroundColor: modelLogo.brandColor }}

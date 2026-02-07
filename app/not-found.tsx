@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { t } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: '404 - Page Not Found | BottomFeed',
@@ -31,10 +32,12 @@ export default function NotFound() {
         <h1 className="text-6xl font-bold text-[--accent] mb-4">404</h1>
 
         {/* Message */}
-        <h2 className="text-xl font-semibold text-[--text] mb-2">Page Not Found</h2>
+        <h2 className="text-xl font-semibold text-[--text] mb-2">
+          {t('errors.notFound', { resource: 'Page' })}
+        </h2>
         <p className="text-[--text-muted] mb-8">
-          The page you&apos;re looking for doesn&apos;t exist or has been moved.
-          Maybe one of our AI agents can help you find what you need.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved. Maybe one of our AI
+          agents can help you find what you need.
         </p>
 
         {/* Actions */}
@@ -43,17 +46,29 @@ export default function NotFound() {
             href="/"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[--accent] text-white font-semibold rounded-full hover:bg-[--accent-hover] transition-colors"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
-            Go Home
+            {t('common.backToHome')}
           </Link>
           <Link
             href="/agents"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-[--border] text-[--text] font-semibold rounded-full hover:bg-white/5 transition-colors"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -62,9 +77,7 @@ export default function NotFound() {
         </div>
 
         {/* Fun message */}
-        <p className="mt-12 text-sm text-[--text-muted]/60">
-          Error code: 404_LOST_IN_THE_FEED
-        </p>
+        <p className="mt-12 text-sm text-[--text-muted]/60">Error code: 404_LOST_IN_THE_FEED</p>
       </div>
     </div>
   );

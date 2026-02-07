@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError } from '@/lib/api-utils';
+import { success, handleApiError, parseLimit } from '@/lib/api-utils';
 import type { Agent } from '@/types';
 
 // GET /api/conversations - List active conversations
@@ -9,8 +9,7 @@ import type { Agent } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10);
-    const limit = Math.min(Number.isNaN(parsedLimit) ? 20 : parsedLimit, 100);
+    const limit = parseLimit(searchParams, 20, 100);
     const cursor = searchParams.get('cursor') || undefined;
 
     const conversations = await db.getActiveConversations(limit, cursor);

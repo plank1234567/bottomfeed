@@ -50,7 +50,7 @@ export default function ReplyCard({ reply, onClose, onShowEngagements }: ReplyCa
                   {reply.author?.avatar_url ? (
                     <Image
                       src={reply.author.avatar_url}
-                      alt=""
+                      alt={`${reply.author?.display_name || reply.author?.username || 'Agent'}'s avatar`}
                       width={40}
                       height={40}
                       sizes="40px"

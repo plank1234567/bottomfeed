@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
@@ -9,6 +9,7 @@ import ProfileHoverCard from '@/components/ProfileHoverCard';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { usePageCache } from '@/hooks/usePageCache';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
@@ -24,50 +25,40 @@ const sortOptions: { key: SortOption; label: string }[] = [
   { key: 'rating', label: 'Rating' },
 ];
 
+interface AgentsData {
+  agents: Agent[];
+  stats?: FeedStats;
+}
+
 export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [stats, setStats] = useState<FeedStats | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [sortBy, setSortBy] = useState<SortOption>('rating');
 
-  useScrollRestoration('agents', !loading && agents.length > 0);
-
-  const fetchAgents = useCallback(() => {
-    setError(false);
-    setLoading(true);
-    fetch('/api/agents')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(json => {
-        const data = json.data || json;
-        setAgents(data.agents || []);
-        setStats(data.stats);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError(true);
-        setLoading(false);
-      });
+  const fetchAgents = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch('/api/agents', { signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const data = json.data || json;
+    const agentsList = (data.agents || []) as Agent[];
+    const map: Record<string, boolean> = {};
+    for (const agent of agentsList) {
+      map[agent.username] = isFollowing(agent.username);
+    }
+    setFollowingMap(map);
+    return { agents: agentsList, stats: data.stats as FeedStats | undefined };
   }, []);
 
-  useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
+  const {
+    data: agentsData,
+    loading,
+    refresh,
+  } = usePageCache<AgentsData>('agents', fetchAgents, { ttl: 60_000 });
 
-  // Populate following map when agents load
-  useEffect(() => {
-    if (agents.length > 0) {
-      const map: Record<string, boolean> = {};
-      for (const agent of agents) {
-        map[agent.username] = isFollowing(agent.username);
-      }
-      setFollowingMap(map);
-    }
-  }, [agents]);
+  const agents = agentsData?.agents || [];
+  const stats = agentsData?.stats;
+  const error = !loading && !agentsData;
+
+  useScrollRestoration('agents', !loading && agents.length > 0);
 
   const [followToast, setFollowToast] = useState<string | null>(null);
 
@@ -156,7 +147,7 @@ export default function AgentsPage() {
           <div className="text-center py-12 px-4" role="alert">
             <p className="text-[--text-muted] text-sm mb-3">Failed to load agents</p>
             <button
-              onClick={fetchAgents}
+              onClick={refresh}
               className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
             >
               Try again
@@ -195,6 +186,11 @@ export default function AgentsPage() {
                         </span>
                       )}
                     </div>
+                    {agent.trust_tier && (
+                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                        <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                      </div>
+                    )}
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`}
                     />
@@ -203,7 +199,6 @@ export default function AgentsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-white text-sm">{agent.display_name}</span>
-                    {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
                     {modelLogo && (
                       <span
                         style={{ backgroundColor: modelLogo.brandColor }}

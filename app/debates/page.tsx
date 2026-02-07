@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import BackButton from '@/components/BackButton';
 import DebateCard from '@/components/debates/DebateCard';
 import DebateVotingPanel from '@/components/debates/DebateVotingPanel';
 import DebateSkeleton from '@/components/debates/DebateSkeleton';
 import DebateStreakBadge from '@/components/debates/DebateStreakBadge';
+import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { setActiveDebateInfo } from '@/lib/humanPrefs';
@@ -14,58 +15,64 @@ import type { Debate, DebateEntry } from '@/types';
 
 type Tab = 'today' | 'past';
 
+interface DebatesData {
+  activeDebate: Debate | null;
+  entries: DebateEntry[];
+  totalVotes: number;
+  totalAgentVotes: number;
+  pastDebates: Debate[];
+}
+
 export default function DebatesPage() {
-  const [activeDebate, setActiveDebate] = useState<Debate | null>(null);
-  const [entries, setEntries] = useState<DebateEntry[]>([]);
-  const [totalVotes, setTotalVotes] = useState(0);
-  const [totalAgentVotes, setTotalAgentVotes] = useState(0);
-  const [pastDebates, setPastDebates] = useState<Debate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>('today');
+
+  const fetchDebates = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch('/api/debates?limit=30', { signal });
+    if (!res.ok) throw new Error('Failed to fetch');
+    const json = await res.json();
+    const data = json.data || json;
+    const active = (data.active || null) as Debate | null;
+    const past = ((data.debates || []) as Debate[]).filter(d => d.status === 'closed');
+
+    if (active) {
+      setActiveDebateInfo(active.id, active.closes_at);
+    }
+
+    let entries: DebateEntry[] = [];
+    let totalVotes = 0;
+    let totalAgentVotes = 0;
+
+    if (active) {
+      const entryRes = await fetch(`/api/debates/${active.id}`, { signal });
+      if (entryRes.ok) {
+        const entryJson = await entryRes.json();
+        const entryData = entryJson.data || entryJson;
+        entries = entryData.entries || [];
+        totalVotes = entryData.total_votes || 0;
+        totalAgentVotes = entryData.total_agent_votes || 0;
+      }
+    }
+
+    return { activeDebate: active, entries, totalVotes, totalAgentVotes, pastDebates: past };
+  }, []);
+
+  const {
+    data: debatesData,
+    loading,
+    refresh,
+  } = usePageCache<DebatesData>('debates', fetchDebates, { ttl: 60_000 });
+
+  const activeDebate = debatesData?.activeDebate || null;
+  const entries = debatesData?.entries || [];
+  const totalVotes = debatesData?.totalVotes || 0;
+  const totalAgentVotes = debatesData?.totalAgentVotes || 0;
+  const pastDebates = debatesData?.pastDebates || [];
+  const error = !loading && !debatesData;
 
   const ready = !loading && (activeDebate !== null || pastDebates.length > 0);
   useScrollRestoration('debates', ready);
 
-  const fetchDebates = useCallback(async () => {
-    try {
-      const res = await fetch('/api/debates?limit=30');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const json = await res.json();
-      const data = json.data || json;
-      setActiveDebate(data.active || null);
-      setPastDebates((data.debates || []).filter((d: Debate) => d.status === 'closed'));
-
-      // Store active debate info for sidebar badge
-      if (data.active) {
-        setActiveDebateInfo(data.active.id, data.active.closes_at);
-      }
-
-      // Fetch entries for active debate
-      if (data.active) {
-        const entryRes = await fetch(`/api/debates/${data.active.id}`);
-        if (entryRes.ok) {
-          const entryJson = await entryRes.json();
-          const entryData = entryJson.data || entryJson;
-          setEntries(entryData.entries || []);
-          setTotalVotes(entryData.total_votes || 0);
-          setTotalAgentVotes(entryData.total_agent_votes || 0);
-        }
-      }
-
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDebates();
-  }, [fetchDebates]);
-
-  useVisibilityPolling(fetchDebates, 60000, !loading);
+  useVisibilityPolling(refresh, 60000, !loading);
 
   return (
     <AppShell>
@@ -111,7 +118,7 @@ export default function DebatesPage() {
             Something went wrong. Please try again.
           </p>
           <button
-            onClick={fetchDebates}
+            onClick={refresh}
             className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
           >
             Retry
@@ -127,7 +134,7 @@ export default function DebatesPage() {
                 entries={entries}
                 totalVotes={totalVotes}
                 totalAgentVotes={totalAgentVotes}
-                onVoteSuccess={fetchDebates}
+                onVoteSuccess={refresh}
               />
             </>
           ) : (

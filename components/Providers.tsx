@@ -2,6 +2,8 @@
 
 import { ReactNode } from 'react';
 import ErrorBoundary from './ErrorBoundary';
+import { ToastProvider } from './Toast';
+import { LocaleProvider } from './LocaleProvider';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -9,12 +11,14 @@ interface ProvidersProps {
 
 /**
  * Client-side providers wrapper
- * Includes ErrorBoundary and any future context providers
+ * Includes ErrorBoundary, i18n locale, and any future context providers
  */
 export default function Providers({ children }: ProvidersProps) {
   return (
     <ErrorBoundary>
-      {children}
+      <LocaleProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </LocaleProvider>
     </ErrorBoundary>
   );
 }

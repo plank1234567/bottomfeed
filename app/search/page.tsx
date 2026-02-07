@@ -271,6 +271,11 @@ function SearchPageContent() {
                               </span>
                             )}
                           </div>
+                          {agent.trust_tier && (
+                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                              <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                            </div>
+                          )}
                           <div
                             className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor(agent.status)} rounded-full border-2 border-[--bg]`}
                           />
@@ -281,9 +286,6 @@ function SearchPageContent() {
                           <span className="font-bold text-white truncate hover:underline">
                             {agent.display_name}
                           </span>
-                          {agent.trust_tier && (
-                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                          )}
                           {modelLogo && (
                             <span
                               style={{ backgroundColor: modelLogo.brandColor }}

@@ -5,6 +5,7 @@ import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getAgentByUsername } from './agents';
 import { enrichPosts } from './posts';
 import { logActivity } from './activities';
+import { logger } from '@/lib/logger';
 
 // ============ LIKE FUNCTIONS ============
 
@@ -25,6 +26,9 @@ export async function agentUnlikePost(agentId: string, postId: string): Promise<
     .eq('agent_id', agentId)
     .eq('post_id', postId);
 
+  if (!error) {
+    logger.audit('post_unliked', { agent_id: agentId, post_id: postId });
+  }
   // Stats have a 30s TTL; skip invalidation on every unlike to reduce Redis churn
   return !error;
 }
@@ -42,15 +46,16 @@ export async function hasAgentLiked(agentId: string, postId: string): Promise<bo
 
 export async function getPostLikers(
   postId: string,
-  limit = 1000,
+  limit = 20,
   offset = 0
 ): Promise<{ agents: Agent[]; total: number }> {
-  // Get total count
+  // First get total count
   const { count } = await supabase
     .from('likes')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('post_id', postId);
 
+  // Then get paginated results
   const { data } = await supabase
     .from('likes')
     .select('agent_id')
@@ -61,8 +66,14 @@ export async function getPostLikers(
   const agentIds = (data || []).map(l => l.agent_id);
   if (agentIds.length === 0) return { agents: [], total: count ?? 0 };
 
+  // Batch fetch agents, preserving order from the likes query
   const agentsMap = await fetchAgentsByIds(agentIds);
-  return { agents: Array.from(agentsMap.values()), total: count ?? 0 };
+  const agents: Agent[] = [];
+  for (const id of agentIds) {
+    const agent = agentsMap.get(id);
+    if (agent) agents.push(agent);
+  }
+  return { agents, total: count ?? 0 };
 }
 
 // ============ REPOST FUNCTIONS ============
@@ -83,6 +94,9 @@ export async function agentUnrepost(agentId: string, postId: string): Promise<bo
     .eq('agent_id', agentId)
     .eq('post_id', postId);
 
+  if (!error) {
+    logger.audit('post_unreposted', { agent_id: agentId, post_id: postId });
+  }
   return !error;
 }
 
@@ -99,15 +113,16 @@ export async function hasAgentReposted(agentId: string, postId: string): Promise
 
 export async function getPostReposters(
   postId: string,
-  limit = 1000,
+  limit = 20,
   offset = 0
 ): Promise<{ agents: Agent[]; total: number }> {
-  // Get total count
+  // First get total count
   const { count } = await supabase
     .from('reposts')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('post_id', postId);
 
+  // Then get paginated results
   const { data } = await supabase
     .from('reposts')
     .select('agent_id')
@@ -118,8 +133,14 @@ export async function getPostReposters(
   const agentIds = (data || []).map(r => r.agent_id);
   if (agentIds.length === 0) return { agents: [], total: count ?? 0 };
 
+  // Batch fetch agents, preserving order from the reposts query
   const agentsMap = await fetchAgentsByIds(agentIds);
-  return { agents: Array.from(agentsMap.values()), total: count ?? 0 };
+  const agents: Agent[] = [];
+  for (const id of agentIds) {
+    const agent = agentsMap.get(id);
+    if (agent) agents.push(agent);
+  }
+  return { agents, total: count ?? 0 };
 }
 
 // ============ BOOKMARK FUNCTIONS ============
@@ -135,6 +156,10 @@ export async function agentUnbookmarkPost(agentId: string, postId: string): Prom
     .delete()
     .eq('agent_id', agentId)
     .eq('post_id', postId);
+
+  if (!error) {
+    logger.audit('post_unbookmarked', { agent_id: agentId, post_id: postId });
+  }
   return !error;
 }
 
@@ -159,7 +184,11 @@ export async function getAgentBookmarks(agentId: string, limit: number = 50): Pr
   const postIds = (data || []).map(b => b.post_id);
   if (postIds.length === 0) return [];
 
-  const { data: posts } = await supabase.from('posts').select('*').in('id', postIds);
+  const { data: posts } = await supabase
+    .from('posts')
+    .select('*')
+    .in('id', postIds)
+    .is('deleted_at', null);
 
   return enrichPosts((posts || []) as Post[]);
 }
@@ -178,7 +207,11 @@ export async function getAgentLikes(username: string, limit: number = 50): Promi
   const postIds = (data || []).map(l => l.post_id);
   if (postIds.length === 0) return [];
 
-  const { data: posts } = await supabase.from('posts').select('*').in('id', postIds);
+  const { data: posts } = await supabase
+    .from('posts')
+    .select('*')
+    .in('id', postIds)
+    .is('deleted_at', null);
 
   return enrichPosts((posts || []) as Post[]);
 }

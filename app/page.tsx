@@ -10,24 +10,36 @@ import EmptyState from '@/components/EmptyState';
 import PostModal from '@/components/PostModal';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { getPageCacheEntry, setPageCacheEntry } from '@/hooks/usePageCache';
 import { hasClaimedAgent } from '@/lib/humanPrefs';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { Post, FeedStats } from '@/types';
+
+interface FeedCacheData {
+  posts: Post[];
+  stats?: FeedStats;
+  nextCursor: string | null;
+  latestPostId: string | null;
+}
 
 function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [posts, setPosts] = useState<Post[]>([]);
+
+  // Seed from cache for instant back-navigation (no skeleton flash)
+  const cachedFeed = getPageCacheEntry<FeedCacheData>('feed');
+  const [posts, setPosts] = useState<Post[]>(cachedFeed?.posts || []);
   const [newPosts, setNewPosts] = useState<Post[]>([]);
-  const [stats, setStats] = useState<FeedStats | undefined>();
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<FeedStats | undefined>(cachedFeed?.stats);
+  const [loading, setLoading] = useState(!cachedFeed);
   const [error, setError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const latestPostId = useRef<string | null>(null);
-  const nextCursor = useRef<string | null>(null);
-  const initialLoadDone = useRef(false);
+  const [hasMore, setHasMore] = useState(cachedFeed ? !!cachedFeed.nextCursor : true);
+  const latestPostId = useRef<string | null>(cachedFeed?.latestPostId || null);
+  const nextCursor = useRef<string | null>(cachedFeed?.nextCursor || null);
+  const initialLoadDone = useRef(!!cachedFeed);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Check if user has claimed an agent - redirect to landing if not
@@ -44,14 +56,14 @@ function HomePageContent() {
   // Scroll restoration
   useScrollRestoration('feed', !loading && posts.length > 0);
 
-  // Initial fetch
+  // Initial fetch — always runs, but skips skeleton if cached data is shown
   const fetchFeed = useCallback(async () => {
     setError(false);
     try {
-      const res = await fetch('/api/feed');
+      const res = await fetchWithTimeout('/api/feed');
       if (res.ok) {
         const json = await res.json();
-        const data = json.data || json; // Handle both wrapped and unwrapped responses
+        const data = json.data || json;
         const fetchedPosts = data.posts || [];
         setPosts(fetchedPosts);
         setStats(data.stats);
@@ -61,11 +73,21 @@ function HomePageContent() {
           latestPostId.current = fetchedPosts[0].id;
         }
         initialLoadDone.current = true;
-      } else {
+
+        // Cache first page for instant back-navigation
+        setPageCacheEntry<FeedCacheData>('feed', {
+          posts: fetchedPosts,
+          stats: data.stats,
+          nextCursor: data.next_cursor || null,
+          latestPostId: fetchedPosts[0]?.id || null,
+        });
+      } else if (!initialLoadDone.current) {
         setError(true);
       }
     } catch {
-      setError(true);
+      if (!initialLoadDone.current) {
+        setError(true);
+      }
     }
     setLoading(false);
   }, []);
@@ -75,7 +97,9 @@ function HomePageContent() {
     if (loadingMore || !hasMore || !nextCursor.current) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/feed?cursor=${encodeURIComponent(nextCursor.current)}`);
+      const res = await fetchWithTimeout(
+        `/api/feed?cursor=${encodeURIComponent(nextCursor.current)}`
+      );
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
@@ -110,7 +134,7 @@ function HomePageContent() {
     if (!initialLoadDone.current) return;
 
     try {
-      const res = await fetch('/api/feed');
+      const res = await fetchWithTimeout('/api/feed');
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;

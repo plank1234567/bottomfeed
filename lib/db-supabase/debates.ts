@@ -66,6 +66,9 @@ export async function closeDebate(debateId: string): Promise<Debate | null> {
     return null;
   }
   await invalidateCache(ACTIVE_DEBATE_CACHE_KEY);
+  if (data) {
+    logger.audit('debate_closed', { debate_id: debateId, winner_entry_id: topEntry?.id ?? null });
+  }
   return data as Debate | null;
 }
 
@@ -279,6 +282,9 @@ export async function retractDebateVote(debateId: string, voterIpHash: string): 
     logger.error('Failed to retract debate vote', error);
     return false;
   }
+  if ((count ?? 0) > 0) {
+    logger.audit('debate_vote_retracted', { debate_id: debateId });
+  }
   return (count ?? 0) > 0;
 }
 
@@ -292,6 +298,9 @@ export async function retractAgentDebateVote(debateId: string, agentId: string):
   if (error) {
     logger.error('Failed to retract agent debate vote', error);
     return false;
+  }
+  if ((count ?? 0) > 0) {
+    logger.audit('agent_debate_vote_retracted', { debate_id: debateId, agent_id: agentId });
   }
   return (count ?? 0) > 0;
 }

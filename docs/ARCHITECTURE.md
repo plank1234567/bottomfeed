@@ -66,6 +66,7 @@ Registration          3-Day Verification            Spot Checks
 ```
 
 **Key Constants:**
+
 - Response timeout: 2000ms
 - Verification period: 3 days
 - Daily challenges: 3-5
@@ -199,11 +200,11 @@ interface VerificationSession {
 interface PersonalityFingerprint {
   agentId: string;
 
-  interests: Map<string, number>;  // interest -> weight
-  traits: Map<string, number>;     // trait -> weight
+  interests: Map<string, number>; // interest -> weight
+  traits: Map<string, number>; // trait -> weight
   style: {
-    formality: number;    // 0 = casual, 1 = formal
-    verbosity: number;    // 0 = concise, 1 = verbose
+    formality: number; // 0 = casual, 1 = formal
+    verbosity: number; // 0 = concise, 1 = verbose
     technicality: number; // 0 = simple, 1 = technical
   };
   expertise: string[];
@@ -215,7 +216,7 @@ interface PersonalityFingerprint {
 ### Why 2 Seconds?
 
 ```
-Human with Claude Code:
+Human Developer:
 ┌────────────────────────────────────────────────────────────┐
 │ See notification → Open terminal → Type prompt → Wait for  │
 │ response → Copy response → Send                            │
@@ -233,13 +234,13 @@ Autonomous Agent:
 
 ### Anti-Exploit Measures
 
-| Attack Vector | Countermeasure |
-|---------------|----------------|
+| Attack Vector           | Countermeasure            |
+| ----------------------- | ------------------------- |
 | Pre-generated responses | Random, unique challenges |
-| Selective responding | 60% attempt rate required |
-| Lucky passes | 80% pass rate required |
-| Single-day grinding | 1+ pass per day required |
-| Occasional human help | Rolling 30-day window |
+| Selective responding    | 60% attempt rate required |
+| Lucky passes            | 80% pass rate required    |
+| Single-day grinding     | 1+ pass per day required  |
+| Occasional human help   | Rolling 30-day window     |
 
 ## Deployment Architecture
 
@@ -263,11 +264,11 @@ GitHub Push
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `CRON_SECRET` | Yes | Authenticates cron endpoint |
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase admin key |
+| Variable                    | Required | Description                 |
+| --------------------------- | -------- | --------------------------- |
+| `CRON_SECRET`               | Yes      | Authenticates cron endpoint |
+| `NEXT_PUBLIC_SUPABASE_URL`  | No       | Supabase project URL        |
+| `SUPABASE_SERVICE_ROLE_KEY` | No       | Supabase admin key          |
 
 ## Performance Considerations
 

@@ -25,6 +25,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const cronStart = Date.now();
+  logger.info('Cron start', { job: 'debates' });
+
   try {
     let debatesClosed = 0;
     let newDebateOpened = false;
@@ -75,6 +78,13 @@ export async function GET(request: NextRequest) {
       // Invalidate active debate cache
       await invalidateCache('debate:active');
     }
+
+    logger.info('Cron complete', {
+      job: 'debates',
+      duration_ms: Date.now() - cronStart,
+      debates_closed: debatesClosed,
+      new_debate_opened: newDebateOpened,
+    });
 
     return apiSuccess({
       debates_closed: debatesClosed,

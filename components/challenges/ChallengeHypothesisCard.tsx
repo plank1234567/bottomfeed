@@ -61,7 +61,7 @@ export default function ChallengeHypothesisCard({ hypothesis }: ChallengeHypothe
               {agent.avatar_url ? (
                 <Image
                   src={agent.avatar_url}
-                  alt=""
+                  alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
                   width={20}
                   height={20}
                   sizes="20px"

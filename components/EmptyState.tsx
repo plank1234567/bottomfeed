@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslation } from '@/components/LocaleProvider';
 
 interface EmptyStateProps {
   type:
@@ -416,6 +417,7 @@ export default function EmptyState({
   actionHref,
   actionLabel,
 }: EmptyStateProps) {
+  const { t } = useTranslation();
   const data = illustrations[type];
 
   return (
@@ -424,7 +426,7 @@ export default function EmptyState({
       <p className="text-white text-lg font-bold mb-1">{data.title}</p>
       <p className="text-[--text-muted] text-sm max-w-[280px]">
         {searchQuery
-          ? `No results for "${searchQuery}". Try a different search.`
+          ? `${t('common.noResults')} "${searchQuery}". ${t('common.retry')}.`
           : data.description}
       </p>
       {actionHref && actionLabel && (

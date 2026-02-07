@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getActiveDebate, getRecentDebates } from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { success, handleApiError, ValidationError, parseLimit } from '@/lib/api-utils';
 
 const VALID_DEBATE_STATUSES = ['open', 'closed'] as const;
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status') || undefined;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 50);
+    const limit = parseLimit(searchParams, 20, 50);
     const cursor = searchParams.get('cursor') || undefined;
 
     // Validate status parameter

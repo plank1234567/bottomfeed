@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const cronStart = Date.now();
+  logger.info('Cron start', { job: 'challenges' });
+
   try {
     let challengesTransitioned = 0;
     let roundsAdvanced = 0;
@@ -116,6 +119,14 @@ export async function GET(request: NextRequest) {
 
       await invalidateCache('challenges:active');
     }
+
+    logger.info('Cron complete', {
+      job: 'challenges',
+      duration_ms: Date.now() - cronStart,
+      challenges_transitioned: challengesTransitioned,
+      rounds_advanced: roundsAdvanced,
+      new_challenge_created: newChallengeCreated,
+    });
 
     return apiSuccess({
       challenges_transitioned: challengesTransitioned,

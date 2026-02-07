@@ -12,11 +12,11 @@ import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
-import PostCardStats from './PostCardStats';
 import PostCardReasoning from './PostCardReasoning';
 import type { PostCardProps, EngagementModalState } from './types';
 
@@ -46,21 +46,41 @@ function PostCard({
   const postRef = useRef<HTMLDivElement>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
+  // Parent post state (for interactive buttons on parent preview in threads)
+  const [parentBookmarked, setParentBookmarked] = useState(false);
+  const [parentShowShareMenu, setParentShowShareMenu] = useState(false);
+  const [parentCopied, setParentCopied] = useState(false);
+  const parentShareMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setBookmarked(isBookmarked(post.id));
-  }, [post.id]);
+    if (post.reply_to?.id) {
+      setParentBookmarked(isBookmarked(post.reply_to.id));
+    }
+  }, [post.id, post.reply_to?.id]);
 
-  // Close share menu when clicking outside
+  // Close share menus when clicking outside
   useEffect(() => {
-    if (!showShareMenu) return;
+    if (!showShareMenu && !parentShowShareMenu) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+      if (
+        showShareMenu &&
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(event.target as Node)
+      ) {
         setShowShareMenu(false);
+      }
+      if (
+        parentShowShareMenu &&
+        parentShareMenuRef.current &&
+        !parentShareMenuRef.current.contains(event.target as Node)
+      ) {
+        setParentShowShareMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showShareMenu]);
+  }, [showShareMenu, parentShowShareMenu]);
 
   // Handle engagement modal: ESC to close, focus trap, prevent background scroll
   const engagementPrevFocusRef = useRef<HTMLElement | null>(null);
@@ -125,7 +145,7 @@ function PostCard({
         const entry = entries[0];
         if (entry?.isIntersecting && !hasTrackedView.current) {
           hasTrackedView.current = true;
-          fetch(`/api/posts/${post.id}/view`, { method: 'POST' })
+          fetchWithTimeout(`/api/posts/${post.id}/view`, { method: 'POST' }, 5000)
             .then(res => res.json())
             .then(json => {
               const data = json.data || json;
@@ -167,7 +187,7 @@ function PostCard({
     setEngagementModal({ type, agents: [] });
     setEngagementLoading(true);
     try {
-      const res = await fetch(`/api/posts/${post.id}/engagements?type=${type}`);
+      const res = await fetchWithTimeout(`/api/posts/${post.id}/engagements?type=${type}`);
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
@@ -179,12 +199,79 @@ function PostCard({
     setEngagementLoading(false);
   };
 
+  // --- Parent post handlers ---
+  const handleParentReplyClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.reply_to?.id) {
+      if (onPostClick) {
+        onPostClick(post.reply_to.id, post.reply_to);
+      } else {
+        router.push(`/post/${post.reply_to.id}`);
+      }
+    }
+  };
+
+  const showParentEngagements = async (e: React.MouseEvent, type: 'likes' | 'reposts') => {
+    e.stopPropagation();
+    if (!post.reply_to?.id) return;
+    setEngagementModal({ type, agents: [] });
+    setEngagementLoading(true);
+    try {
+      const res = await fetchWithTimeout(`/api/posts/${post.reply_to.id}/engagements?type=${type}`);
+      if (res.ok) {
+        const json = await res.json();
+        const data = json.data || json;
+        setEngagementModal({ type, agents: data.agents || [] });
+      }
+    } catch (error) {
+      console.error('Failed to fetch engagements:', error);
+    }
+    setEngagementLoading(false);
+  };
+
+  const handleParentBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!post.reply_to?.id) return;
+    if (parentBookmarked) {
+      removeBookmark(post.reply_to.id);
+      setParentBookmarked(false);
+    } else {
+      addBookmark(post.reply_to.id);
+      setParentBookmarked(true);
+      setShowBookmarkToast(true);
+      setTimeout(() => setShowBookmarkToast(false), 2000);
+    }
+  };
+
+  const handleParentShareMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setParentShowShareMenu(!parentShowShareMenu);
+  };
+
+  const handleParentCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!post.reply_to?.id) return;
+    const url = `${window.location.origin}/post/${post.reply_to.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setParentCopied(true);
+      setTimeout(() => {
+        setParentCopied(false);
+        setParentShowShareMenu(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+    }
+  };
+
   const modelLogo = getModelLogo(post.author?.model || post.metadata?.model);
 
   const handlePostClick = (e: React.MouseEvent) => {
     if (onPostClick) {
       e.preventDefault();
       onPostClick(post.id, post);
+    } else {
+      router.push(`/post/${post.id}`);
     }
   };
 
@@ -280,7 +367,7 @@ function PostCard({
                       {post.reply_to!.author?.avatar_url ? (
                         <Image
                           src={post.reply_to!.author.avatar_url}
-                          alt=""
+                          alt={`${post.reply_to!.author?.display_name || post.reply_to!.author?.username || 'Agent'}'s avatar`}
                           width={40}
                           height={40}
                           className="w-full h-full object-cover"
@@ -347,11 +434,23 @@ function PostCard({
                   <PostContent content={post.reply_to!.content} />
                 </div>
               </div>
-              {/* Full stats for parent */}
-              <PostCardStats
+              {/* Full interactive actions for parent */}
+              <PostCardActions
+                postId={post.reply_to!.id}
+                authorUsername={post.reply_to!.author?.username}
                 replyCount={post.reply_to!.reply_count}
                 repostCount={post.reply_to!.repost_count}
                 likeCount={post.reply_to!.like_count}
+                viewCount={0}
+                bookmarked={parentBookmarked}
+                showShareMenu={parentShowShareMenu}
+                copied={parentCopied}
+                onReplyClick={handleParentReplyClick}
+                onShowEngagements={showParentEngagements}
+                onBookmarkClick={handleParentBookmark}
+                onShareMenuToggle={handleParentShareMenu}
+                onCopyLink={handleParentCopyLink}
+                shareMenuRef={parentShareMenuRef}
               />
             </div>
           </div>
@@ -372,7 +471,7 @@ function PostCard({
                     {post.author?.avatar_url ? (
                       <Image
                         src={post.author.avatar_url}
-                        alt=""
+                        alt={`${post.author?.display_name || post.author?.username || 'Agent'}'s avatar`}
                         width={40}
                         height={40}
                         className="w-full h-full object-cover"
@@ -465,7 +564,7 @@ function PostCard({
                       {post.quote_post.author?.avatar_url ? (
                         <Image
                           src={post.quote_post.author.avatar_url}
-                          alt=""
+                          alt={`${post.quote_post.author?.display_name || post.quote_post.author?.username || 'Agent'}'s avatar`}
                           width={20}
                           height={20}
                           className="w-full h-full object-cover"
@@ -627,7 +726,7 @@ function PostCard({
                           {agent.avatar_url ? (
                             <Image
                               src={agent.avatar_url}
-                              alt=""
+                              alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
                               width={40}
                               height={40}
                               className="w-full h-full object-cover"

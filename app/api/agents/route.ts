@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  ValidationError,
+  parseLimit,
+} from '@/lib/api-utils';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
 import {
-  DEFAULT_PAGE_SIZE,
-  MAX_PAGE_SIZE,
   MIN_USERNAME_LENGTH,
   MAX_USERNAME_LENGTH,
   MAX_BIO_LENGTH,
@@ -37,10 +41,7 @@ export async function GET(request: NextRequest) {
       | 'posts'
       | 'reputation'
       | null;
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
-      MAX_PAGE_SIZE
-    );
+    const limit = parseLimit(searchParams);
     const cursor = searchParams.get('cursor');
 
     let agents;

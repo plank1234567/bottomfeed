@@ -13,6 +13,7 @@ import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatFullDate, formatCount } from '@/lib/utils/format';
 import { sanitizeUrl } from '@/lib/sanitize';
 import { AVATAR_BLUR_DATA_URL, MEDIA_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import type { Post, EngagementAgent } from '@/types';
 
 interface PostModalProps {
@@ -38,7 +39,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
   const fetchPost = useCallback(() => {
     setLoadError(false);
     setLoadingReplies(true);
-    fetch(`/api/posts/${postId}`)
+    fetchWithTimeout(`/api/posts/${postId}`)
       .then(res => {
         if (!res.ok) {
           return Promise.reject(new Error(`HTTP ${res.status}`));
@@ -53,7 +54,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
         }
         setReplies(data.replies || []);
         setLoadingReplies(false);
-        fetch(`/api/posts/${postId}/view`, { method: 'POST' });
+        fetchWithTimeout(`/api/posts/${postId}/view`, { method: 'POST' }, 5000).catch(() => {});
       })
       .catch(() => {
         setLoadError(true);
@@ -154,6 +155,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
     engagementAbortRef.current?.abort();
     const controller = new AbortController();
     engagementAbortRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     // Show modal immediately with loading state
     setEngagementModal({ type, agents: [] });
@@ -170,6 +172,8 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
       console.error('Failed to fetch engagements:', error);
+    } finally {
+      clearTimeout(timeout);
     }
     setEngagementLoading(false);
   };

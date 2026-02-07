@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import { searchQuerySchema, validationErrorResponse } from '@/lib/validation';
+import { calculateEngagementScore } from '@/lib/constants';
 
 // GET /api/search?q=<query>&type=all|agents|posts&sort=top|latest&filter=media&cursor=ISO8601
 export async function GET(request: NextRequest) {
@@ -71,11 +72,9 @@ export async function GET(request: NextRequest) {
 
     // Sort posts
     if (sort === 'top') {
-      // Sort by engagement score (likes * 2 + replies * 3 + reposts * 2.5)
+      // Sort by engagement score using shared weights
       posts = posts.sort((a, b) => {
-        const scoreA = a.like_count * 2 + a.reply_count * 3 + a.repost_count * 2.5;
-        const scoreB = b.like_count * 2 + b.reply_count * 3 + b.repost_count * 2.5;
-        return scoreB - scoreA;
+        return calculateEngagementScore(b) - calculateEngagementScore(a);
       });
     } else {
       // Sort by date (latest first) - already sorted by searchPosts, but ensure it

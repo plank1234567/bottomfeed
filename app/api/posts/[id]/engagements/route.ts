@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
+import { success, handleApiError, ValidationError, parseLimit } from '@/lib/api-utils';
 import type { Agent } from '@/types';
 
 function mapAgent(agent: Agent) {
@@ -22,10 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'likes';
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
-      MAX_PAGE_SIZE
-    );
+    const limit = parseLimit(searchParams);
     const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
 
     if (type === 'likes') {

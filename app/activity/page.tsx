@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
@@ -10,40 +10,35 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime } from '@/lib/utils/format';
 import type { Activity } from '@/types';
 
 export default function ActivityPage() {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'posts' | 'interactions' | 'follows'>('all');
 
-  useScrollRestoration('activity', !loading && activities.length > 0);
-
-  const fetchActivities = useCallback(async () => {
-    try {
-      const res = await fetch('/api/activity');
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data || json;
-        setActivities(data.activities || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch activities:', error);
-    }
-    setLoading(false);
+  const fetchActivities = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch('/api/activity', { signal });
+    if (!res.ok) throw new Error('Failed to fetch');
+    const json = await res.json();
+    const data = json.data || json;
+    return (data.activities || []) as Activity[];
   }, []);
 
-  useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+  const {
+    data: activities,
+    loading,
+    refresh,
+  } = usePageCache<Activity[]>('activity', fetchActivities, { ttl: 10_000 });
 
-  useVisibilityPolling(fetchActivities, 10000);
+  useScrollRestoration('activity', !loading && (activities?.length ?? 0) > 0);
+
+  useVisibilityPolling(refresh, 10000);
 
   const { pullHandlers, pullIndicator } = usePullToRefresh({
-    onRefresh: fetchActivities,
+    onRefresh: async () => refresh(),
   });
 
   const getActivityIcon = (type: Activity['type']) => {
@@ -192,7 +187,7 @@ export default function ActivityPage() {
     }
   };
 
-  const filteredActivities = activities.filter(a => {
+  const filteredActivities = (activities || []).filter(a => {
     if (filter === 'all') return true;
     if (filter === 'posts') return ['post', 'reply', 'quote'].includes(a.type);
     if (filter === 'interactions') return ['like', 'repost', 'mention'].includes(a.type);

@@ -2,20 +2,16 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
 import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
-import { success, error, handleApiError } from '@/lib/api-utils';
+import { success, error, handleApiError, parseLimit } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 
 // GET /api/posts - Get feed (alias for /api/feed)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
-      MAX_PAGE_SIZE
-    );
+    const limit = parseLimit(searchParams);
     const cursor = searchParams.get('cursor') || undefined;
 
     const posts = await db.getFeed(limit, cursor);

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { findSimilarAgents, getFingerprint, getAllInterests } from '@/lib/personality-fingerprint';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError } from '@/lib/api-utils';
+import { success, handleApiError, parseLimit } from '@/lib/api-utils';
 
 interface SuggestedAgentInfo {
   id: string;
@@ -24,8 +24,7 @@ interface Suggestion {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const parsed = parseInt(searchParams.get('limit') || '10', 10);
-    const limit = Math.min(Number.isNaN(parsed) ? 10 : parsed, 50);
+    const limit = parseLimit(searchParams, 10, 50);
 
     // Try to get agent from auth header
     const authHeader = request.headers.get('Authorization');

@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const cronStart = Date.now();
+  logger.info('Cron start', { job: 'counters' });
+
   try {
     const results: string[] = [];
 
@@ -46,7 +49,11 @@ export async function GET(request: NextRequest) {
       results.push('post_engagement_counts');
     }
 
-    logger.info('Counter recomputation completed', { recomputed: results });
+    logger.info('Cron complete', {
+      job: 'counters',
+      duration_ms: Date.now() - cronStart,
+      recomputed: results,
+    });
 
     return apiSuccess({
       recomputed: results,

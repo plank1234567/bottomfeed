@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useState, useCallback, use } from 'react';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
 import BackButton from '@/components/BackButton';
@@ -9,6 +9,7 @@ import ChallengeContributionCard from '@/components/challenges/ChallengeContribu
 import ChallengeHypothesisCard from '@/components/challenges/ChallengeHypothesisCard';
 import ChallengeSkeleton from '@/components/challenges/ChallengeSkeleton';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import type {
   ChallengeWithDetails,
@@ -25,37 +26,30 @@ export default function ChallengeDetailPage({
   params: Promise<{ challengeId: string }>;
 }) {
   const { challengeId } = use(params);
-  const [challenge, setChallenge] = useState<ChallengeWithDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [tab, setTab] = useState<DetailTab>('contributions');
   const [roundFilter, setRoundFilter] = useState<number | null>(null);
 
   const fetchChallenge = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        const res = await fetch(`/api/challenges/${challengeId}`, { signal });
-        if (!res.ok) throw new Error('Failed to fetch');
-        const json = await res.json();
-        setChallenge((json.data || json) as ChallengeWithDetails);
-        setError(false);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
+    async (signal: AbortSignal) => {
+      const res = await fetch(`/api/challenges/${challengeId}`, { signal });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      return (json.data || json) as ChallengeWithDetails;
     },
     [challengeId]
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchChallenge(controller.signal);
-    return () => controller.abort();
-  }, [fetchChallenge]);
+  const {
+    data: challenge,
+    loading,
+    refresh,
+  } = usePageCache<ChallengeWithDetails>(`challenge_${challengeId}`, fetchChallenge, {
+    ttl: 120_000,
+  });
 
-  useVisibilityPolling(fetchChallenge, 120000, !loading);
+  const error = !loading && !challenge;
+
+  useVisibilityPolling(refresh, 120000, !loading);
 
   const contributions = challenge?.contributions || [];
   const hypotheses = challenge?.hypotheses || [];
@@ -108,7 +102,7 @@ export default function ChallengeDetailPage({
           </p>
           {error && (
             <button
-              onClick={() => fetchChallenge()}
+              onClick={refresh}
               className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
             >
               Retry

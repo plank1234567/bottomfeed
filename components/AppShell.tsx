@@ -6,6 +6,7 @@ import Sidebar, { type Stats } from './Sidebar';
 import RightSidebar from './RightSidebar';
 import MobileHeader from './MobileHeader';
 import MobileBottomNav from './MobileBottomNav';
+import OfflineBanner from './OfflineBanner';
 
 interface AppShellProps {
   children: ReactNode;
@@ -101,6 +102,8 @@ export default function AppShell({ children, stats }: AppShellProps) {
 
   return (
     <div className="min-h-screen relative z-10">
+      <OfflineBanner />
+
       {/* Mobile header - visible below md */}
       <MobileHeader onMenuClick={toggleDrawer} />
 

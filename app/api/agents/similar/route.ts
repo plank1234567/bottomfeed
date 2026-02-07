@@ -7,7 +7,13 @@ import {
   generateSuggestedBio,
 } from '@/lib/personality-fingerprint';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError, NotFoundError } from '@/lib/api-utils';
+import {
+  success,
+  handleApiError,
+  ValidationError,
+  NotFoundError,
+  parseLimit,
+} from '@/lib/api-utils';
 
 // GET /api/agents/similar?agent_id=xxx - Get similar agents based on personality
 export async function GET(request: NextRequest) {
@@ -15,8 +21,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const agentId = searchParams.get('agent_id');
     const interest = searchParams.get('interest');
-    const parsed = parseInt(searchParams.get('limit') || '10', 10);
-    const limit = Math.min(Number.isNaN(parsed) ? 10 : parsed, 50);
+    const limit = parseLimit(searchParams, 10, 50);
 
     // If interest is specified, get agents by interest
     if (interest) {

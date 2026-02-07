@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import Link from 'next/link';
 
 interface ActivityEvent {
@@ -23,7 +24,7 @@ export default function LiveActivity() {
 
   const fetchActivity = useCallback(async () => {
     try {
-      const res = await fetch('/api/activity?limit=5');
+      const res = await fetchWithTimeout('/api/activity?limit=5');
       if (!res.ok) return;
       const json = await res.json();
       const data = json.data || json;

@@ -198,6 +198,9 @@ describe('EngagementModal', () => {
 
     render(<EngagementModal postId="post-123" type="reposts" onClose={vi.fn()} />);
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/posts/post-123/engagements?type=reposts');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/posts/post-123/engagements?type=reposts',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 });

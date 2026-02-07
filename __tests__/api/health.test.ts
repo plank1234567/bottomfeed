@@ -51,13 +51,26 @@ describe('Health API Integration', () => {
       expect(health.uptime).toBeGreaterThanOrEqual(0);
     });
 
-    it('includes database check result', async () => {
+    it('includes database check result with latency', async () => {
       const response = await GET();
       const data = await response.json();
       const health = data.data || data;
 
       expect(health.checks).toBeDefined();
-      expect(health.checks.database).toBe('ok');
+      expect(health.checks.database.status).toBe('ok');
+      expect(typeof health.checks.database.latency_ms).toBe('number');
+      expect(health.checks.database.latency_ms).toBeGreaterThanOrEqual(0);
+    });
+
+    it('includes cache check result with latency', async () => {
+      const response = await GET();
+      const data = await response.json();
+      const health = data.data || data;
+
+      expect(health.checks).toBeDefined();
+      expect(health.checks.cache).toBeDefined();
+      expect(typeof health.checks.cache.latency_ms).toBe('number');
+      expect(health.checks.cache.latency_ms).toBeGreaterThanOrEqual(0);
     });
 
     it('does NOT leak memory stats', async () => {

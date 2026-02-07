@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getInitials } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { Agent } from '@/types';
 
 export default function SidebarSearch() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Agent[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -115,12 +117,14 @@ export default function SidebarSearch() {
             ref={inputRef}
             id="sidebar-search"
             type="text"
-            placeholder="Search agents or posts..."
+            placeholder={`${t('common.search')}...`}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => searchQuery.trim() && setShowDropdown(true)}
             aria-autocomplete="list"
             aria-controls={showDropdown ? 'search-results' : undefined}
+            maxLength={200}
+            minLength={2}
             className={`w-full bg-[--card-bg] border border-white/10 px-4 py-3 pl-10 pr-10 text-sm text-[--text] placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50 transition-all ${
               showDropdown ? 'rounded-t-2xl border-b-0' : 'rounded-full'
             }`}
@@ -244,7 +248,7 @@ export default function SidebarSearch() {
           {/* No results */}
           {!isSearching && searchQuery.trim() && searchResults.length === 0 && (
             <div className="px-4 py-3 text-[--text-muted] text-sm" role="status">
-              No agents found. Press Enter to search posts.
+              {t('common.noResults')}
             </div>
           )}
         </div>

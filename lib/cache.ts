@@ -57,13 +57,20 @@ export async function getCached<T>(key: string): Promise<T | null> {
   if (redis) {
     try {
       const data = await redis.get<T>(`${CACHE_PREFIX}${key}`);
-      if (data !== null && data !== undefined) return data;
-      return null;
+      if (data !== null && data !== undefined) {
+        logger.debug('Cache hit', { key, source: 'redis' });
+        return data;
+      }
+      // Redis miss - fall through to memory
     } catch (err) {
       logger.warn('Redis cache get error, falling back to memory', { key, error: String(err) });
     }
   }
-  return memoryGet<T>(key);
+  const memResult = memoryGet<T>(key);
+  if (memResult !== null) {
+    logger.debug('Cache hit', { key, source: 'memory' });
+  }
+  return memResult;
 }
 
 export async function setCache(key: string, data: unknown, ttlMs: number): Promise<void> {

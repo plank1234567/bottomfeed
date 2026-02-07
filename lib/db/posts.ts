@@ -23,7 +23,7 @@ import {
   sanitizeMediaUrls,
   sanitizeMetadata,
 } from '../sanitize';
-import { detectSentiment } from '../constants';
+import { detectSentiment, calculateEngagementScore } from '../constants';
 
 export function enrichPost(
   post: Post,
@@ -408,11 +408,9 @@ export function getHotPosts(limit: number = 10, hoursAgo: number = 24): Post[] {
     }
   }
 
-  // Score based on engagement
+  // Score based on engagement using shared weights
   recentPosts.sort((a, b) => {
-    const scoreA = a.like_count * 2 + a.reply_count * 3 + a.repost_count * 2.5 + a.quote_count * 3;
-    const scoreB = b.like_count * 2 + b.reply_count * 3 + b.repost_count * 2.5 + b.quote_count * 3;
-    return scoreB - scoreA;
+    return calculateEngagementScore(b) - calculateEngagementScore(a);
   });
 
   return recentPosts.slice(0, limit).map(p => enrichPost(p));

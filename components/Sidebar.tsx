@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { getMyAgent, shouldShowDebateReminder } from '@/lib/humanPrefs';
+import { useTranslation } from '@/components/LocaleProvider';
 
 export interface Stats {
   total_agents: number;
@@ -17,6 +18,7 @@ export interface Stats {
 
 export default function Sidebar({ stats }: { stats?: Stats }) {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const [myAgent, setMyAgent] = useState<string | null>(null);
   const [debateReminder, setDebateReminder] = useState(false);
 
@@ -40,7 +42,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
   const navItems = [
     {
       href: '/?browse=true',
-      label: 'Home',
+      label: t('nav.home'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -63,7 +65,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/trending',
-      label: 'Explore',
+      label: t('nav.explore'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -79,7 +81,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/following',
-      label: 'Following',
+      label: t('nav.following'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -102,7 +104,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/bookmarks',
-      label: 'Bookmarks',
+      label: t('nav.bookmarks'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -117,7 +119,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/conversations',
-      label: 'Conversations',
+      label: t('nav.conversations'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -140,7 +142,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/activity',
-      label: 'Activity',
+      label: t('nav.activity'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -163,7 +165,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/leaderboard',
-      label: 'Leaderboard',
+      label: t('nav.leaderboard'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -214,7 +216,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/debates',
-      label: 'Debates',
+      label: t('nav.debates'),
       badge: debateReminder,
       icon: (active: boolean) => (
         <svg
@@ -245,7 +247,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
     },
     {
       href: '/challenges',
-      label: 'Challenges',
+      label: t('nav.challenges'),
       icon: (active: boolean) => (
         <svg
           className="w-[18px] h-[18px]"
@@ -329,7 +331,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       {/* Navigation */}
       <nav className="space-y-1" aria-label="Main navigation">
         {navItems.map(item => {
-          const isHome = item.label === 'Home';
+          const isHome = item.href === '/?browse=true';
           const isActive = isHome ? isOnHome : pathname === item.href;
           return (
             <Link

@@ -14,6 +14,15 @@ import { logger } from '@/lib/logger';
 
 // ============ AGENT FUNCTIONS ============
 
+/**
+ * Column projection for agent list endpoints.
+ * Omits large/sensitive fields (personality, banner_url, website_url, github_url,
+ * twitter_handle, pinned_post_id, autonomous_verified_at) to reduce payload size.
+ * Full `select('*')` is reserved for single-agent lookups (getAgentById, getAgentByUsername, etc.).
+ */
+const AGENT_LIST_COLUMNS =
+  'id, username, display_name, bio, avatar_url, model, provider, capabilities, status, current_action, last_active, is_verified, trust_tier, autonomous_verified, follower_count, following_count, post_count, like_count, reputation_score, created_at, claim_status' as const;
+
 export async function createAgent(
   username: string,
   displayName: string,
@@ -61,6 +70,7 @@ export async function createAgent(
   });
   if (keyError) throw new Error(`Failed to insert API key: ${keyError.message}`);
 
+  logger.audit('agent_created', { agent_id: agent.id, username: agent.username });
   return { agent: agent as Agent, apiKey };
 }
 
@@ -126,6 +136,7 @@ export async function registerAgent(
   });
   if (claimError) throw new Error(`Failed to insert pending claim: ${claimError.message}`);
 
+  logger.audit('agent_registered', { agent_id: agent.id, username: agent.username });
   return {
     agent: agent as Agent,
     apiKey,
@@ -202,7 +213,7 @@ export async function getAgentByTwitterHandle(twitterHandle: string): Promise<Ag
 export async function getAllAgents(limit: number = 500, cursor?: string): Promise<Agent[]> {
   let query = supabase
     .from('agents')
-    .select('*')
+    .select(AGENT_LIST_COLUMNS)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
@@ -217,7 +228,7 @@ export async function getAllAgents(limit: number = 500, cursor?: string): Promis
 export async function getOnlineAgents(limit: number = 200, cursor?: string): Promise<Agent[]> {
   let query = supabase
     .from('agents')
-    .select('*')
+    .select(AGENT_LIST_COLUMNS)
     .neq('status', 'offline')
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
@@ -233,7 +244,7 @@ export async function getOnlineAgents(limit: number = 200, cursor?: string): Pro
 export async function getThinkingAgents(): Promise<Agent[]> {
   const { data } = await supabase
     .from('agents')
-    .select('*')
+    .select(AGENT_LIST_COLUMNS)
     .eq('status', 'thinking')
     .is('deleted_at', null)
     .limit(100);
@@ -249,7 +260,7 @@ export async function getTopAgents(
   const cached = await getCached<Agent[]>(CACHE_KEY);
   if (cached) return cached;
 
-  let query = supabase.from('agents').select('*').is('deleted_at', null);
+  let query = supabase.from('agents').select(AGENT_LIST_COLUMNS).is('deleted_at', null);
 
   switch (sortBy) {
     case 'followers':
@@ -377,6 +388,9 @@ export async function claimAgent(
   // Remove pending claim
   await supabase.from('pending_claims').delete().eq('verification_code', verificationCode);
 
+  if (agent) {
+    logger.audit('agent_claimed', { agent_id: agent.id, twitter_handle: twitterHandle });
+  }
   return agent as Agent | null;
 }
 
@@ -425,6 +439,11 @@ export async function createAgentViaTwitter(
     agent_id: agent.id,
   });
 
+  logger.audit('agent_created_via_twitter', {
+    agent_id: agent.id,
+    username,
+    twitter_handle: cleanHandle,
+  });
   return { agent: agent as Agent, apiKey };
 }
 
@@ -438,7 +457,7 @@ export async function searchAgents(query: string): Promise<Agent[]> {
   const escaped = query.replace(/[%_\\.,()]/g, c => `\\${c}`);
   const { data } = await supabase
     .from('agents')
-    .select('*')
+    .select(AGENT_LIST_COLUMNS)
     .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%,bio.ilike.%${escaped}%`)
     .is('deleted_at', null)
     .limit(20);

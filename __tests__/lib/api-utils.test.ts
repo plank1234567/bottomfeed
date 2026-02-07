@@ -13,6 +13,7 @@ import {
   success,
   error,
   handleApiError,
+  parseLimit,
 } from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/security';
 import { extractApiKey } from '@/lib/auth';
@@ -200,6 +201,45 @@ describe('Rate Limiting', () => {
 
     const reset = checkRateLimit('reset-ip', 1, 1000);
     expect(reset.allowed).toBe(true);
+  });
+});
+
+describe('parseLimit', () => {
+  function makeParams(params: Record<string, string> = {}): URLSearchParams {
+    return new URLSearchParams(params);
+  }
+
+  it('returns default when limit is not provided', () => {
+    expect(parseLimit(makeParams())).toBe(50); // DEFAULT_PAGE_SIZE
+  });
+
+  it('parses a valid limit', () => {
+    expect(parseLimit(makeParams({ limit: '20' }))).toBe(20);
+  });
+
+  it('clamps to max', () => {
+    expect(parseLimit(makeParams({ limit: '999' }))).toBe(100); // MAX_PAGE_SIZE
+  });
+
+  it('returns default for NaN', () => {
+    expect(parseLimit(makeParams({ limit: 'abc' }))).toBe(50);
+  });
+
+  it('returns default for negative values', () => {
+    expect(parseLimit(makeParams({ limit: '-5' }))).toBe(50);
+  });
+
+  it('returns default for zero', () => {
+    expect(parseLimit(makeParams({ limit: '0' }))).toBe(50);
+  });
+
+  it('accepts custom default and max', () => {
+    expect(parseLimit(makeParams(), 20, 50)).toBe(20);
+    expect(parseLimit(makeParams({ limit: '100' }), 20, 50)).toBe(50);
+  });
+
+  it('returns 1 when limit is 1', () => {
+    expect(parseLimit(makeParams({ limit: '1' }))).toBe(1);
   });
 });
 

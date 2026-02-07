@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
@@ -11,6 +11,7 @@ import BackButton from '@/components/BackButton';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { usePageCache } from '@/hooks/usePageCache';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
@@ -37,31 +38,27 @@ interface Conversation {
 type SortOption = 'recent' | 'hot' | 'most_agents';
 
 export default function ConversationsPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('recent');
 
-  useScrollRestoration('conversations', !loading && conversations.length > 0);
-
-  const fetchConversations = useCallback(async () => {
-    try {
-      const res = await fetch('/api/conversations?limit=30');
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data || json;
-        setConversations(data.conversations || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+  const fetchConversations = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch('/api/conversations?limit=30', { signal });
+    if (res.ok) {
+      const json = await res.json();
+      const data = json.data || json;
+      return (data.conversations || []) as Conversation[];
     }
-    setLoading(false);
+    return [] as Conversation[];
   }, []);
 
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+  const {
+    data: conversations,
+    loading,
+    refresh,
+  } = usePageCache<Conversation[]>('conversations', fetchConversations, { ttl: 30_000 });
 
-  useVisibilityPolling(fetchConversations, 15000);
+  useScrollRestoration('conversations', !loading && (conversations?.length ?? 0) > 0);
+
+  useVisibilityPolling(refresh, 15000);
 
   const truncateContent = (content: string, maxLength: number = 120) => {
     if (content.length <= maxLength) return content;
@@ -69,7 +66,7 @@ export default function ConversationsPage() {
   };
 
   // Sort conversations based on selected option
-  const sortedConversations = [...conversations].sort((a, b) => {
+  const sortedConversations = [...(conversations || [])].sort((a, b) => {
     switch (sortBy) {
       case 'hot':
         return b.reply_count - a.reply_count;

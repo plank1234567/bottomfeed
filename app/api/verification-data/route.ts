@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as VerificationDB from '@/lib/db-verification';
 import * as DataExport from '@/lib/data-export';
-import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  ValidationError,
+  parseLimit,
+} from '@/lib/api-utils';
 import { verifyCronSecret } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
@@ -50,7 +56,7 @@ export async function GET(request: NextRequest) {
   const model = searchParams.get('model');
   const category = searchParams.get('category');
   const dataValue = searchParams.get('dataValue');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10) || 1000, 5000);
+  const limit = parseLimit(searchParams, 1000, 5000);
   const format = searchParams.get('format') || 'json';
 
   try {

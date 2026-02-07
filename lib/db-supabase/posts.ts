@@ -1,6 +1,7 @@
 /**
  * Post creation, enrichment, queries, and search.
  */
+import * as Sentry from '@sentry/nextjs';
 import {
   supabase,
   detectSentiment,
@@ -13,7 +14,7 @@ import {
 import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';
 import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
-import { invalidatePattern } from '@/lib/cache';
+import { invalidatePattern, getCached, setCache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 
 // ============ POST FUNCTIONS ============
@@ -95,6 +96,7 @@ export async function createPost(
   // Invalidate caches + notify SSE (fire-and-forget)
   void invalidatePattern('trending:*');
   void invalidatePattern('stats:*');
+  void invalidatePattern('feed:*');
   void notifyNewPost(enrichedPost);
 
   return enrichedPost;
@@ -146,7 +148,8 @@ export async function enrichPosts(posts: Post[]): Promise<Post[]> {
     const { data: nestedData } = await supabase
       .from('posts')
       .select('*')
-      .in('id', Array.from(nestedPostIds));
+      .in('id', Array.from(nestedPostIds))
+      .is('deleted_at', null);
     for (const np of (nestedData || []) as Post[]) {
       // Collect nested agent IDs we may not have yet
       if (!agentsMap.has(np.agent_id)) {
@@ -219,75 +222,90 @@ export async function getPostById(id: string): Promise<Post | null> {
 }
 
 export async function getFeed(limit: number = 50, cursor?: string): Promise<Post[]> {
-  // Query for original posts (no reply_to_id)
-  let originalQuery = supabase
-    .from('posts')
-    .select('*')
-    .is('reply_to_id', null)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    originalQuery = originalQuery.lt('created_at', cursor);
-  }
-
-  // Query for trending replies (server-side engagement filter)
-  // Any reply with at least 1 like, reply, or repost qualifies (threshold=1)
-  let replyQuery = supabase
-    .from('posts')
-    .select('*')
-    .not('reply_to_id', 'is', null)
-    .is('deleted_at', null)
-    .or('like_count.gte.1,reply_count.gte.1,repost_count.gte.1')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    replyQuery = replyQuery.lt('created_at', cursor);
-  }
-
-  const [{ data: originalData }, { data: replyData }] = await Promise.all([
-    originalQuery,
-    replyQuery,
-  ]);
-
-  const originalPosts = (originalData || []) as Post[];
-  const trendingReplies = (replyData || []) as Post[];
-
-  // Sort trending replies by engagement score, then recency
-  trendingReplies.sort((a, b) => {
-    const engagementA = (a.like_count || 0) + (a.reply_count || 0) + (a.repost_count || 0);
-    const engagementB = (b.like_count || 0) + (b.reply_count || 0) + (b.repost_count || 0);
-    if (engagementB !== engagementA) return engagementB - engagementA;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-
-  // Mix: ~80% originals, ~20% trending replies (interspersed)
-  const result: Post[] = [];
-  let origIdx = 0;
-  let replyIdx = 0;
-
-  while (
-    result.length < limit &&
-    (origIdx < originalPosts.length || replyIdx < trendingReplies.length)
-  ) {
-    // Every 5th post can be a trending reply (if available)
-    if (result.length % 5 === 4 && replyIdx < trendingReplies.length) {
-      const reply = trendingReplies[replyIdx++];
-      if (reply) result.push(reply);
-    } else if (origIdx < originalPosts.length) {
-      const post = originalPosts[origIdx++];
-      if (post) result.push(post);
-    } else if (replyIdx < trendingReplies.length) {
-      const reply = trendingReplies[replyIdx++];
-      if (reply) result.push(reply);
+  return Sentry.startSpan({ name: 'db.getFeed', op: 'db.query' }, async () => {
+    // Cache the first page of the feed (most common request)
+    if (!cursor) {
+      const CACHE_KEY = `feed:${limit}`;
+      const cached = await getCached<Post[]>(CACHE_KEY);
+      if (cached) return cached;
     }
-  }
 
-  // Enrich with authors and parent posts (for replies)
-  const enrichedPosts = await enrichPosts(result.slice(0, limit));
-  return enrichedPosts;
+    // Query for original posts (no reply_to_id)
+    let originalQuery = supabase
+      .from('posts')
+      .select('*')
+      .is('reply_to_id', null)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (cursor) {
+      originalQuery = originalQuery.lt('created_at', cursor);
+    }
+
+    // Query for trending replies (server-side engagement filter)
+    // Any reply with at least 1 like, reply, or repost qualifies (threshold=1)
+    let replyQuery = supabase
+      .from('posts')
+      .select('*')
+      .not('reply_to_id', 'is', null)
+      .is('deleted_at', null)
+      .or('like_count.gte.1,reply_count.gte.1,repost_count.gte.1')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (cursor) {
+      replyQuery = replyQuery.lt('created_at', cursor);
+    }
+
+    const [{ data: originalData }, { data: replyData }] = await Promise.all([
+      originalQuery,
+      replyQuery,
+    ]);
+
+    const originalPosts = (originalData || []) as Post[];
+    const trendingReplies = (replyData || []) as Post[];
+
+    // Sort trending replies by engagement score, then recency
+    trendingReplies.sort((a, b) => {
+      const engagementA = (a.like_count || 0) + (a.reply_count || 0) + (a.repost_count || 0);
+      const engagementB = (b.like_count || 0) + (b.reply_count || 0) + (b.repost_count || 0);
+      if (engagementB !== engagementA) return engagementB - engagementA;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    // Mix: ~80% originals, ~20% trending replies (interspersed)
+    const result: Post[] = [];
+    let origIdx = 0;
+    let replyIdx = 0;
+
+    while (
+      result.length < limit &&
+      (origIdx < originalPosts.length || replyIdx < trendingReplies.length)
+    ) {
+      // Every 5th post can be a trending reply (if available)
+      if (result.length % 5 === 4 && replyIdx < trendingReplies.length) {
+        const reply = trendingReplies[replyIdx++];
+        if (reply) result.push(reply);
+      } else if (origIdx < originalPosts.length) {
+        const post = originalPosts[origIdx++];
+        if (post) result.push(post);
+      } else if (replyIdx < trendingReplies.length) {
+        const reply = trendingReplies[replyIdx++];
+        if (reply) result.push(reply);
+      }
+    }
+
+    // Enrich with authors and parent posts (for replies)
+    const enrichedPosts = await enrichPosts(result.slice(0, limit));
+
+    // Cache first page for 10 seconds
+    if (!cursor) {
+      void setCache(`feed:${limit}`, enrichedPosts, 10_000);
+    }
+
+    return enrichedPosts;
+  });
 }
 
 export async function getAgentPosts(
@@ -325,6 +343,7 @@ export async function getPostReplies(
     .from('posts')
     .select('thread_id')
     .eq('id', postId)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (!post?.thread_id) {

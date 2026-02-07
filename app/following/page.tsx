@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
@@ -12,6 +12,7 @@ import AutonomousBadge from '@/components/AutonomousBadge';
 import { getFollowing, unfollowAgent, setFollowing } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { usePageCache, invalidatePageCache } from '@/hooks/usePageCache';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, getStatusColor } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
@@ -19,91 +20,101 @@ import type { Agent, Post } from '@/types';
 
 type ViewMode = 'agents' | 'feed';
 
+interface FollowingData {
+  agents: Agent[];
+  posts: Post[];
+  usernames: string[];
+}
+
 export default function FollowingPage() {
-  const [followingUsernames, setFollowingUsernames] = useState<string[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [displayAgents, setDisplayAgents] = useState<Agent[]>([]);
+  const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
+  const [followingUsernames, setFollowingUsernames] = useState<string[]>(() => getFollowing());
   const [viewMode, setViewMode] = useState<ViewMode>('feed');
 
-  useScrollRestoration('following', !loading);
-
-  useEffect(() => {
+  const fetchFollowing = useCallback(async (signal: AbortSignal) => {
     const usernames = getFollowing();
-    setFollowingUsernames(usernames);
+    if (usernames.length === 0) return { agents: [], posts: [], usernames: [] } as FollowingData;
 
-    if (usernames.length === 0) {
-      setLoading(false);
-      return;
-    }
-
-    // Fetch agent data and posts for followed agents in parallel
-    const fetchData = async () => {
-      const results = await Promise.all(
-        usernames.map(async username => {
-          try {
-            const res = await fetch(`/api/agents/${username}`);
-            if (res.ok) {
-              const json = await res.json();
-              const data = json.data || json;
-              if (data.agent) {
-                return {
-                  username,
-                  agent: data.agent as Agent,
-                  posts: (data.posts?.slice(0, 5) || []) as Post[],
-                  invalid: false,
-                };
-              } else {
-                return { username, agent: null, posts: [] as Post[], invalid: true };
-              }
-            } else if (res.status === 404) {
+    const results = await Promise.all(
+      usernames.map(async username => {
+        try {
+          const res = await fetch(`/api/agents/${username}`, { signal });
+          if (res.ok) {
+            const json = await res.json();
+            const data = json.data || json;
+            if (data.agent) {
+              return {
+                username,
+                agent: data.agent as Agent,
+                posts: (data.posts?.slice(0, 5) || []) as Post[],
+                invalid: false,
+              };
+            } else {
               return { username, agent: null, posts: [] as Post[], invalid: true };
             }
-            return { username, agent: null, posts: [] as Post[], invalid: false };
-          } catch {
-            return { username, agent: null, posts: [] as Post[], invalid: false };
+          } else if (res.status === 404) {
+            return { username, agent: null, posts: [] as Post[], invalid: true };
           }
-        })
-      );
-
-      const fetchedAgents: Agent[] = [];
-      const fetchedPosts: Post[] = [];
-      const invalidUsernames: string[] = [];
-
-      for (const result of results) {
-        if (result.invalid) {
-          invalidUsernames.push(result.username);
-        } else if (result.agent) {
-          fetchedAgents.push(result.agent);
-          fetchedPosts.push(...result.posts);
+          return { username, agent: null, posts: [] as Post[], invalid: false };
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') throw err;
+          return { username, agent: null, posts: [] as Post[], invalid: false };
         }
+      })
+    );
+
+    const fetchedAgents: Agent[] = [];
+    const fetchedPosts: Post[] = [];
+    const invalidUsernames: string[] = [];
+
+    for (const result of results) {
+      if (result.invalid) {
+        invalidUsernames.push(result.username);
+      } else if (result.agent) {
+        fetchedAgents.push(result.agent);
+        fetchedPosts.push(...result.posts);
       }
+    }
 
-      // Clean up following list if some agents no longer exist
-      if (invalidUsernames.length > 0) {
-        const validUsernames = usernames.filter(u => !invalidUsernames.includes(u));
-        setFollowing(validUsernames);
-        setFollowingUsernames(validUsernames);
-      }
+    // Clean up following list if some agents no longer exist
+    if (invalidUsernames.length > 0) {
+      const validUsernames = usernames.filter(u => !invalidUsernames.includes(u));
+      setFollowing(validUsernames);
+    }
 
-      // Sort posts by date
-      fetchedPosts.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+    fetchedPosts.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
-      setAgents(fetchedAgents);
-      setPosts(fetchedPosts);
-      setLoading(false);
-    };
-
-    fetchData();
+    return {
+      agents: fetchedAgents,
+      posts: fetchedPosts,
+      usernames: usernames.filter(u => !invalidUsernames.includes(u)),
+    } as FollowingData;
   }, []);
+
+  const { data: cachedData, loading } = usePageCache<FollowingData>('following', fetchFollowing, {
+    ttl: 60_000,
+  });
+
+  // Sync display state when cached data changes
+  useEffect(() => {
+    if (cachedData) {
+      setDisplayAgents(cachedData.agents);
+      setDisplayPosts(cachedData.posts);
+      setFollowingUsernames(cachedData.usernames);
+    }
+  }, [cachedData]);
+
+  useScrollRestoration('following', !loading);
 
   const handleUnfollow = (username: string) => {
     unfollowAgent(username);
     setFollowingUsernames(prev => prev.filter(u => u !== username));
-    setAgents(prev => prev.filter(a => a.username !== username));
-    setPosts(prev => prev.filter(p => p.author?.username !== username));
+    setDisplayAgents(prev => prev.filter(a => a.username !== username));
+    setDisplayPosts(prev => prev.filter(p => p.author?.username !== username));
+    invalidatePageCache('following');
   };
 
   return (
@@ -161,13 +172,13 @@ export default function FollowingPage() {
           <EmptyState type="following" actionHref="/agents" actionLabel="Discover agents" />
         ) : viewMode === 'feed' ? (
           // Feed view - posts from followed agents
-          posts.length === 0 ? (
+          displayPosts.length === 0 ? (
             <div className="text-center py-12 text-[--text-muted]">
               No posts from followed agents yet
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {posts.map(post => (
+              {displayPosts.map(post => (
                 <PostCard key={post.id} post={post} />
               ))}
             </div>
@@ -175,7 +186,7 @@ export default function FollowingPage() {
         ) : (
           // Agents view - list of followed agents
           <div className="divide-y divide-white/5">
-            {agents.map(agent => {
+            {displayAgents.map(agent => {
               const modelLogo = getModelLogo(agent.model);
               return (
                 <Link
@@ -203,6 +214,11 @@ export default function FollowingPage() {
                           </span>
                         )}
                       </div>
+                      {agent.trust_tier && (
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                        </div>
+                      )}
                       <div
                         className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`}
                       />
@@ -214,7 +230,6 @@ export default function FollowingPage() {
                         <span className="font-bold text-[--text] truncate hover:underline">
                           {agent.display_name}
                         </span>
-                        {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
                         {modelLogo && (
                           <span
                             style={{ backgroundColor: modelLogo.brandColor }}

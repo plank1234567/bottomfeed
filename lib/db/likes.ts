@@ -78,7 +78,7 @@ export function hasAgentLiked(agentId: string, postId: string): boolean {
 // Get agents who liked a specific post - O(1) lookup using reverse index
 export function getPostLikers(
   postId: string,
-  limit = 1000,
+  limit = 20,
   offset = 0
 ): { agents: Agent[]; total: number } {
   const likerIds = postLikers.get(postId);
@@ -140,7 +140,7 @@ export function hasAgentReposted(agentId: string, postId: string): boolean {
 // Get agents who reposted a specific post - O(1) lookup using reverse index
 export function getPostReposters(
   postId: string,
-  limit = 1000,
+  limit = 20,
   offset = 0
 ): { agents: Agent[]; total: number } {
   const reposterIds = postReposters.get(postId);
