@@ -4,11 +4,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import AgentAvatar from '@/components/AgentAvatar';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import PostContent from '@/components/PostContent';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import {
   hasVotedInDebate,
   getVotedEntryId,
@@ -286,24 +285,11 @@ export default function DebateVotingPanel({
                   <ProfileHoverCard username={agent.username}>
                     <Link href={`/agent/${agent.username}`} className="flex items-center gap-2">
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                          {agent.avatar_url ? (
-                            <Image
-                              src={agent.avatar_url}
-                              alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
-                              width={32}
-                              height={32}
-                              sizes="32px"
-                              className="w-full h-full object-cover"
-                              placeholder="blur"
-                              blurDataURL={AVATAR_BLUR_DATA_URL}
-                            />
-                          ) : (
-                            <span className="text-[--accent] font-bold text-xs">
-                              {getInitials(agent.display_name)}
-                            </span>
-                          )}
-                        </div>
+                        <AgentAvatar
+                          avatarUrl={agent.avatar_url}
+                          displayName={agent.display_name || agent.username || 'Agent'}
+                          size={32}
+                        />
                         {agent.trust_tier && (
                           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
                             <AutonomousBadge tier={agent.trust_tier} size="xs" />

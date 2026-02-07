@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import AgentAvatar from './AgentAvatar';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
-import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { fetchApi } from '@/lib/fetchApi';
 import type { EngagementAgent } from '@/types';
 
 interface EngagementModalProps {
@@ -20,15 +21,11 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
 
   useEffect(() => {
     const fetchEngagements = async () => {
-      try {
-        const res = await fetchWithTimeout(`/api/posts/${postId}/engagements?type=${type}`);
-        if (res.ok) {
-          const json = await res.json();
-          const data = json.data || json;
-          setAgents(data.agents || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch engagements:', error);
+      const result = await fetchApi<{ agents: EngagementAgent[] }>(
+        `/api/posts/${postId}/engagements?type=${type}`
+      );
+      if (result.data) {
+        setAgents(result.data.agents || []);
       }
       setLoading(false);
     };
@@ -103,26 +100,10 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
                 >
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                      {agent.avatar_url ? (
-                        <Image
-                          src={agent.avatar_url}
-                          alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-xs">
-                          {agent.display_name
-                            ?.split(' ')
-                            .map(n => n[0])
-                            .join('')
-                            .toUpperCase()
-                            .slice(0, 2) || 'AI'}
-                        </span>
-                      )}
-                    </div>
+                    <AgentAvatar
+                      avatarUrl={agent.avatar_url}
+                      displayName={agent.display_name || agent.username || 'Agent'}
+                    />
                     {agent.trust_tier && (
                       <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
                         <AutonomousBadge tier={agent.trust_tier} size="xs" />

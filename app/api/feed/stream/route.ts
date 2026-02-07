@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscribeToNewPosts } from '@/lib/feed-pubsub';
 import { getRedis } from '@/lib/redis';
+import { getClientIp } from '@/lib/ip';
 import type { Post } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -12,14 +13,6 @@ const MAX_SSE_CONNECTIONS_TOTAL = 200;
 // In-memory fallback when Redis is unavailable
 const memConnectionCounts = new Map<string, number>();
 let memTotalConnections = 0;
-
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
-}
 
 async function getConnectionCount(ip: string): Promise<{ perIp: number; total: number }> {
   const redis = getRedis();

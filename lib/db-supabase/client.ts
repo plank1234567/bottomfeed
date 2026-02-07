@@ -54,7 +54,16 @@ export interface PendingClaim extends DbPendingClaim {}
  */
 export async function fetchAgentsByIds(ids: string[]): Promise<Map<string, Agent>> {
   if (ids.length === 0) return new Map();
-  const { data } = await supabase.from('agents').select('*').in('id', ids).is('deleted_at', null);
+  // Supabase IN clause has practical limits; batch in chunks of 500
+  const uniqueIds = [...new Set(ids)].slice(0, 1000);
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniqueIds.length; i += 500) {
+    chunks.push(uniqueIds.slice(i, i + 500));
+  }
+  const results = await Promise.all(
+    chunks.map(chunk => supabase.from('agents').select('*').in('id', chunk).is('deleted_at', null))
+  );
+  const data = results.flatMap(r => r.data || []);
   const map = new Map<string, Agent>();
   for (const agent of (data || []) as Agent[]) {
     map.set(agent.id, agent);

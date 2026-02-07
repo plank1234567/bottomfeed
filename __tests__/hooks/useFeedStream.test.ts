@@ -169,95 +169,127 @@ describe('useFeedStream', () => {
     expect(onNewPosts).not.toHaveBeenCalled();
   });
 
-  it('resets failure count on successful open', () => {
+  it('resets failure count on successful open after reconnect', () => {
+    vi.useFakeTimers();
     const onNewPosts = vi.fn();
     const pollFallback = vi.fn();
 
     const { result } = renderHook(() => useFeedStream(onNewPosts, pollFallback));
 
-    const es = mockEventSources[0]!;
+    // Trigger 2 errors with reconnects between each
+    for (let i = 0; i < 2; i++) {
+      const es = mockEventSources[mockEventSources.length - 1]!;
+      act(() => {
+        es._triggerError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+    }
 
-    // Simulate 2 errors (below threshold)
-    act(() => {
-      es._triggerError();
-      es._triggerError();
-    });
-
-    // Should still be SSE
+    // Should still be SSE (only 2 failures, threshold is 5)
     expect(result.current.isSSE).toBe(true);
 
-    // Open event resets counter
+    // Open event on new connection resets counter
+    const latestEs = mockEventSources[mockEventSources.length - 1]!;
     act(() => {
-      es._triggerOpen();
+      latestEs._triggerOpen();
     });
 
     // 2 more errors after reset should not trigger fallback
-    act(() => {
-      es._triggerError();
-      es._triggerError();
-    });
+    for (let i = 0; i < 2; i++) {
+      const es = mockEventSources[mockEventSources.length - 1]!;
+      act(() => {
+        es._triggerError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+    }
 
     expect(result.current.isSSE).toBe(true);
+    vi.useRealTimers();
   });
 
   it('resets failure count on successful message', () => {
+    vi.useFakeTimers();
     const onNewPosts = vi.fn();
     const pollFallback = vi.fn();
 
     const { result } = renderHook(() => useFeedStream(onNewPosts, pollFallback));
 
-    const es = mockEventSources[0]!;
-
-    // Simulate 2 errors
-    act(() => {
-      es._triggerError();
-      es._triggerError();
-    });
+    // Trigger 2 errors with reconnects
+    for (let i = 0; i < 2; i++) {
+      const es = mockEventSources[mockEventSources.length - 1]!;
+      act(() => {
+        es._triggerError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+    }
 
     expect(result.current.isSSE).toBe(true);
 
-    // Successful message resets counter
+    // Successful message on reconnected ES resets counter
+    const latestEs = mockEventSources[mockEventSources.length - 1]!;
     act(() => {
-      es._triggerEvent('new-post', mockPost);
+      latestEs._triggerEvent('new-post', mockPost);
     });
 
     // 2 more errors after reset should not trigger fallback
-    act(() => {
-      es._triggerError();
-      es._triggerError();
-    });
+    for (let i = 0; i < 2; i++) {
+      const es = mockEventSources[mockEventSources.length - 1]!;
+      act(() => {
+        es._triggerError();
+      });
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+    }
 
     expect(result.current.isSSE).toBe(true);
+    vi.useRealTimers();
   });
 
-  it('falls back to polling after 3 consecutive errors', () => {
+  it('falls back to polling after 5 consecutive errors', () => {
+    vi.useFakeTimers();
     const onNewPosts = vi.fn();
     const pollFallback = vi.fn();
 
     const { result } = renderHook(() => useFeedStream(onNewPosts, pollFallback));
 
-    const es = mockEventSources[0]!;
-
-    // Trigger 3 consecutive errors (MAX_FAILURES)
-    act(() => {
-      es._triggerError();
-      es._triggerError();
-      es._triggerError();
-    });
+    // Each error closes the current ES and schedules a reconnect with backoff.
+    // We trigger error → advance timer → trigger error on new ES, 5 times.
+    for (let i = 0; i < 5; i++) {
+      const es = mockEventSources[mockEventSources.length - 1]!;
+      act(() => {
+        es._triggerError();
+      });
+      if (i < 4) {
+        // Advance past the backoff timer to trigger reconnect
+        act(() => {
+          vi.advanceTimersByTime(20000);
+        });
+      }
+    }
 
     // Should fall back to polling
     expect(result.current.isSSE).toBe(false);
 
-    // EventSource should be closed
-    expect(es.close).toHaveBeenCalled();
+    // First EventSource should have been closed
+    expect(mockEventSources[0]!.close).toHaveBeenCalled();
 
     // useVisibilityPolling should have been called with usePolling=true
     const lastCall =
       mockUseVisibilityPolling.mock.calls[mockUseVisibilityPolling.mock.calls.length - 1]!;
     expect(lastCall[2]).toBe(true); // enabled=true for polling
+
+    vi.useRealTimers();
   });
 
-  it('does not fall back with fewer than 3 errors', () => {
+  it('closes EventSource on each error and reconnects with backoff', () => {
+    vi.useFakeTimers();
     const onNewPosts = vi.fn();
     const pollFallback = vi.fn();
 
@@ -265,14 +297,24 @@ describe('useFeedStream', () => {
 
     const es = mockEventSources[0]!;
 
-    // Only 2 errors
+    // First error: closes and schedules reconnect at 1s backoff
     act(() => {
-      es._triggerError();
       es._triggerError();
     });
 
+    expect(es.close).toHaveBeenCalled();
+    expect(mockEventSources).toHaveLength(1); // No new ES yet
+
+    // Advance past 1s backoff
+    act(() => {
+      vi.advanceTimersByTime(1100);
+    });
+
+    // New EventSource created
+    expect(mockEventSources).toHaveLength(2);
     expect(result.current.isSSE).toBe(true);
-    expect(es.close).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it('closes EventSource on unmount', () => {

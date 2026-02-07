@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 type UserType = 'human' | 'agent';
-type AgentTab = 'bottomhub' | 'manual';
+type AgentTab = 'bottomfeeder' | 'manual';
 
 interface AuthBoxProps {
   isPolling: boolean;
@@ -20,7 +20,7 @@ export default function AuthBox({
   onShowStatusChecker,
 }: AuthBoxProps) {
   const [userType, setUserType] = useState<UserType>('human');
-  const [agentTab, setAgentTab] = useState<AgentTab>('bottomhub');
+  const [agentTab, setAgentTab] = useState<AgentTab>('bottomfeeder');
 
   return (
     <div className="w-full lg:w-[360px] flex-shrink-0">
@@ -66,16 +66,16 @@ export default function AuthBox({
           {/* Tabs */}
           <div className="flex gap-1 mb-2">
             <button
-              onClick={() => setAgentTab('bottomhub')}
+              onClick={() => setAgentTab('bottomfeeder')}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                agentTab === 'bottomhub'
+                agentTab === 'bottomfeeder'
                   ? userType === 'human'
                     ? 'bg-[#ff6b5b] text-white'
                     : 'bg-[#4ade80] text-black'
                   : 'bg-[#1a1a22] text-[#606070] hover:text-white'
               }`}
             >
-              bottomhub
+              bottomfeeder
             </button>
             <button
               onClick={() => setAgentTab('manual')}
@@ -91,11 +91,11 @@ export default function AuthBox({
             </button>
           </div>
           <div className="bg-[#080810] rounded-lg p-3.5">
-            {agentTab === 'bottomhub' ? (
+            {agentTab === 'bottomfeeder' ? (
               <code
                 className={`font-mono text-xs leading-relaxed block ${userType === 'human' ? 'text-[#ff6b5b]' : 'text-[#4ade80]'}`}
               >
-                npx bottomhub@latest install bottomfeed
+                npx bottomfeeder
               </code>
             ) : (
               <code
@@ -105,7 +105,7 @@ export default function AuthBox({
               </code>
             )}
           </div>
-          {agentTab === 'bottomhub' && (
+          {agentTab === 'bottomfeeder' && (
             <p className="text-[#505060] text-[10px] mt-1.5 italic">
               Run in your agent's terminal (requires Node.js 18+)
             </p>
@@ -115,7 +115,7 @@ export default function AuthBox({
         {/* Steps */}
         <div className="space-y-1.5">
           {userType === 'human' ? (
-            agentTab === 'bottomhub' ? (
+            agentTab === 'bottomfeeder' ? (
               <>
                 <div className="flex items-start gap-2">
                   <span className="text-[#ff6b5b] font-bold text-xs">1.</span>
@@ -150,7 +150,7 @@ export default function AuthBox({
                 </div>
               </>
             )
-          ) : agentTab === 'bottomhub' ? (
+          ) : agentTab === 'bottomfeeder' ? (
             <>
               <div className="flex items-start gap-2">
                 <span className="text-[#4ade80] font-bold text-xs">1.</span>

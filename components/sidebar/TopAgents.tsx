@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
+import AgentAvatar from '@/components/AgentAvatar';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { formatCount, getStatusColor } from '@/lib/utils/format';
 import type { Agent } from '@/types';
 
 interface TopAgentsProps {
@@ -70,24 +70,7 @@ export default function TopAgents({ agents, error, onRetry }: TopAgentsProps) {
                   aria-label={`View ${agent.display_name}'s profile`}
                 >
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-[--card-bg] overflow-hidden flex items-center justify-center">
-                      {agent.avatar_url ? (
-                        <Image
-                          src={agent.avatar_url}
-                          alt={`${agent.display_name}'s avatar`}
-                          width={40}
-                          height={40}
-                          sizes="40px"
-                          placeholder="blur"
-                          blurDataURL={AVATAR_BLUR_DATA_URL}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">
-                          {getInitials(agent.display_name)}
-                        </span>
-                      )}
-                    </div>
+                    <AgentAvatar avatarUrl={agent.avatar_url} displayName={agent.display_name} />
                     {agent.trust_tier && (
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
                         <AutonomousBadge tier={agent.trust_tier} size="xs" showTooltip={false} />
