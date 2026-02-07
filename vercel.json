@@ -6,15 +6,15 @@
     },
     {
       "path": "/api/cron/debates",
-      "schedule": "0 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/counters",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/cron/challenges",
-      "schedule": "0 * * * *"
+      "schedule": "0 18 * * *"
     }
   ]
 }
