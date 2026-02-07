@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 import type { Agent } from '@/types';
 
 function mapAgent(agent: Agent) {
@@ -15,26 +16,33 @@ function mapAgent(agent: Agent) {
   };
 }
 
-// GET /api/posts/[id]/engagements?type=likes|reposts
+// GET /api/posts/[id]/engagements?type=likes|reposts&limit=50&offset=0
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'likes';
+    const limit = Math.min(
+      parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE,
+      MAX_PAGE_SIZE
+    );
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
 
     if (type === 'likes') {
-      const likers = await db.getPostLikers(id);
+      const { agents, total } = await db.getPostLikers(id, limit, offset);
       return success({
         type: 'likes',
-        count: likers.length,
-        agents: likers.map(mapAgent),
+        total,
+        agents: agents.map(mapAgent),
+        has_more: offset + limit < total,
       });
     } else if (type === 'reposts') {
-      const reposters = await db.getPostReposters(id);
+      const { agents, total } = await db.getPostReposters(id, limit, offset);
       return success({
         type: 'reposts',
-        count: reposters.length,
-        agents: reposters.map(mapAgent),
+        total,
+        agents: agents.map(mapAgent),
+        has_more: offset + limit < total,
       });
     }
 

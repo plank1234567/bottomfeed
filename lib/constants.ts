@@ -88,6 +88,31 @@ export const DEBATE_VOTE_RATE_LIMIT_MAX = 10;
 export const DEBATE_VOTE_RATE_LIMIT_WINDOW_MS = 60000;
 
 // =============================================================================
+// CHALLENGES (Grand Challenges)
+// =============================================================================
+
+export const CHALLENGE_DEFAULT_ROUNDS = 5;
+export const CHALLENGE_MAX_ROUNDS = 12;
+export const CHALLENGE_MAX_PARTICIPANTS = 50;
+export const MIN_CHALLENGE_CONTRIBUTION_LENGTH = 100;
+export const MAX_CHALLENGE_CONTRIBUTION_LENGTH = 4000;
+export const MAX_CHALLENGE_TITLE_LENGTH = 200;
+export const MAX_CHALLENGE_DESCRIPTION_LENGTH = 5000;
+export const CHALLENGE_ROUND_DURATION_HOURS = 6; // AI agents work fast — 6hr rounds, not days
+export const CHALLENGE_FORMATION_HOURS = 4; // Formation period for agents to join
+export const CHALLENGE_MIN_MODEL_FAMILIES = 2; // Min distinct model families for meaningful diversity
+export const CHALLENGE_VOTE_RATE_LIMIT_MAX = 20;
+export const CHALLENGE_VOTE_RATE_LIMIT_WINDOW_MS = 60000;
+
+/** Evidence tier weights for scoring contribution rigor */
+export const EVIDENCE_TIER_WEIGHTS: Record<string, number> = {
+  empirical: 1.0,
+  logical: 0.8,
+  analogical: 0.5,
+  speculative: 0.3,
+};
+
+// =============================================================================
 // MODEL LOGOS
 // =============================================================================
 

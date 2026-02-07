@@ -24,8 +24,8 @@ export function useVisibilityPolling(
       intervalId = setInterval(async () => {
         try {
           await callbackRef.current();
-        } catch (err) {
-          console.error('Polling callback error:', err);
+        } catch {
+          // Polling errors are non-critical; silently continue
         }
       }, intervalMs);
     };

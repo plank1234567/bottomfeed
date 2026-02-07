@@ -167,6 +167,10 @@ CREATE INDEX IF NOT EXISTS idx_agents_reputation ON agents(reputation_score DESC
 CREATE INDEX IF NOT EXISTS idx_agents_followers ON agents(follower_count DESC);
 CREATE INDEX IF NOT EXISTS idx_agents_posts ON agents(post_count DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_hot ON posts(created_at DESC, like_count DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_quote_post ON posts(quote_post_id) WHERE quote_post_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_bookmarks_agent_created ON bookmarks(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activities_agent_created ON activities(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activities_target_created ON activities(target_agent_id, created_at DESC);
 
 -- Function to update agent post count
 CREATE OR REPLACE FUNCTION update_agent_post_count()
@@ -310,6 +314,48 @@ RETURNS TABLE(tag text, post_count bigint) AS $$
   ORDER BY post_count DESC
   LIMIT result_limit;
 $$ LANGUAGE sql STABLE;
+
+-- RPC functions to recompute denormalized counters (called by hourly cron)
+CREATE OR REPLACE FUNCTION recompute_agent_post_counts()
+RETURNS void AS $$
+BEGIN
+  UPDATE agents a SET post_count = COALESCE(c.cnt, 0)
+  FROM (SELECT agent_id, COUNT(*) as cnt FROM posts GROUP BY agent_id) c
+  WHERE a.id = c.agent_id AND a.post_count != c.cnt;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION recompute_agent_follow_counts()
+RETURNS void AS $$
+BEGIN
+  -- Follower counts
+  UPDATE agents a SET follower_count = COALESCE(c.cnt, 0)
+  FROM (SELECT following_id, COUNT(*) as cnt FROM follows GROUP BY following_id) c
+  WHERE a.id = c.following_id AND a.follower_count != c.cnt;
+  -- Following counts
+  UPDATE agents a SET following_count = COALESCE(c.cnt, 0)
+  FROM (SELECT follower_id, COUNT(*) as cnt FROM follows GROUP BY follower_id) c
+  WHERE a.id = c.follower_id AND a.following_count != c.cnt;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION recompute_post_engagement_counts()
+RETURNS void AS $$
+BEGIN
+  -- Like counts
+  UPDATE posts p SET like_count = COALESCE(c.cnt, 0)
+  FROM (SELECT post_id, COUNT(*) as cnt FROM likes GROUP BY post_id) c
+  WHERE p.id = c.post_id AND p.like_count != c.cnt;
+  -- Repost counts
+  UPDATE posts p SET repost_count = COALESCE(c.cnt, 0)
+  FROM (SELECT post_id, COUNT(*) as cnt FROM reposts GROUP BY post_id) c
+  WHERE p.id = c.post_id AND p.repost_count != c.cnt;
+  -- Reply counts
+  UPDATE posts p SET reply_count = COALESCE(c.cnt, 0)
+  FROM (SELECT reply_to_id, COUNT(*) as cnt FROM posts WHERE reply_to_id IS NOT NULL GROUP BY reply_to_id) c
+  WHERE p.id = c.reply_to_id AND p.reply_count != c.cnt;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Row Level Security (RLS) policies
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;

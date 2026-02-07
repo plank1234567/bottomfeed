@@ -81,6 +81,7 @@ export async function registerAgent(
     .from('agents')
     .select('id')
     .eq('username', username)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (existing) {
@@ -153,6 +154,7 @@ export async function getAgentByApiKey(apiKey: string): Promise<Agent | null> {
     .from('agents')
     .select('*')
     .eq('id', keyRecord.agent_id)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (agent) {
@@ -163,7 +165,12 @@ export async function getAgentByApiKey(apiKey: string): Promise<Agent | null> {
 }
 
 export async function getAgentById(id: string): Promise<Agent | null> {
-  const { data } = await supabase.from('agents').select('*').eq('id', id).maybeSingle();
+  const { data } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
 
   return data as Agent | null;
 }
@@ -173,6 +180,7 @@ export async function getAgentByUsername(username: string): Promise<Agent | null
     .from('agents')
     .select('*')
     .eq('username', username.toLowerCase())
+    .is('deleted_at', null)
     .maybeSingle();
 
   return data as Agent | null;
@@ -185,13 +193,18 @@ export async function getAgentByTwitterHandle(twitterHandle: string): Promise<Ag
     .from('agents')
     .select('*')
     .eq('twitter_handle', cleanHandle)
+    .is('deleted_at', null)
     .maybeSingle();
 
   return data as Agent | null;
 }
 
 export async function getAllAgents(limit: number = 500, cursor?: string): Promise<Agent[]> {
-  let query = supabase.from('agents').select('*').order('created_at', { ascending: false });
+  let query = supabase
+    .from('agents')
+    .select('*')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
 
   if (cursor) {
     query = query.lt('created_at', cursor);
@@ -206,6 +219,7 @@ export async function getOnlineAgents(limit: number = 200, cursor?: string): Pro
     .from('agents')
     .select('*')
     .neq('status', 'offline')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (cursor) {
@@ -217,7 +231,12 @@ export async function getOnlineAgents(limit: number = 200, cursor?: string): Pro
 }
 
 export async function getThinkingAgents(): Promise<Agent[]> {
-  const { data } = await supabase.from('agents').select('*').eq('status', 'thinking').limit(100);
+  const { data } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('status', 'thinking')
+    .is('deleted_at', null)
+    .limit(100);
 
   return (data || []) as Agent[];
 }
@@ -230,7 +249,7 @@ export async function getTopAgents(
   const cached = await getCached<Agent[]>(CACHE_KEY);
   if (cached) return cached;
 
-  let query = supabase.from('agents').select('*');
+  let query = supabase.from('agents').select('*').is('deleted_at', null);
 
   switch (sortBy) {
     case 'followers':
@@ -311,6 +330,7 @@ export async function deleteAgent(agentId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to delete agent: ${error.message}`);
   }
+  logger.audit('DELETE_AGENT', { agent_id: agentId });
 }
 
 // ============ CLAIM FUNCTIONS ============
@@ -420,6 +440,7 @@ export async function searchAgents(query: string): Promise<Agent[]> {
     .from('agents')
     .select('*')
     .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%,bio.ilike.%${escaped}%`)
+    .is('deleted_at', null)
     .limit(20);
 
   return (data || []) as Agent[];
@@ -427,7 +448,7 @@ export async function searchAgents(query: string): Promise<Agent[]> {
 
 export async function getAgentsByIds(ids: string[]): Promise<Record<string, Agent | null>> {
   if (ids.length === 0) return {};
-  const { data } = await supabase.from('agents').select('*').in('id', ids);
+  const { data } = await supabase.from('agents').select('*').in('id', ids).is('deleted_at', null);
   const map: Record<string, Agent | null> = {};
   if (data) {
     for (const agent of data) {

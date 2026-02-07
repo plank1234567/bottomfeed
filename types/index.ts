@@ -180,6 +180,126 @@ export interface DebateResults extends DebateWithEntries {
 }
 
 // =============================================================================
+// CHALLENGE TYPES (Grand Challenges)
+// =============================================================================
+
+export type ChallengeStatus =
+  | 'formation'
+  | 'exploration'
+  | 'adversarial'
+  | 'synthesis'
+  | 'published'
+  | 'archived';
+
+export type ChallengeParticipantRole =
+  | 'contributor'
+  | 'red_team'
+  | 'synthesizer'
+  | 'analyst'
+  | 'fact_checker'
+  | 'contrarian';
+
+export type ChallengeContributionType =
+  | 'position'
+  | 'critique'
+  | 'synthesis'
+  | 'red_team'
+  | 'defense'
+  | 'evidence'
+  | 'fact_check'
+  | 'meta_observation'
+  | 'cross_pollination';
+
+export type ChallengeHypothesisStatus =
+  | 'proposed'
+  | 'debated'
+  | 'survived_red_team'
+  | 'published'
+  | 'validated'
+  | 'refuted';
+
+/** Evidence tier for factual grounding of contributions */
+export type EvidenceTier = 'empirical' | 'logical' | 'analogical' | 'speculative';
+
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  status: ChallengeStatus;
+  challenge_number: number;
+  category?: string;
+  max_participants: number;
+  current_round: number;
+  total_rounds: number;
+  participant_count: number;
+  contribution_count: number;
+  hypothesis_count: number;
+  model_diversity_index?: number;
+  parent_challenge_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  created_at: string;
+}
+
+export interface ChallengeParticipant {
+  id: string;
+  challenge_id: string;
+  agent_id: string;
+  role: ChallengeParticipantRole;
+  model_family?: string;
+  working_group?: number;
+  joined_at: string;
+  agent?: Agent;
+}
+
+export interface ChallengeContribution {
+  id: string;
+  challenge_id: string;
+  agent_id: string;
+  round: number;
+  content: string;
+  contribution_type: ChallengeContributionType;
+  evidence_tier?: EvidenceTier;
+  cites_contribution_id?: string;
+  vote_count: number;
+  created_at: string;
+  agent?: Agent;
+  cited_contribution?: ChallengeContribution;
+}
+
+export interface ChallengeHypothesis {
+  id: string;
+  challenge_id: string;
+  proposed_by?: string;
+  statement: string;
+  confidence_level: number;
+  status: ChallengeHypothesisStatus;
+  supporting_agents: number;
+  opposing_agents: number;
+  cross_model_consensus?: number;
+  created_at: string;
+  agent?: Agent;
+}
+
+/** Reference between challenges (builds_on, contradicts, refines, spawned_from) */
+export interface ChallengeReference {
+  id: string;
+  challenge_id: string;
+  references_challenge_id: string;
+  reference_type: 'builds_on' | 'contradicts' | 'refines' | 'spawned_from';
+  context?: string;
+  created_at: string;
+  referenced_challenge?: Challenge;
+}
+
+export interface ChallengeWithDetails extends Challenge {
+  participants: ChallengeParticipant[];
+  contributions: ChallengeContribution[];
+  hypotheses: ChallengeHypothesis[];
+  references?: ChallengeReference[];
+}
+
+// =============================================================================
 // TRENDING TYPES
 // =============================================================================
 
@@ -206,6 +326,8 @@ export type ActivityType =
   | 'quote'
   | 'debate_entry'
   | 'debate_join'
+  | 'challenge_join'
+  | 'challenge_contribution'
   | 'poll_vote'
   | 'status_change';
 

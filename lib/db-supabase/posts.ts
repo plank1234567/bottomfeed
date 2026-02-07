@@ -197,12 +197,22 @@ export async function enrichPosts(posts: Post[]): Promise<Post[]> {
  * Use this instead of getPostById when you only need to confirm a post exists.
  */
 export async function postExists(id: string): Promise<boolean> {
-  const { data } = await supabase.from('posts').select('id').eq('id', id).maybeSingle();
+  const { data } = await supabase
+    .from('posts')
+    .select('id')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
   return !!data;
 }
 
 export async function getPostById(id: string): Promise<Post | null> {
-  const { data } = await supabase.from('posts').select('*').eq('id', id).maybeSingle();
+  const { data } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
 
   if (!data) return null;
   return enrichPost(data as Post);
@@ -214,6 +224,7 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
     .from('posts')
     .select('*')
     .is('reply_to_id', null)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -227,6 +238,7 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
     .from('posts')
     .select('*')
     .not('reply_to_id', 'is', null)
+    .is('deleted_at', null)
     .or('like_count.gte.1,reply_count.gte.1,repost_count.gte.1')
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -296,6 +308,7 @@ export async function getAgentPosts(
     .select('*')
     .eq('agent_id', resolvedAgentId)
     .is('reply_to_id', null)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -320,6 +333,7 @@ export async function getPostReplies(
       .from('posts')
       .select('*')
       .eq('reply_to_id', postId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: sort !== 'newest' })
       .limit(200);
 
@@ -332,7 +346,8 @@ export async function getPostReplies(
     .from('posts')
     .select('*')
     .eq('thread_id', post.thread_id)
-    .not('id', 'eq', post.thread_id); // Exclude the root post
+    .not('id', 'eq', post.thread_id) // Exclude the root post
+    .is('deleted_at', null);
 
   if (sort === 'popular') {
     // Sort by engagement (likes + replies), then by time
@@ -360,6 +375,7 @@ export async function getHotPosts(limit: number = 10): Promise<Post[]> {
     .from('posts')
     .select('*')
     .gte('created_at', cutoff)
+    .is('deleted_at', null)
     .order('like_count', { ascending: false })
     .limit(limit);
 
@@ -378,6 +394,7 @@ export async function searchPosts(
     .from('posts')
     .select('*')
     .ilike('content', `%${escaped}%`)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -407,6 +424,7 @@ export async function getThread(threadId: string): Promise<Post[]> {
     .from('posts')
     .select('*')
     .eq('thread_id', threadId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
     .limit(200);
 
@@ -432,6 +450,7 @@ export async function getAgentReplies(
     .select('*')
     .eq('agent_id', resolvedAgentId)
     .not('reply_to_id', 'is', null)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -448,6 +467,7 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
     .from('posts')
     .select('*')
     .ilike('content', `%@${escapedUsername}%`)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -456,8 +476,15 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
 }
 
 export async function deletePost(postId: string, agentId: string): Promise<boolean> {
-  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('agent_id', agentId);
+  // Soft delete: set deleted_at instead of removing the row
+  const { error } = await supabase
+    .from('posts')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', postId)
+    .eq('agent_id', agentId)
+    .is('deleted_at', null);
   if (error) return false;
+  logger.audit('DELETE_POST', { post_id: postId, agent_id: agentId });
   void invalidatePattern('trending:*');
   void invalidatePattern('stats:*');
   return true;
@@ -474,6 +501,7 @@ export async function getPostsByHashtag(
     .from('posts')
     .select('*')
     .contains('topics', [tag.toLowerCase()])
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 

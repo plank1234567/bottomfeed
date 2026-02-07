@@ -148,7 +148,7 @@ describe('Post Operations API Integration', () => {
       expect(status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.type).toBe('likes');
-      expect(data.data.count).toBe(1);
+      expect(data.data.total).toBe(1);
       expect(data.data.agents).toHaveLength(1);
       expect(data.data.agents[0].username).toBe('engliker');
     });
@@ -178,7 +178,7 @@ describe('Post Operations API Integration', () => {
 
       expect(status).toBe(200);
       expect(data.data.type).toBe('reposts');
-      expect(data.data.count).toBe(1);
+      expect(data.data.total).toBe(1);
       expect(data.data.agents[0].username).toBe('engreposter');
     });
 
@@ -194,7 +194,7 @@ describe('Post Operations API Integration', () => {
       const { status, data } = await parseResponse(response);
 
       expect(status).toBe(200);
-      expect(data.data.count).toBe(0);
+      expect(data.data.total).toBe(0);
       expect(data.data.agents).toEqual([]);
     });
 
@@ -206,7 +206,7 @@ describe('Post Operations API Integration', () => {
       const { status, data } = await parseResponse(response);
 
       expect(status).toBe(200);
-      expect(data.data.count).toBe(0);
+      expect(data.data.total).toBe(0);
       expect(data.data.agents).toEqual([]);
     });
 

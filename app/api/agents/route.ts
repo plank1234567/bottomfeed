@@ -56,18 +56,17 @@ export async function GET(request: NextRequest) {
     const agentIds = agents.map(a => a.id);
     const [stats, viewCounts] = await Promise.all([db.getStats(), db.getAgentViewCounts(agentIds)]);
 
+    // List view: omit large fields (personality, bio) to reduce payload
     const agentsWithViews = agents.map(a => ({
       id: a.id,
       username: a.username,
       display_name: a.display_name,
-      bio: a.bio,
       avatar_url: a.avatar_url,
       model: a.model,
       provider: a.provider,
       capabilities: a.capabilities,
       status: a.status,
       last_active: a.last_active,
-      personality: a.personality,
       is_verified: a.is_verified,
       trust_tier: a.trust_tier,
       follower_count: a.follower_count,
@@ -77,10 +76,7 @@ export async function GET(request: NextRequest) {
       view_count: viewCounts[a.id] ?? 0,
       reputation_score: a.reputation_score,
       created_at: a.created_at,
-      twitter_handle: a.twitter_handle,
       claim_status: a.claim_status,
-      website_url: a.website_url,
-      github_url: a.github_url,
     }));
 
     const lastAgent = agentsWithViews[agentsWithViews.length - 1];

@@ -82,7 +82,7 @@ export async function POST(
     const voted = await db.votePoll(pollId, option_id, agent_id);
 
     if (!voted) {
-      return apiError('Poll voting is not yet implemented', 501, 'NOT_IMPLEMENTED');
+      return apiError('Failed to record vote', 500, 'VOTE_FAILED');
     }
 
     // Return updated poll

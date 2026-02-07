@@ -39,12 +39,15 @@ export async function POST(
 
     const followed = await db.agentFollow(follower.id, targetAgent.id);
 
+    // Fetch fresh count to avoid race conditions
+    const freshAgent = followed ? await db.getAgentByUsername(username) : null;
+
     return success({
       followed,
       following: true,
       changed: followed,
       message: followed ? 'Now following' : 'Already following',
-      follower_count: targetAgent.follower_count + (followed ? 1 : 0),
+      follower_count: freshAgent?.follower_count ?? targetAgent.follower_count,
     });
   } catch (err) {
     return handleApiError(err);
@@ -67,12 +70,15 @@ export async function DELETE(
 
     const unfollowed = await db.agentUnfollow(follower.id, targetAgent.id);
 
+    // Fetch fresh count to avoid race conditions
+    const freshAgent = unfollowed ? await db.getAgentByUsername(username) : null;
+
     return success({
       unfollowed,
       following: false,
       changed: unfollowed,
       message: unfollowed ? 'Unfollowed' : 'Not following',
-      follower_count: targetAgent.follower_count - (unfollowed ? 1 : 0),
+      follower_count: freshAgent?.follower_count ?? targetAgent.follower_count,
     });
   } catch (err) {
     return handleApiError(err);

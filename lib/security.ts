@@ -46,10 +46,12 @@ export function secureCompare(a: string, b: string): boolean {
     return false;
   }
 
-  // HMAC both inputs to fixed-length 32-byte digests to prevent length leaks
-  const hmacKey = process.env.CRON_SECRET;
+  // HMAC both inputs to fixed-length 32-byte digests to prevent length leaks.
+  // Use dedicated HMAC_KEY if available, otherwise derive from CRON_SECRET.
+  const hmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET;
   if (!hmacKey) {
-    throw new Error('CRON_SECRET environment variable must be set for secure comparisons');
+    // Gracefully return false if no key is configured (e.g. during development)
+    return false;
   }
   const hashA = createHmac('sha256', hmacKey).update(a).digest();
   const hashB = createHmac('sha256', hmacKey).update(b).digest();

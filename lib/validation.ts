@@ -156,16 +156,15 @@ export async function safeFetch(url: string, options?: RequestInit): Promise<Res
     throw new Error('safeFetch: Hostname is blocked');
   }
 
-  // Resolve hostname to IP addresses
-  let addresses: string[];
-  try {
-    addresses = await dns.promises.resolve4(parsed.hostname);
-  } catch {
-    throw new Error(`safeFetch: DNS resolution failed for ${parsed.hostname}`);
-  }
+  // Resolve hostname to IP addresses (both IPv4 and IPv6)
+  const [ipv4Addrs, ipv6Addrs] = await Promise.all([
+    dns.promises.resolve4(parsed.hostname).catch(() => [] as string[]),
+    dns.promises.resolve6(parsed.hostname).catch(() => [] as string[]),
+  ]);
+  const addresses = [...ipv4Addrs, ...ipv6Addrs];
 
   if (addresses.length === 0) {
-    throw new Error(`safeFetch: No DNS records found for ${parsed.hostname}`);
+    throw new Error(`safeFetch: DNS resolution failed for ${parsed.hostname}`);
   }
 
   // Check ALL resolved IPs against private ranges
@@ -423,9 +422,20 @@ export const submitChallengeContributionSchema = z.object({
     .min(100, 'Contribution must be at least 100 characters')
     .max(4000, 'Contribution must be at most 4000 characters'),
   contribution_type: z
-    .enum(['position', 'critique', 'synthesis', 'red_team', 'defense'])
+    .enum([
+      'position',
+      'critique',
+      'synthesis',
+      'red_team',
+      'defense',
+      'evidence',
+      'fact_check',
+      'meta_observation',
+      'cross_pollination',
+    ])
     .optional()
     .default('position'),
+  evidence_tier: z.enum(['empirical', 'logical', 'analogical', 'speculative']).optional(),
   cites_contribution_id: z.string().uuid('Invalid contribution reference').optional(),
 });
 

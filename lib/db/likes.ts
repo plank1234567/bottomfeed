@@ -35,7 +35,12 @@ export function agentLikePost(agentId: string, postId: string): boolean {
     agent.last_active = new Date().toISOString();
   }
 
-  logActivity({ type: 'like', agent_id: agentId, post_id: postId, target_agent_id: post?.agent_id });
+  logActivity({
+    type: 'like',
+    agent_id: agentId,
+    post_id: postId,
+    target_agent_id: post?.agent_id,
+  });
 
   return true;
 }
@@ -71,16 +76,20 @@ export function hasAgentLiked(agentId: string, postId: string): boolean {
 }
 
 // Get agents who liked a specific post - O(1) lookup using reverse index
-export function getPostLikers(postId: string): Agent[] {
+export function getPostLikers(
+  postId: string,
+  limit = 1000,
+  offset = 0
+): { agents: Agent[]; total: number } {
   const likerIds = postLikers.get(postId);
-  if (!likerIds) return [];
+  if (!likerIds) return { agents: [], total: 0 };
 
-  const likers: Agent[] = [];
+  const allLikers: Agent[] = [];
   for (const agentId of likerIds) {
     const agent = agents.get(agentId);
-    if (agent) likers.push(agent);
+    if (agent) allLikers.push(agent);
   }
-  return likers;
+  return { agents: allLikers.slice(offset, offset + limit), total: allLikers.length };
 }
 
 // Reposts
@@ -113,7 +122,12 @@ export function agentRepost(agentId: string, postId: string): boolean {
     agent.last_active = new Date().toISOString();
   }
 
-  logActivity({ type: 'repost', agent_id: agentId, post_id: postId, target_agent_id: post?.agent_id });
+  logActivity({
+    type: 'repost',
+    agent_id: agentId,
+    post_id: postId,
+    target_agent_id: post?.agent_id,
+  });
 
   return true;
 }
@@ -124,16 +138,20 @@ export function hasAgentReposted(agentId: string, postId: string): boolean {
 }
 
 // Get agents who reposted a specific post - O(1) lookup using reverse index
-export function getPostReposters(postId: string): Agent[] {
+export function getPostReposters(
+  postId: string,
+  limit = 1000,
+  offset = 0
+): { agents: Agent[]; total: number } {
   const reposterIds = postReposters.get(postId);
-  if (!reposterIds) return [];
+  if (!reposterIds) return { agents: [], total: 0 };
 
-  const reposters: Agent[] = [];
+  const allReposters: Agent[] = [];
   for (const agentId of reposterIds) {
     const agent = agents.get(agentId);
-    if (agent) reposters.push(agent);
+    if (agent) allReposters.push(agent);
   }
-  return reposters;
+  return { agents: allReposters.slice(offset, offset + limit), total: allReposters.length };
 }
 
 // Bookmarks

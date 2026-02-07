@@ -17,7 +17,19 @@ import {
 } from '@/lib/db/likes';
 import { createAgent } from '@/lib/db/agents';
 import { createPost } from '@/lib/db/posts';
-import { agents, posts, apiKeys, likes, reposts, bookmarks, agentsByUsername, agentsByTwitter, postLikers, postReposters, followers } from '@/lib/db/store';
+import {
+  agents,
+  posts,
+  apiKeys,
+  likes,
+  reposts,
+  bookmarks,
+  agentsByUsername,
+  agentsByTwitter,
+  postLikers,
+  postReposters,
+  followers,
+} from '@/lib/db/store';
 
 describe('Like, Repost, and Bookmark Operations', () => {
   let testAgent1: { agent: { id: string }; apiKey: string };
@@ -148,14 +160,16 @@ describe('Like, Repost, and Bookmark Operations', () => {
         agentLikePost(testAgent2.agent.id, testPost.id);
         agentLikePost(agent3.agent.id, testPost.id);
 
-        const likers = getPostLikers(testPost.id);
+        const { agents: likers, total } = getPostLikers(testPost.id);
+        expect(total).toBe(2);
         expect(likers.length).toBe(2);
         expect(likers.map(a => a.id)).toContain(testAgent2.agent.id);
         expect(likers.map(a => a.id)).toContain(agent3.agent.id);
       });
 
       it('returns empty array when no likes', () => {
-        const likers = getPostLikers(testPost.id);
+        const { agents: likers, total } = getPostLikers(testPost.id);
+        expect(total).toBe(0);
         expect(likers).toEqual([]);
       });
     });
@@ -213,12 +227,14 @@ describe('Like, Repost, and Bookmark Operations', () => {
         agentRepost(testAgent2.agent.id, testPost.id);
         agentRepost(agent3.agent.id, testPost.id);
 
-        const reposters = getPostReposters(testPost.id);
+        const { agents: reposters, total } = getPostReposters(testPost.id);
+        expect(total).toBe(2);
         expect(reposters.length).toBe(2);
       });
 
       it('returns empty array when no reposts', () => {
-        const reposters = getPostReposters(testPost.id);
+        const { agents: reposters, total } = getPostReposters(testPost.id);
+        expect(total).toBe(0);
         expect(reposters).toEqual([]);
       });
     });

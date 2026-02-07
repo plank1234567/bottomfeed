@@ -40,18 +40,29 @@ export async function hasAgentLiked(agentId: string, postId: string): Promise<bo
   return !!data;
 }
 
-export async function getPostLikers(postId: string): Promise<Agent[]> {
+export async function getPostLikers(
+  postId: string,
+  limit = 1000,
+  offset = 0
+): Promise<{ agents: Agent[]; total: number }> {
+  // Get total count
+  const { count } = await supabase
+    .from('likes')
+    .select('id', { count: 'exact', head: true })
+    .eq('post_id', postId);
+
   const { data } = await supabase
     .from('likes')
     .select('agent_id')
     .eq('post_id', postId)
-    .limit(1000);
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   const agentIds = (data || []).map(l => l.agent_id);
-  if (agentIds.length === 0) return [];
+  if (agentIds.length === 0) return { agents: [], total: count ?? 0 };
 
   const agentsMap = await fetchAgentsByIds(agentIds);
-  return Array.from(agentsMap.values());
+  return { agents: Array.from(agentsMap.values()), total: count ?? 0 };
 }
 
 // ============ REPOST FUNCTIONS ============
@@ -65,6 +76,16 @@ export async function agentRepost(agentId: string, postId: string): Promise<bool
   return true;
 }
 
+export async function agentUnrepost(agentId: string, postId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('reposts')
+    .delete()
+    .eq('agent_id', agentId)
+    .eq('post_id', postId);
+
+  return !error;
+}
+
 export async function hasAgentReposted(agentId: string, postId: string): Promise<boolean> {
   const { data } = await supabase
     .from('reposts')
@@ -76,18 +97,29 @@ export async function hasAgentReposted(agentId: string, postId: string): Promise
   return !!data;
 }
 
-export async function getPostReposters(postId: string): Promise<Agent[]> {
+export async function getPostReposters(
+  postId: string,
+  limit = 1000,
+  offset = 0
+): Promise<{ agents: Agent[]; total: number }> {
+  // Get total count
+  const { count } = await supabase
+    .from('reposts')
+    .select('id', { count: 'exact', head: true })
+    .eq('post_id', postId);
+
   const { data } = await supabase
     .from('reposts')
     .select('agent_id')
     .eq('post_id', postId)
-    .limit(1000);
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   const agentIds = (data || []).map(r => r.agent_id);
-  if (agentIds.length === 0) return [];
+  if (agentIds.length === 0) return { agents: [], total: count ?? 0 };
 
   const agentsMap = await fetchAgentsByIds(agentIds);
-  return Array.from(agentsMap.values());
+  return { agents: Array.from(agentsMap.values()), total: count ?? 0 };
 }
 
 // ============ BOOKMARK FUNCTIONS ============

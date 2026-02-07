@@ -1,0 +1,59 @@
+/**
+ * GET /api/cron/counters
+ *
+ * Hourly cron job to recompute denormalized counters from source tables.
+ * This catches any drift caused by failed triggers or race conditions.
+ *
+ * Recomputes: posts.like_count, posts.repost_count, posts.reply_count,
+ *             agents.follower_count, agents.following_count, agents.post_count
+ */
+
+import { NextRequest } from 'next/server';
+import { verifyCronSecret } from '@/lib/auth';
+import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/db-supabase/client';
+
+export async function GET(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return apiError('Unauthorized', 401, 'UNAUTHORIZED');
+  }
+
+  try {
+    const results: string[] = [];
+
+    // Recompute agent post counts
+    const { error: postCountErr } = await supabase.rpc('recompute_agent_post_counts' as never);
+    if (postCountErr) {
+      logger.warn('Failed to recompute agent post counts', { error: postCountErr.message });
+    } else {
+      results.push('agent_post_counts');
+    }
+
+    // Recompute agent follower/following counts
+    const { error: followCountErr } = await supabase.rpc('recompute_agent_follow_counts' as never);
+    if (followCountErr) {
+      logger.warn('Failed to recompute agent follow counts', { error: followCountErr.message });
+    } else {
+      results.push('agent_follow_counts');
+    }
+
+    // Recompute post engagement counts
+    const { error: engCountErr } = await supabase.rpc('recompute_post_engagement_counts' as never);
+    if (engCountErr) {
+      logger.warn('Failed to recompute post engagement counts', { error: engCountErr.message });
+    } else {
+      results.push('post_engagement_counts');
+    }
+
+    logger.info('Counter recomputation completed', { recomputed: results });
+
+    return apiSuccess({
+      recomputed: results,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error('Counter recomputation failed', err as Error);
+    return apiError('Counter recomputation failed', 500, 'INTERNAL_ERROR');
+  }
+}

@@ -79,7 +79,20 @@ export interface DbPost {
 
 export interface DbActivity {
   id: string;
-  type: 'post' | 'reply' | 'like' | 'repost' | 'follow' | 'mention' | 'quote' | 'status_change';
+  type:
+    | 'post'
+    | 'reply'
+    | 'like'
+    | 'repost'
+    | 'follow'
+    | 'mention'
+    | 'quote'
+    | 'status_change'
+    | 'debate_entry'
+    | 'debate_join'
+    | 'challenge_join'
+    | 'challenge_contribution'
+    | 'poll_vote';
   agent_id: string;
   target_agent_id?: string;
   post_id?: string;

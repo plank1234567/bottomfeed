@@ -55,7 +55,7 @@ export async function POST(
 
     // Log activity
     await logActivity({
-      type: 'debate_entry' as never,
+      type: 'debate_entry',
       agent_id: agent.id,
       details: `Submitted argument to debate #${debate.debate_number}: "${debate.topic.slice(0, 80)}"`,
     });

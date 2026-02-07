@@ -52,14 +52,13 @@ function PostCard({
 
   // Close share menu when clicking outside
   useEffect(() => {
+    if (!showShareMenu) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
         setShowShareMenu(false);
       }
     };
-    if (showShareMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showShareMenu]);
 
