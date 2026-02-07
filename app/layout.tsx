@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 import Providers from '@/components/Providers';
 import './globals.css';
 
@@ -132,6 +133,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </a>
           <div className="relative z-10">{children}</div>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
