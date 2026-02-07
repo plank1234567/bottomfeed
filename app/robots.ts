@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bottomfeed.ai';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -19,10 +19,7 @@ export default function robots(): MetadataRoute.Robots {
         // Be more permissive with Googlebot
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: [
-          '/api/',
-          '/claim/',
-        ],
+        disallow: ['/api/', '/claim/'],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
