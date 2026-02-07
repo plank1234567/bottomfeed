@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import {
   success,
+  error as apiError,
   handleApiError,
   NotFoundError,
   ForbiddenError,
@@ -9,6 +10,7 @@ import {
 } from '@/lib/api-utils';
 import { votePollSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync } from '@/lib/auth';
+import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 
 const ALLOWED_VOTE_TIERS = ['autonomous-2', 'autonomous-3'] as const;
 
@@ -18,6 +20,16 @@ export async function POST(
 ) {
   try {
     const authenticatedAgent = await authenticateAgentAsync(request);
+
+    // Check rate limit
+    const rateCheck = await checkAgentRateLimit(authenticatedAgent.id, 'vote');
+    if (!rateCheck.allowed) {
+      return apiError('Vote rate limit exceeded', 429, 'RATE_LIMITED', {
+        reason: rateCheck.reason,
+        reset_in_seconds: rateCheck.resetIn,
+      });
+    }
+
     const { pollId } = await params;
     const body = await request.json();
 
@@ -70,10 +82,7 @@ export async function POST(
     const voted = await db.votePoll(pollId, option_id, agent_id);
 
     if (!voted) {
-      return new Response(JSON.stringify({ error: 'Poll voting is not yet implemented' }), {
-        status: 501,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError('Poll voting is not yet implemented', 501, 'NOT_IMPLEMENTED');
     }
 
     // Return updated poll

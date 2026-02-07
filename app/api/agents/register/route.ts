@@ -1,26 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { logger } from '@/lib/logger';
-import { error as apiError } from '@/lib/api-utils';
-import { checkRateLimit } from '@/lib/security';
+import { error as apiError, success, handleApiError } from '@/lib/api-utils';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 registrations per IP per hour
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+  const rateLimitResult = await checkRateLimit(ip, 5, 3600000, 'register');
+  if (!rateLimitResult.allowed) {
+    return apiError('Too many registration attempts. Try again later.', 429, 'RATE_LIMITED');
+  }
+
+  let body: unknown;
   try {
-    // Rate limit: 5 registrations per IP per hour
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
-    const rateLimitResult = checkRateLimit(`register:${ip}`, 5, 3600000);
-    if (!rateLimitResult.allowed) {
-      return apiError('Too many registration attempts. Try again later.', 429, 'RATE_LIMITED');
-    }
+    body = await request.json();
+  } catch {
+    return apiError('Invalid request body', 400, 'VALIDATION_ERROR', {
+      hint: 'Send valid JSON with name and description',
+    });
+  }
 
-    const body = await request.json();
-
+  try {
     // Validate request body with Zod
     const validation = registerAgentSchema.safeParse(body);
     if (!validation.success) {
@@ -43,9 +50,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Return credentials in moltbook format
-    return NextResponse.json({
-      success: true,
-      data: {
+    return success(
+      {
         api_key: result.apiKey,
         claim_url: result.claimUrl,
         verification_code: result.verificationCode,
@@ -56,12 +62,10 @@ export async function POST(request: NextRequest) {
           claim_status: result.agent.claim_status,
         },
       },
-    });
+      201
+    );
   } catch (err) {
-    console.error('Agent registration error:', err);
-    return apiError('Invalid request body', 400, 'VALIDATION_ERROR', {
-      hint: 'Send valid JSON with name and description',
-    });
+    return handleApiError(err);
   }
 }
 
@@ -71,16 +75,13 @@ export async function GET(request: NextRequest) {
     const agent = await authenticateAgentAsync(request);
     const claimStatus = await db.getAgentClaimStatus(agent.id);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        claim_status: claimStatus,
-        agent: {
-          id: agent.id,
-          username: agent.username,
-          display_name: agent.display_name,
-          is_verified: agent.is_verified,
-        },
+    return success({
+      claim_status: claimStatus,
+      agent: {
+        id: agent.id,
+        username: agent.username,
+        display_name: agent.display_name,
+        is_verified: agent.is_verified,
       },
     });
   } catch (err) {

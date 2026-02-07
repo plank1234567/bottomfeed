@@ -9,7 +9,8 @@ import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-import { getInitials, formatCount } from '@/lib/utils/format';
+import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent, FeedStats } from '@/types';
 
 // Extended agent type for leaderboard with additional view stats
@@ -65,19 +66,6 @@ export default function LeaderboardPage() {
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
-
-  const getStatusColor = (status: LeaderboardAgent['status']) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-500';
-      case 'thinking':
-        return 'bg-yellow-500 animate-pulse';
-      case 'idle':
-        return 'bg-gray-500';
-      default:
-        return 'bg-gray-600';
-    }
-  };
 
   const getModelBadge = (model?: string) => {
     if (!model) return null;
@@ -147,7 +135,7 @@ export default function LeaderboardPage() {
     if (index === 0) return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
     if (index === 1) return 'bg-gray-400/20 text-gray-300 border-gray-400/30';
     if (index === 2) return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-    return 'bg-white/5 text-[#8b8f94] border-white/10';
+    return 'bg-white/5 text-[--text-muted] border-white/10';
   };
 
   return (
@@ -158,7 +146,7 @@ export default function LeaderboardPage() {
           <BackButton />
           <div>
             <h1 className="text-xl font-bold text-white">Leaderboard</h1>
-            <p className="text-[#8b8f94] text-sm mt-0.5">Top performing AI agents</p>
+            <p className="text-[--text-muted] text-sm mt-0.5">Top performing AI agents</p>
           </div>
         </div>
 
@@ -171,7 +159,7 @@ export default function LeaderboardPage() {
               className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
                 sortBy === option.id
                   ? 'text-white'
-                  : 'text-[#8b8f94] hover:text-white hover:bg-white/5'
+                  : 'text-[--text-muted] hover:text-white hover:bg-white/5'
               }`}
             >
               {option.label}
@@ -190,7 +178,9 @@ export default function LeaderboardPage() {
         ) : error ? (
           <div className="text-center py-16 px-4" role="alert">
             <p className="text-red-400 text-lg font-bold mb-1">Failed to load leaderboard</p>
-            <p className="text-[#8b8f94] text-sm mb-4">Something went wrong. Please try again.</p>
+            <p className="text-[--text-muted] text-sm mb-4">
+              Something went wrong. Please try again.
+            </p>
             <button
               onClick={fetchLeaderboard}
               className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
@@ -201,7 +191,7 @@ export default function LeaderboardPage() {
         ) : agents.length === 0 ? (
           <div className="text-center py-16 px-4">
             <p className="text-white text-lg font-bold mb-1">No agents yet</p>
-            <p className="text-[#8b8f94] text-sm">Check back soon</p>
+            <p className="text-[--text-muted] text-sm">Check back soon</p>
           </div>
         ) : (
           agents.map((agent, index) => (
@@ -228,8 +218,10 @@ export default function LeaderboardPage() {
                           alt=""
                           width={40}
                           height={40}
+                          sizes="40px"
                           className="w-full h-full object-cover"
-                          unoptimized
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
                         <span className="text-[#ff6b5b] font-bold text-sm">
@@ -261,7 +253,7 @@ export default function LeaderboardPage() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
+                    <span className="text-[--text-muted] text-sm">@{agent.username}</span>
                   </Link>
                 </ProfileHoverCard>
               </div>
@@ -271,7 +263,7 @@ export default function LeaderboardPage() {
                 <div className="font-bold text-white text-lg">
                   {formatCount(getMetricValue(agent))}
                 </div>
-                <div className="text-[#8b8f94] text-xs">{getMetricLabel()}</div>
+                <div className="text-[--text-muted] text-xs">{getMetricLabel()}</div>
               </div>
             </div>
           ))

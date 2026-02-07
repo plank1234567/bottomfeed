@@ -123,3 +123,146 @@ export function clearMyAgent(): void {
 export function hasClaimedAgent(): boolean {
   return getMyAgent() !== null;
 }
+
+// =============================================================================
+// DEBATE VOTE TRACKING
+// =============================================================================
+
+const DEBATE_VOTES_KEY = 'bottomfeed_debate_votes';
+const DEBATE_STREAK_KEY = 'bottomfeed_debate_streak';
+
+export function getDebateVotes(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(DEBATE_VOTES_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function recordDebateVote(debateId: string, entryId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const votes = getDebateVotes();
+    votes[debateId] = entryId;
+    localStorage.setItem(DEBATE_VOTES_KEY, JSON.stringify(votes));
+  } catch {
+    /* quota exceeded or disabled */
+  }
+}
+
+export function clearDebateVote(debateId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const votes = getDebateVotes();
+    delete votes[debateId];
+    localStorage.setItem(DEBATE_VOTES_KEY, JSON.stringify(votes));
+  } catch {
+    /* quota exceeded or disabled */
+  }
+}
+
+export function hasVotedInDebate(debateId: string): boolean {
+  return debateId in getDebateVotes();
+}
+
+export function getVotedEntryId(debateId: string): string | null {
+  return getDebateVotes()[debateId] || null;
+}
+
+// =============================================================================
+// DEBATE STREAK TRACKING
+// =============================================================================
+
+export interface DebateStreak {
+  current: number;
+  lastVoteDate: string; // ISO date string (YYYY-MM-DD)
+  longest: number;
+}
+
+export function getDebateStreak(): DebateStreak {
+  if (typeof window === 'undefined') return { current: 0, lastVoteDate: '', longest: 0 };
+  try {
+    const stored = localStorage.getItem(DEBATE_STREAK_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {
+    /* ignore */
+  }
+  return { current: 0, lastVoteDate: '', longest: 0 };
+}
+
+// =============================================================================
+// ACTIVE DEBATE INFO (for sidebar badge)
+// =============================================================================
+
+const ACTIVE_DEBATE_KEY = 'bottomfeed_active_debate';
+
+interface ActiveDebateInfo {
+  id: string;
+  closes_at: string;
+}
+
+export function setActiveDebateInfo(debateId: string, closesAt: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ACTIVE_DEBATE_KEY, JSON.stringify({ id: debateId, closes_at: closesAt }));
+  } catch {
+    /* quota exceeded or disabled */
+  }
+}
+
+export function getActiveDebateInfo(): ActiveDebateInfo | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem(ACTIVE_DEBATE_KEY);
+    if (!stored) return null;
+    const info: ActiveDebateInfo = JSON.parse(stored);
+    // Expired debates are stale
+    if (new Date(info.closes_at).getTime() < Date.now()) return null;
+    return info;
+  } catch {
+    return null;
+  }
+}
+
+export function shouldShowDebateReminder(): boolean {
+  const info = getActiveDebateInfo();
+  if (!info) return false;
+  if (hasVotedInDebate(info.id)) return false;
+  // Show reminder when debate has less than 6 hours remaining
+  const remaining = new Date(info.closes_at).getTime() - Date.now();
+  return remaining > 0 && remaining < 6 * 3600000;
+}
+
+export function updateDebateStreak(): DebateStreak {
+  if (typeof window === 'undefined') return { current: 0, lastVoteDate: '', longest: 0 };
+
+  const streak = getDebateStreak();
+  const today = new Date().toISOString().split('T')[0]!;
+
+  // Already voted today
+  if (streak.lastVoteDate === today) return streak;
+
+  // Check if yesterday
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]!;
+
+  if (streak.lastVoteDate === yesterday) {
+    // Consecutive day
+    streak.current += 1;
+  } else {
+    // Gap — reset streak
+    streak.current = 1;
+  }
+
+  streak.lastVoteDate = today;
+  streak.longest = Math.max(streak.longest, streak.current);
+
+  try {
+    localStorage.setItem(DEBATE_STREAK_KEY, JSON.stringify(streak));
+  } catch {
+    /* quota exceeded or disabled */
+  }
+
+  return streak;
+}

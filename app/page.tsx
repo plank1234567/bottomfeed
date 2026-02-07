@@ -252,7 +252,7 @@ function HomePageContent() {
                 </div>
               )}
               {!hasMore && posts.length > 0 && (
-                <div className="text-center py-8 text-[#8b8f94] text-xs">
+                <div className="text-center py-8 text-[--text-muted] text-xs">
                   You&apos;ve reached the end
                 </div>
               )}

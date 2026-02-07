@@ -3,7 +3,7 @@
  */
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
-import { getCachedSync, setCacheSync } from '@/lib/cache';
+import { getCached, setCache } from '@/lib/cache';
 
 // ============ STATS ============
 
@@ -17,7 +17,7 @@ type StatsResult = {
 
 export async function getStats(): Promise<StatsResult> {
   const CACHE_KEY = 'stats:global';
-  const cached = getCachedSync<StatsResult>(CACHE_KEY);
+  const cached = await getCached<StatsResult>(CACHE_KEY);
   if (cached) return cached;
 
   const [
@@ -45,7 +45,7 @@ export async function getStats(): Promise<StatsResult> {
     total_views: totalViews,
   };
 
-  setCacheSync(CACHE_KEY, result, 30_000);
+  void setCache(CACHE_KEY, result, 30_000);
   return result;
 }
 
@@ -61,16 +61,16 @@ export async function getAgentViewCount(agentId: string): Promise<number> {
 
 export async function getAgentViewCounts(agentIds: string[]): Promise<Record<string, number>> {
   if (agentIds.length === 0) return {};
+
+  // Single batch query: fetch agent_id + view_count for all agents, aggregate client-side
   const { data } = await supabase
     .from('posts')
     .select('agent_id, view_count')
     .in('agent_id', agentIds);
 
   const counts: Record<string, number> = {};
-  if (data) {
-    for (const row of data) {
-      counts[row.agent_id] = (counts[row.agent_id] ?? 0) + (row.view_count ?? 0);
-    }
+  for (const row of (data || []) as { agent_id: string; view_count: number }[]) {
+    counts[row.agent_id] = (counts[row.agent_id] || 0) + (row.view_count || 0);
   }
   return counts;
 }
@@ -141,7 +141,7 @@ export async function getTrending(
   limit: number = 10
 ): Promise<{ tag: string; post_count: number }[]> {
   const CACHE_KEY = `trending:${limit}`;
-  const cached = getCachedSync<{ tag: string; post_count: number }[]>(CACHE_KEY);
+  const cached = await getCached<{ tag: string; post_count: number }[]>(CACHE_KEY);
   if (cached) return cached;
 
   // Try server-side aggregation via RPC first
@@ -155,7 +155,7 @@ export async function getTrending(
       tag: row.tag,
       post_count: Number(row.post_count),
     }));
-    setCacheSync(CACHE_KEY, result, 60_000);
+    void setCache(CACHE_KEY, result, 60_000);
     return result;
   }
 
@@ -180,13 +180,16 @@ export async function getTrending(
     .sort((a, b) => b.post_count - a.post_count)
     .slice(0, limit);
 
-  setCacheSync(CACHE_KEY, result, 60_000);
+  void setCache(CACHE_KEY, result, 60_000);
   return result;
 }
 
 // ============ CONVERSATIONS ============
 
-export async function getActiveConversations(limit: number = 20): Promise<
+export async function getActiveConversations(
+  limit: number = 20,
+  cursor?: string
+): Promise<
   Array<{
     thread_id: string;
     root_post: Post;
@@ -196,13 +199,19 @@ export async function getActiveConversations(limit: number = 20): Promise<
   }>
 > {
   // Get root posts that are either conversations or have replies
-  const { data } = await supabase
+  let query = supabase
     .from('posts')
     .select('*')
     .is('reply_to_id', null)
     .or('post_type.eq.conversation,reply_count.gt.0')
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  const { data } = await query;
 
   const posts = (data || []) as Post[];
   const enrichedPosts = await enrichPosts(posts);
@@ -212,11 +221,16 @@ export async function getActiveConversations(limit: number = 20): Promise<
   const rootPostIds = enrichedPosts.map(post => post.id);
 
   // Batch-fetch all replies for all threads in one query
-  const { data: allReplies } = await supabase
+  let repliesQuery = supabase
     .from('posts')
     .select('thread_id, agent_id')
-    .in('thread_id', threadIds)
-    .not('id', 'in', `(${rootPostIds.join(',')})`);
+    .in('thread_id', threadIds);
+
+  if (rootPostIds.length > 0) {
+    repliesQuery = repliesQuery.not('id', 'in', `(${rootPostIds.join(',')})`);
+  }
+
+  const { data: allReplies } = await repliesQuery.limit(500);
 
   // Group reply agent IDs by thread
   const repliesByThread = new Map<string, string[]>();

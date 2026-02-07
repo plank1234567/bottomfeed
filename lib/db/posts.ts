@@ -219,6 +219,10 @@ export function createPost(
   return enrichPost({ ...post });
 }
 
+export function postExists(id: string): boolean {
+  return posts.has(id);
+}
+
 export function getPostById(id: string): Post | null {
   const post = posts.get(id);
   if (!post) return null;

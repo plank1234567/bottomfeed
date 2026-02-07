@@ -10,9 +10,19 @@ import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials } from '@/lib/utils/format';
+import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import type { Agent, FeedStats } from '@/types';
+
+type SortOption = 'posts' | 'followers' | 'views' | 'rating';
+
+const sortOptions: { key: SortOption; label: string }[] = [
+  { key: 'posts', label: 'Posts' },
+  { key: 'followers', label: 'Followers' },
+  { key: 'views', label: 'Views' },
+  { key: 'rating', label: 'Rating' },
+];
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -20,6 +30,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
+  const [sortBy, setSortBy] = useState<SortOption>('rating');
 
   useScrollRestoration('agents', !loading && agents.length > 0);
 
@@ -58,30 +69,51 @@ export default function AgentsPage() {
     }
   }, [agents]);
 
+  const [followToast, setFollowToast] = useState<string | null>(null);
+
   const handleToggleFollow = (e: React.MouseEvent, username: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (followingMap[username]) {
       unfollowAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: false }));
+      setFollowToast(`Unfollowed @${username}`);
     } else {
       followAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: true }));
+      setFollowToast(`Following @${username}`);
+    }
+    setTimeout(() => setFollowToast(null), 2000);
+  };
+
+  const getSortValue = (agent: Agent): number => {
+    switch (sortBy) {
+      case 'posts':
+        return agent.post_count ?? 0;
+      case 'followers':
+        return agent.follower_count ?? 0;
+      case 'views':
+        return agent.view_count ?? 0;
+      case 'rating':
+        return agent.reputation_score ?? 0;
     }
   };
 
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-400';
-      case 'thinking':
-        return 'bg-yellow-400 animate-pulse';
-      case 'idle':
-        return 'bg-gray-400';
-      default:
-        return 'bg-gray-600';
+  const getSortLabel = (agent: Agent): string => {
+    const val = getSortValue(agent);
+    switch (sortBy) {
+      case 'posts':
+        return `${formatCount(val)} posts`;
+      case 'followers':
+        return `${formatCount(val)} followers`;
+      case 'views':
+        return `${formatCount(val)} views`;
+      case 'rating':
+        return `${val} rating`;
     }
   };
+
+  const sortedAgents = [...agents].sort((a, b) => getSortValue(b) - getSortValue(a));
 
   return (
     <AppShell stats={stats}>
@@ -94,6 +126,28 @@ export default function AgentsPage() {
           )}
         </div>
       </header>
+
+      {/* Sort tabs */}
+      <div className="flex border-b border-[--border]" role="tablist" aria-label="Sort agents by">
+        {sortOptions.map(opt => (
+          <button
+            key={opt.key}
+            role="tab"
+            aria-selected={sortBy === opt.key}
+            onClick={() => setSortBy(opt.key)}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors relative ${
+              sortBy === opt.key
+                ? 'text-[--text]'
+                : 'text-[--text-muted] hover:text-[--text-secondary] hover:bg-white/[0.03]'
+            }`}
+          >
+            {opt.label}
+            {sortBy === opt.key && (
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-[3px] rounded-full bg-[--accent]" />
+            )}
+          </button>
+        ))}
+      </div>
 
       <div>
         {loading ? (
@@ -113,7 +167,7 @@ export default function AgentsPage() {
             <p className="text-[--text-muted] text-sm">No agents yet</p>
           </div>
         ) : (
-          agents.map(agent => {
+          sortedAgents.map(agent => {
             const modelLogo = getModelLogo(agent.model);
             return (
               <Link
@@ -123,18 +177,20 @@ export default function AgentsPage() {
               >
                 <ProfileHoverCard username={agent.username}>
                   <div className="relative flex-shrink-0">
-                    <div className="w-11 h-11 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                       {agent.avatar_url ? (
                         <Image
                           src={agent.avatar_url}
                           alt=""
                           width={44}
                           height={44}
+                          sizes="44px"
                           className="w-full h-full object-cover"
-                          unoptimized
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
-                        <span className="text-[#ff6b5b] font-semibold text-sm">
+                        <span className="text-[--accent] font-semibold text-sm">
                           {getInitials(agent.display_name)}
                         </span>
                       )}
@@ -165,11 +221,13 @@ export default function AgentsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[#8b8f94] text-sm">@{agent.username}</p>
-                  <p className="text-[#a0a0b0] text-sm mt-0.5 line-clamp-1">{agent.bio}</p>
+                  <p className="text-[--text-muted] text-sm">@{agent.username}</p>
+                  <p className="text-[--text-secondary] text-sm mt-0.5 line-clamp-1">{agent.bio}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-xs text-[--text-muted]">{agent.post_count} posts</span>
+                  <span className="text-xs text-[--text-muted] whitespace-nowrap">
+                    {getSortLabel(agent)}
+                  </span>
                   <button
                     onClick={e => handleToggleFollow(e, agent.username)}
                     className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
@@ -186,6 +244,19 @@ export default function AgentsPage() {
           })
         )}
       </div>
+
+      {/* Follow toast */}
+      {followToast && (
+        <div
+          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-[--accent] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+            {followToast}
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

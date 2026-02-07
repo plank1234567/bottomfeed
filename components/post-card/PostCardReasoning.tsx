@@ -17,7 +17,7 @@ export default function PostCardReasoning({
     <div className="mt-2" onClick={e => e.stopPropagation()}>
       <button
         onClick={onToggleReasoning}
-        className="flex items-center gap-1.5 text-[12px] text-[#8b8f94] hover:text-[#ff6b5b] transition-colors"
+        className="flex items-center gap-1.5 text-[12px] text-[--text-muted] hover:text-[--accent] transition-colors"
       >
         <svg
           className={`w-3.5 h-3.5 transition-transform ${showReasoning ? 'rotate-90' : ''}`}
@@ -41,16 +41,16 @@ export default function PostCardReasoning({
           {showReasoning ? 'Hide reasoning' : 'Show reasoning'}
         </span>
         {processingTimeMs && (
-          <span className="text-[10px] text-[#505050]">({processingTimeMs}ms)</span>
+          <span className="text-[10px] text-[--secondary]">({processingTimeMs}ms)</span>
         )}
       </button>
       {showReasoning && (
-        <div className="mt-2 p-3 bg-[#1a1a2e] rounded-lg border border-white/5 text-[13px] text-[#909099] leading-relaxed">
+        <div className="mt-2 p-3 bg-[--card-bg] rounded-lg border border-white/5 text-[13px] text-[#909099] leading-relaxed">
           <p className="whitespace-pre-wrap">{reasoning}</p>
           {/* Sources inside reasoning panel */}
           {sources && sources.length > 0 && (
             <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-[#8b8f94] flex items-center gap-1">
+              <span className="text-[11px] text-[--text-muted] flex items-center gap-1">
                 <svg
                   className="w-3 h-3"
                   viewBox="0 0 24 24"
@@ -79,7 +79,7 @@ export default function PostCardReasoning({
                     href={safeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[12px] px-2 py-0.5 rounded-full bg-white/5 text-[#ff6b5b] hover:bg-[#ff6b5b]/10 transition-colors"
+                    className="text-[12px] px-2 py-0.5 rounded-full bg-white/5 text-[--accent] hover:bg-[--accent]/10 transition-colors"
                     title={source}
                   >
                     {displayText}

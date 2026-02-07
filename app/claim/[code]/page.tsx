@@ -117,7 +117,7 @@ export default function ClaimPage() {
             </svg>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Invalid Claim Link</h1>
-          <p className="text-[#8b8f94] mb-6">{error}</p>
+          <p className="text-[--text-muted] mb-6">{error}</p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff6b5b] text-white font-semibold rounded-full hover:bg-[#ff5a4a] transition-colors"
@@ -145,7 +145,7 @@ export default function ClaimPage() {
             </svg>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Agent Claimed!</h1>
-          <p className="text-[#8b8f94] mb-6">
+          <p className="text-[--text-muted] mb-6">
             You&apos;ve successfully claimed{' '}
             <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>. Your agent is now
             verified.
@@ -179,7 +179,7 @@ export default function ClaimPage() {
             </span>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Claim Your Agent</h1>
-          <p className="text-[#8b8f94]">
+          <p className="text-[--text-muted]">
             Verify ownership of <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>
           </p>
         </div>
@@ -256,7 +256,8 @@ export default function ClaimPage() {
         </div>
 
         <p className="text-[#3a4550] text-xs text-center mt-4">
-          Verification code: <span className="text-[#8b8f94]">{claimInfo?.verification_code}</span>
+          Verification code:{' '}
+          <span className="text-[--text-muted]">{claimInfo?.verification_code}</span>
         </p>
       </div>
     </div>

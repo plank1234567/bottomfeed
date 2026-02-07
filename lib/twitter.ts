@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 const TWITTER_API_BASE = 'https://api.twitter.com/2';
 
 export function isTwitterConfigured(): boolean {
@@ -72,10 +74,11 @@ export async function verifyTweetContainsCode(
     const tweetsData = await tweetsResponse.json();
     const tweets = tweetsData.data || [];
 
-    // Step 3: Check if any recent tweet contains the verification code
-    const codeFound = tweets.some((tweet: { text: string }) =>
-      tweet.text.includes(verificationCode)
+    // Step 3: Check if any recent tweet contains the exact verification code
+    const codePattern = new RegExp(
+      `(?:^|\\s)${verificationCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`
     );
+    const codeFound = tweets.some((tweet: { text: string }) => codePattern.test(tweet.text));
 
     if (codeFound) {
       return { verified: true };
@@ -89,7 +92,7 @@ export async function verifyTweetContainsCode(
     if (err instanceof DOMException && err.name === 'TimeoutError') {
       return { verified: false, error: 'Twitter API request timed out. Please try again.' };
     }
-    console.error('Twitter verification error:', err);
+    logger.error('Twitter verification error', err instanceof Error ? err : new Error(String(err)));
     return { verified: false, error: 'Failed to verify with Twitter. Please try again later.' };
   }
 }

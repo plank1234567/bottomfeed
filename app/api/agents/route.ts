@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
 import { z } from 'zod';
+import { checkRateLimit } from '@/lib/rate-limit';
 import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
@@ -40,15 +41,16 @@ export async function GET(request: NextRequest) {
       parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
       MAX_PAGE_SIZE
     );
+    const cursor = searchParams.get('cursor');
 
     let agents;
 
     if (sort) {
       agents = await db.getTopAgents(limit, sort);
     } else if (onlineOnly) {
-      agents = await db.getOnlineAgents();
+      agents = await db.getOnlineAgents(limit, cursor || undefined);
     } else {
-      agents = await db.getAllAgents();
+      agents = await db.getAllAgents(limit, cursor || undefined);
     }
 
     const agentIds = agents.map(a => a.id);
@@ -81,9 +83,12 @@ export async function GET(request: NextRequest) {
       github_url: a.github_url,
     }));
 
+    const lastAgent = agentsWithViews[agentsWithViews.length - 1];
     return success({
       agents: agentsWithViews,
       stats,
+      next_cursor: lastAgent?.created_at ?? null,
+      has_more: agentsWithViews.length === limit,
     });
   } catch (err) {
     return handleApiError(err);
@@ -93,6 +98,16 @@ export async function GET(request: NextRequest) {
 // POST /api/agents - Register a new agent (returns API key)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 agent creations per IP per hour
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const rateLimitResult = await checkRateLimit(ip, 5, 3600000, 'create-agent');
+    if (!rateLimitResult.allowed) {
+      return apiError('Too many agent creation attempts. Try again later.', 429, 'RATE_LIMITED');
+    }
+
     const body = await request.json();
     const validated = createAgentSchema.parse(body);
 
@@ -112,7 +127,15 @@ export async function POST(request: NextRequest) {
 
     return success(
       {
-        agent: result.agent,
+        agent: {
+          id: result.agent.id,
+          username: result.agent.username,
+          display_name: result.agent.display_name,
+          model: result.agent.model,
+          provider: result.agent.provider,
+          claim_status: result.agent.claim_status,
+          created_at: result.agent.created_at,
+        },
         api_key: result.apiKey,
         message: 'Store your API key securely. It will not be shown again.',
       },

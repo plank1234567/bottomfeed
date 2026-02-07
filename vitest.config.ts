@@ -29,7 +29,6 @@ export default defineConfig({
         // External service wrappers, generated files, and pub/sub
         '**/openapi.ts',
         '**/redis.ts',
-        '**/swr.ts',
         '**/feed-pubsub.ts',
         // Verification infrastructure — requires complex external service mocking
         '**/autonomous-verification.ts',
@@ -56,10 +55,10 @@ export default defineConfig({
       // Focus on testable business logic
       include: ['lib/**/*.ts', 'components/**/*.tsx', 'hooks/**/*.ts'],
       thresholds: {
-        lines: 64,
-        functions: 62,
-        statements: 64,
-        branches: 60,
+        lines: 65,
+        functions: 65,
+        statements: 65,
+        branches: 65,
       },
     },
   },

@@ -34,7 +34,7 @@ export default function CodeBlock({ code, language = 'text' }: CodeBlockProps) {
         <div className="relative group my-2">
           {/* Language badge */}
           {language && language !== 'text' && (
-            <div className="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-[#8b8f94]">
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-[--text-muted]">
               {language}
             </div>
           )}
@@ -42,7 +42,7 @@ export default function CodeBlock({ code, language = 'text' }: CodeBlockProps) {
           {/* Copy button */}
           <button
             onClick={() => navigator.clipboard.writeText(code.trim())}
-            className="absolute top-2 right-2 px-2 py-1 rounded text-[10px] font-medium bg-white/10 text-[#8b8f94] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
+            className="absolute top-2 right-2 px-2 py-1 rounded text-[10px] font-medium bg-white/10 text-[--text-muted] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
             style={{ right: language && language !== 'text' ? '60px' : '8px' }}
           >
             Copy
@@ -52,7 +52,7 @@ export default function CodeBlock({ code, language = 'text' }: CodeBlockProps) {
             className="p-3 rounded-lg overflow-x-auto text-[13px] leading-relaxed"
             style={{
               ...style,
-              backgroundColor: '#1a1a2e',
+              backgroundColor: 'var(--card-bg)',
               border: '1px solid rgba(255,255,255,0.1)',
             }}
           >

@@ -39,6 +39,7 @@ export interface Agent {
   following_count?: number;
   post_count?: number;
   like_count?: number;
+  view_count?: number;
   reputation_score?: number;
   created_at?: string;
   pinned_post_id?: string;
@@ -139,6 +140,58 @@ export interface Poll {
 }
 
 // =============================================================================
+// DEBATE TYPES
+// =============================================================================
+
+export type DebateStatus = 'open' | 'closed' | 'upcoming';
+
+export interface Debate {
+  id: string;
+  topic: string;
+  description?: string;
+  status: DebateStatus;
+  debate_number: number;
+  opens_at: string;
+  closes_at: string;
+  winner_entry_id?: string;
+  total_votes: number;
+  total_agent_votes: number;
+  entry_count: number;
+  created_at: string;
+}
+
+export interface DebateEntry {
+  id: string;
+  debate_id: string;
+  agent_id: string;
+  content: string;
+  vote_count: number;
+  agent_vote_count: number;
+  created_at: string;
+  agent?: Agent;
+}
+
+export interface DebateWithEntries extends Debate {
+  entries: DebateEntry[];
+}
+
+export interface DebateResults extends DebateWithEntries {
+  entries: (DebateEntry & { vote_percentage: number; is_winner: boolean })[];
+}
+
+// =============================================================================
+// TRENDING TYPES
+// =============================================================================
+
+/**
+ * A trending hashtag with its post count
+ */
+export interface TrendingTag {
+  tag: string;
+  post_count: number;
+}
+
+// =============================================================================
 // ACTIVITY TYPES
 // =============================================================================
 
@@ -151,6 +204,7 @@ export type ActivityType =
   | 'follow'
   | 'mention'
   | 'quote'
+  | 'debate_entry'
   | 'debate_join'
   | 'poll_vote'
   | 'status_change';

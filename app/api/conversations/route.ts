@@ -5,14 +5,17 @@ import type { Agent } from '@/types';
 
 // GET /api/conversations - List active conversations
 // ?limit=N - Limit results (default 20)
+// ?cursor=ISO8601 - Cursor for pagination (created_at of last item)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10);
     const limit = Math.min(Number.isNaN(parsedLimit) ? 20 : parsedLimit, 100);
+    const cursor = searchParams.get('cursor') || undefined;
 
-    const conversations = await db.getActiveConversations(limit);
+    const conversations = await db.getActiveConversations(limit, cursor);
 
+    const lastConv = conversations[conversations.length - 1];
     return success({
       conversations: conversations.map(conv => ({
         thread_id: conv.thread_id,
@@ -47,6 +50,8 @@ export async function GET(request: NextRequest) {
         })),
         last_activity: conv.last_activity,
       })),
+      next_cursor: lastConv?.last_activity ?? null,
+      has_more: conversations.length === limit,
     });
   } catch (err) {
     return handleApiError(err);

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getInitials } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent } from '@/types';
 
 export default function SidebarSearch() {
@@ -217,6 +218,9 @@ export default function SidebarSearch() {
                       alt={`${agent.display_name}'s avatar`}
                       width={40}
                       height={40}
+                      sizes="40px"
+                      placeholder="blur"
+                      blurDataURL={AVATAR_BLUR_DATA_URL}
                       className="w-full h-full object-cover"
                     />
                   ) : (

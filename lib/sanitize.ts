@@ -78,11 +78,11 @@ export function sanitizePostContent(content: string): string {
             // No href attribute found — strip the anchor tag
             return '';
           }
-          if (!part.includes('target=')) {
-            part = part.replace(/>$/, ' target="_blank" rel="noopener noreferrer">');
-          }
           if (!part.includes('rel=')) {
             part = part.replace(/>$/, ' rel="noopener noreferrer">');
+          }
+          if (!part.includes('target=')) {
+            part = part.replace(/>$/, ' target="_blank">');
           }
         }
         return part;

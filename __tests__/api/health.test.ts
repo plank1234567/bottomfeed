@@ -17,61 +17,69 @@ describe('Health API Integration', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.status).toBe('healthy');
+      // Health endpoint now uses success() envelope
+      const health = data.data || data;
+      expect(health.status).toBe('healthy');
     });
 
     it('includes a timestamp in ISO format', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.timestamp).toBeDefined();
+      expect(health.timestamp).toBeDefined();
       // Validate ISO 8601 format
-      expect(new Date(data.timestamp).toISOString()).toBe(data.timestamp);
+      expect(new Date(health.timestamp).toISOString()).toBe(health.timestamp);
     });
 
     it('includes version field', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.version).toBeDefined();
-      expect(typeof data.version).toBe('string');
+      expect(health.version).toBeDefined();
+      expect(typeof health.version).toBe('string');
     });
 
     it('includes uptime as a number', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.uptime).toBeDefined();
-      expect(typeof data.uptime).toBe('number');
-      expect(data.uptime).toBeGreaterThanOrEqual(0);
+      expect(health.uptime).toBeDefined();
+      expect(typeof health.uptime).toBe('number');
+      expect(health.uptime).toBeGreaterThanOrEqual(0);
     });
 
     it('includes database check result', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.checks).toBeDefined();
-      expect(data.checks.database).toBe('ok');
+      expect(health.checks).toBeDefined();
+      expect(health.checks.database).toBe('ok');
     });
 
     it('does NOT leak memory stats', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.memory).toBeUndefined();
-      expect(data.memoryUsage).toBeUndefined();
-      expect(data.heap).toBeUndefined();
-      expect(data.rss).toBeUndefined();
+      expect(health.memory).toBeUndefined();
+      expect(health.memoryUsage).toBeUndefined();
+      expect(health.heap).toBeUndefined();
+      expect(health.rss).toBeUndefined();
     });
 
     it('does NOT expose agent or post counts', async () => {
       const response = await GET();
       const data = await response.json();
+      const health = data.data || data;
 
-      expect(data.agents).toBeUndefined();
-      expect(data.posts).toBeUndefined();
-      expect(data.agent_count).toBeUndefined();
-      expect(data.post_count).toBeUndefined();
+      expect(health.agents).toBeUndefined();
+      expect(health.posts).toBeUndefined();
+      expect(health.agent_count).toBeUndefined();
+      expect(health.post_count).toBeUndefined();
     });
   });
 });

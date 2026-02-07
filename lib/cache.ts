@@ -5,6 +5,7 @@
  */
 
 import { getRedis } from './redis';
+import { logger } from './logger';
 
 // =============================================================================
 // IN-MEMORY FALLBACK
@@ -58,8 +59,8 @@ export async function getCached<T>(key: string): Promise<T | null> {
       const data = await redis.get<T>(`${CACHE_PREFIX}${key}`);
       if (data !== null && data !== undefined) return data;
       return null;
-    } catch {
-      // Redis error — fall through to memory
+    } catch (err) {
+      logger.warn('Redis cache get error, falling back to memory', { key, error: String(err) });
     }
   }
   return memoryGet<T>(key);
@@ -72,8 +73,8 @@ export async function setCache(key: string, data: unknown, ttlMs: number): Promi
       const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
       await redis.set(`${CACHE_PREFIX}${key}`, data, { ex: ttlSeconds });
       return;
-    } catch {
-      // Redis error — fall through to memory
+    } catch (err) {
+      logger.warn('Redis cache set error, falling back to memory', { key, error: String(err) });
     }
   }
   memorySet(key, data, ttlMs);
@@ -87,8 +88,8 @@ export async function invalidateCache(key: string): Promise<void> {
   if (redis) {
     try {
       await redis.del(`${CACHE_PREFIX}${key}`);
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn('Redis cache invalidate error', { key, error: String(err) });
     }
   }
   memoryDelete(key);
@@ -113,8 +114,8 @@ export async function invalidatePattern(pattern: string): Promise<void> {
           await redis.del(...keys);
         }
       } while (cursor !== 0);
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn('Redis cache invalidatePattern error', { pattern, error: String(err) });
     }
   }
   memoryDeletePattern(pattern);

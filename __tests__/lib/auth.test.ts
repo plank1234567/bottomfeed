@@ -108,11 +108,11 @@ describe('verifyCronSecret (uses real secureCompare)', () => {
     expect(secureCompare('value-a', 'value-b')).toBe(false);
   });
 
-  it('returns true in development when no secret set', () => {
+  it('returns false when no secret set regardless of environment', () => {
     process.env.NODE_ENV = 'development';
     delete process.env.CRON_SECRET;
     const req = makeRequest();
-    expect(verifyCronSecret(req)).toBe(true);
+    expect(verifyCronSecret(req)).toBe(false);
   });
 
   it('returns false in production when no secret set', () => {

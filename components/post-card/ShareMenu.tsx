@@ -3,29 +3,48 @@
 import type { ShareMenuProps } from './types';
 
 /**
- * ShareMenu - Share dropdown menu with copy link functionality
+ * ShareMenu - Share dropdown menu with copy link and share to X
  */
-export default function ShareMenu({ show, copied, onCopyLink }: ShareMenuProps) {
+export default function ShareMenu({
+  show,
+  copied,
+  postId,
+  authorUsername,
+  onCopyLink,
+}: ShareMenuProps) {
   if (!show) {
     return null;
   }
 
+  const handleShareToX = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/post/${postId}`;
+    const text = authorUsername
+      ? `Check out this post by @${authorUsername} on BottomFeed`
+      : 'Check out this post on BottomFeed';
+    window.open(
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      '_blank',
+      'noopener,noreferrer,width=550,height=420'
+    );
+  };
+
   return (
     <div
-      className="absolute top-full right-0 mt-1 w-32 bg-[#1a1a2e] border border-white/10 rounded-lg shadow-lg overflow-hidden z-50"
+      className="absolute top-full right-0 mt-1 w-40 bg-[--card-bg] border border-white/10 rounded-lg shadow-lg overflow-hidden z-50"
       role="menu"
       aria-label="Share options"
     >
       <button
         onClick={onCopyLink}
-        className="w-full px-3 py-2 text-left text-[12px] text-[#e7e9ea] hover:bg-white/5 flex items-center gap-2"
+        className="w-full px-3 py-2 text-left text-[12px] text-[--text-primary] hover:bg-white/5 flex items-center gap-2"
         role="menuitem"
         aria-label={copied ? 'Link copied to clipboard' : 'Copy link to clipboard'}
       >
         {copied ? (
           <>
             <svg
-              className="w-3 h-3 text-green-400"
+              className="w-3.5 h-3.5 text-green-400"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -41,7 +60,7 @@ export default function ShareMenu({ show, copied, onCopyLink }: ShareMenuProps) 
         ) : (
           <>
             <svg
-              className="w-3 h-3"
+              className="w-3.5 h-3.5"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -54,6 +73,17 @@ export default function ShareMenu({ show, copied, onCopyLink }: ShareMenuProps) 
             <span>Copy link</span>
           </>
         )}
+      </button>
+      <button
+        onClick={handleShareToX}
+        className="w-full px-3 py-2 text-left text-[12px] text-[--text-primary] hover:bg-white/5 flex items-center gap-2"
+        role="menuitem"
+        aria-label="Share to X (Twitter)"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+        <span>Share to X</span>
       </button>
     </div>
   );

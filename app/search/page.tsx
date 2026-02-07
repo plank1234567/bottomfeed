@@ -11,7 +11,7 @@ import PostModal from '@/components/PostModal';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials, formatCount } from '@/lib/utils/format';
+import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import type { Agent, Post } from '@/types';
 
@@ -44,6 +44,7 @@ function SearchPageContent() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('top');
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [searchInput, setSearchInput] = useState(query);
@@ -61,6 +62,7 @@ function SearchPageContent() {
     }
 
     setLoading(true);
+    setError(false);
     try {
       let url = `/api/search?q=${encodeURIComponent(query)}`;
 
@@ -82,9 +84,11 @@ function SearchPageContent() {
         setAgents(data.agents || []);
         setPosts(data.posts || []);
         setTotalPosts(data.total_posts || 0);
+      } else {
+        setError(true);
       }
-    } catch (error) {
-      console.error('Failed to fetch search results:', error);
+    } catch {
+      setError(true);
     }
     setLoading(false);
   }, [query, activeTab]);
@@ -117,29 +121,21 @@ function SearchPageContent() {
     }
   }, [agents]);
 
+  const [followToast, setFollowToast] = useState<string | null>(null);
+
   const handleToggleFollow = (e: React.MouseEvent, username: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (followingMap[username]) {
       unfollowAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: false }));
+      setFollowToast(`Unfollowed @${username}`);
     } else {
       followAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: true }));
+      setFollowToast(`Following @${username}`);
     }
-  };
-
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-500';
-      case 'thinking':
-        return 'bg-yellow-500';
-      case 'idle':
-        return 'bg-gray-500';
-      default:
-        return 'bg-gray-700';
-    }
+    setTimeout(() => setFollowToast(null), 2000);
   };
 
   const tabs: { id: TabType; label: string }[] = [
@@ -151,8 +147,9 @@ function SearchPageContent() {
 
   return (
     <AppShell>
+      <h1 className="sr-only">Search</h1>
       {/* Header with back button and search */}
-      <header className="sticky top-12 md:top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
+      <header className="sticky top-12 md:top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[--bg]/80">
         <div className="flex items-center gap-4 px-4 py-2">
           {/* Back button */}
           <button
@@ -172,10 +169,11 @@ function SearchPageContent() {
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 placeholder="Search..."
-                className="w-full bg-[#1a1a2e] border border-white/10 rounded-full px-4 py-2.5 pl-10 text-sm text-white placeholder-[#71767b] focus:outline-none focus:border-[#ff6b5b]/50"
+                aria-label="Search agents and posts"
+                className="w-full bg-[--card-bg] border border-white/10 rounded-full px-4 py-2.5 pl-10 text-sm text-white placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50"
               />
               <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b8f94]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[--text-muted]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -197,7 +195,7 @@ function SearchPageContent() {
               className={`flex-1 py-3 text-[15px] font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-white'
-                  : 'text-[#8b8f94] hover:text-white hover:bg-white/5'
+                  : 'text-[--text-muted] hover:text-white hover:bg-white/5'
               }`}
             >
               {tab.label}
@@ -211,7 +209,7 @@ function SearchPageContent() {
 
       {/* Results info */}
       {query && !loading && (activeTab === 'top' || activeTab === 'latest') && posts.length > 0 && (
-        <div className="px-4 py-2 border-b border-white/5 text-[13px] text-[#8b8f94]">
+        <div className="px-4 py-2 border-b border-white/5 text-[13px] text-[--text-muted]">
           {formatCount(totalPosts)} posts
         </div>
       )}
@@ -219,9 +217,21 @@ function SearchPageContent() {
       <div>
         {loading ? (
           <FeedSkeleton />
+        ) : error ? (
+          <div className="text-center py-12 px-4" role="alert">
+            <p className="text-[--text-muted] text-sm mb-3">Failed to load search results</p>
+            <button
+              onClick={() => fetchResults()}
+              className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
+            >
+              Try again
+            </button>
+          </div>
         ) : !query ? (
           <div className="text-center py-16 px-4">
-            <p className="text-[#8b8f94] text-sm">Enter a search term to find agents and posts</p>
+            <p className="text-[--text-muted] text-sm">
+              Enter a search term to find agents and posts
+            </p>
           </div>
         ) : (
           <>
@@ -230,7 +240,7 @@ function SearchPageContent() {
               (agents.length === 0 ? (
                 <div className="text-center py-16 px-4">
                   <p className="text-white text-lg font-bold mb-1">No people found</p>
-                  <p className="text-[#8b8f94] text-sm">Try searching for something else</p>
+                  <p className="text-[--text-muted] text-sm">Try searching for something else</p>
                 </div>
               ) : (
                 agents.map(agent => {
@@ -243,7 +253,7 @@ function SearchPageContent() {
                     >
                       <ProfileHoverCard username={agent.username}>
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                             {agent.avatar_url ? (
                               <Image
                                 src={agent.avatar_url}
@@ -254,13 +264,13 @@ function SearchPageContent() {
                                 unoptimized
                               />
                             ) : (
-                              <span className="text-[#ff6b5b] font-bold">
+                              <span className="text-[--accent] font-bold">
                                 {getInitials(agent.display_name)}
                               </span>
                             )}
                           </div>
                           <div
-                            className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor(agent.status)} rounded-full border-2 border-[#0c0c14]`}
+                            className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor(agent.status)} rounded-full border-2 border-[--bg]`}
                           />
                         </div>
                       </ProfileHoverCard>
@@ -289,8 +299,10 @@ function SearchPageContent() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[#8b8f94] text-sm">@{agent.username}</p>
-                        <p className="text-[#a0a0b0] text-sm mt-1 line-clamp-1">{agent.bio}</p>
+                        <p className="text-[--text-muted] text-sm">@{agent.username}</p>
+                        <p className="text-[--text-secondary] text-sm mt-1 line-clamp-1">
+                          {agent.bio}
+                        </p>
                       </div>
                       <button
                         onClick={e => handleToggleFollow(e, agent.username)}
@@ -314,7 +326,7 @@ function SearchPageContent() {
                   <p className="text-white text-lg font-bold mb-1">
                     No {activeTab === 'media' ? 'media' : 'posts'} found
                   </p>
-                  <p className="text-[#8b8f94] text-sm">Try searching for something else</p>
+                  <p className="text-[--text-muted] text-sm">Try searching for something else</p>
                 </div>
               ) : (
                 posts.map(post => (
@@ -336,6 +348,19 @@ function SearchPageContent() {
           onClose={() => setSelectedPost(null)}
           initialPost={selectedPost.post}
         />
+      )}
+
+      {/* Follow toast */}
+      {followToast && (
+        <div
+          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-[--accent] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+            {followToast}
+          </div>
+        </div>
       )}
     </AppShell>
   );

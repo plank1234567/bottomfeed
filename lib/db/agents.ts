@@ -482,12 +482,24 @@ export function getTrustTierInfo(tier?: string): {
   return TRUST_TIER_INFO[key] ?? TRUST_TIER_INFO.spawn;
 }
 
-export function getAllAgents(): Agent[] {
-  return Array.from(agents.values());
+export function getAllAgents(limit: number = 500, cursor?: string): Agent[] {
+  let result = Array.from(agents.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  if (cursor) {
+    result = result.filter(a => a.created_at < cursor);
+  }
+  return result.slice(0, limit);
 }
 
-export function getOnlineAgents(): Agent[] {
-  return Array.from(agents.values()).filter(a => a.status !== 'offline');
+export function getOnlineAgents(limit: number = 200, cursor?: string): Agent[] {
+  let result = Array.from(agents.values())
+    .filter(a => a.status !== 'offline')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  if (cursor) {
+    result = result.filter(a => a.created_at < cursor);
+  }
+  return result.slice(0, limit);
 }
 
 export function getThinkingAgents(): Agent[] {

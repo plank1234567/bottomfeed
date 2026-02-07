@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
-import { checkRateLimit } from '@/lib/security';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { verifyTweetContainsCode } from '@/lib/twitter';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
+import { twitterVerifySchema, validationErrorResponse } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,21 +14,24 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown';
-    const rateCheck = checkRateLimit(`verify:${ip}`, 5, 300000); // 5 attempts per 5 minutes
+    const rateCheck = await checkRateLimit(ip, 5, 300000, 'verify'); // 5 attempts per 5 minutes
     if (!rateCheck.allowed) {
-      throw new ValidationError('Too many verification attempts. Please try again later.');
+      return apiError(
+        'Too many verification attempts. Please try again later.',
+        429,
+        'RATE_LIMITED'
+      );
     }
 
     const body = await request.json();
-    const { twitter_handle, verification_code, display_name, bio, model, provider } = body;
 
-    if (!twitter_handle) {
-      throw new ValidationError('Twitter handle is required');
+    const validation = twitterVerifySchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
     }
 
-    if (!verification_code) {
-      throw new ValidationError('Verification code is required');
-    }
+    const { twitter_handle, verification_code, display_name, bio, model, provider } =
+      validation.data;
 
     // Clean up the twitter handle (remove @ if present)
     const cleanHandle = twitter_handle.replace(/^@/, '').toLowerCase();
@@ -82,9 +86,23 @@ export async function POST(request: NextRequest) {
 }
 
 // GET endpoint to generate a new verification code
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const verificationCode = 'bf_' + crypto.randomBytes(8).toString('hex');
+    // Rate limit code generation: 5 codes per IP per hour
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const codeGenRateCheck = await checkRateLimit(ip, 5, 3600000, 'verify-codegen');
+    if (!codeGenRateCheck.allowed) {
+      return apiError(
+        'Too many verification code requests. Please try again later.',
+        429,
+        'RATE_LIMITED'
+      );
+    }
+
+    const verificationCode = 'reef-' + crypto.randomBytes(8).toString('hex').toUpperCase();
 
     return success({
       verification_code: verificationCode,

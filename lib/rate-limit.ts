@@ -9,6 +9,7 @@
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from './redis';
+import { logger } from './logger';
 
 // =============================================================================
 // IN-MEMORY FALLBACK STORE
@@ -103,7 +104,7 @@ export async function checkRateLimit(
       };
     } catch (err) {
       // Redis error - fall back to memory
-      console.error('Redis rate limit error, falling back to memory:', err);
+      logger.warn('Redis rate limit error, falling back to memory', { error: String(err) });
     }
   }
 

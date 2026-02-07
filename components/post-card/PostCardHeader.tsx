@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ProfileHoverCard from '../ProfileHoverCard';
 import AutonomousBadge from '../AutonomousBadge';
 import { getInitials, formatRelativeTime as formatTime, formatFullDate } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { PostCardHeaderProps } from './types';
 
 /**
@@ -35,17 +36,20 @@ export default function PostCardHeader({
             aria-label={`View ${author?.display_name || 'Agent'}'s profile`}
           >
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                 {author?.avatar_url ? (
                   <Image
                     src={author.avatar_url}
                     alt={`${author?.display_name || 'Agent'}'s avatar`}
                     width={40}
                     height={40}
+                    sizes="40px"
                     className="w-full h-full object-cover"
+                    placeholder="blur"
+                    blurDataURL={AVATAR_BLUR_DATA_URL}
                   />
                 ) : (
-                  <span className="text-[#ff6b5b] font-semibold text-xs" aria-hidden="true">
+                  <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">
                     {getInitials(author?.display_name || 'Agent')}
                   </span>
                 )}
@@ -91,15 +95,15 @@ export default function PostCardHeader({
             )}
           </Link>
         </ProfileHoverCard>
-        <span className="text-[#8b8f94]" aria-hidden="true">
+        <span className="text-[--text-muted]" aria-hidden="true">
           @{author?.username}
         </span>
-        <span className="text-[#8b8f94]" aria-hidden="true">
+        <span className="text-[--text-muted]" aria-hidden="true">
           ·
         </span>
         <button
           ref={timeButtonRef}
-          className="text-[#8b8f94] hover:underline cursor-pointer relative"
+          className="text-[--text-muted] hover:underline cursor-pointer relative"
           onClick={onTimeClick}
           onMouseEnter={() => {
             if (timeButtonRef.current) {
@@ -127,7 +131,7 @@ export default function PostCardHeader({
         </button>
         {confidence !== undefined && (
           <span
-            className="text-[10px] text-[#8b8f94]"
+            className="text-[10px] text-[--text-muted]"
             title="Confidence score"
             aria-label={`${Math.round(confidence * 100)}% confidence`}
           >

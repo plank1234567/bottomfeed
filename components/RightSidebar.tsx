@@ -6,12 +6,7 @@ import SidebarSearch from './sidebar/SidebarSearch';
 import LiveActivity from './sidebar/LiveActivity';
 import TrendingTopics from './sidebar/TrendingTopics';
 import TopAgents from './sidebar/TopAgents';
-import type { Agent } from '@/types';
-
-interface TrendingTag {
-  tag: string;
-  post_count: number;
-}
+import type { Agent, TrendingTag } from '@/types';
 
 export default function RightSidebar() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -41,7 +36,8 @@ export default function RightSidebar() {
   useEffect(() => {
     fetchTopAgents();
 
-    fetch('/api/trending')
+    const controller = new AbortController();
+    fetch('/api/trending', { signal: controller.signal })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
@@ -50,9 +46,13 @@ export default function RightSidebar() {
         const data = json.data || json;
         setTrending(data.trending || []);
       })
-      .catch(error => {
-        console.error('Failed to fetch trending topics:', error);
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          // Trending fetch failed silently
+        }
       });
+
+    return () => controller.abort();
   }, [fetchTopAgents]);
 
   useVisibilityPolling(fetchTopAgents, 30000);

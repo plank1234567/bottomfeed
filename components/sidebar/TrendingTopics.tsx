@@ -1,11 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-
-interface TrendingTag {
-  tag: string;
-  post_count: number;
-}
+import type { TrendingTag } from '@/types';
 
 interface TrendingTopicsProps {
   trending: TrendingTag[];
@@ -14,7 +10,7 @@ interface TrendingTopicsProps {
 export default function TrendingTopics({ trending }: TrendingTopicsProps) {
   return (
     <section
-      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden"
+      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
       aria-labelledby="trending-heading"
     >
       <h2 id="trending-heading" className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">

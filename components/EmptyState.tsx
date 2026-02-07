@@ -422,7 +422,7 @@ export default function EmptyState({
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="mb-5">{data.svg}</div>
       <p className="text-white text-lg font-bold mb-1">{data.title}</p>
-      <p className="text-[#8b8f94] text-sm max-w-[280px]">
+      <p className="text-[--text-muted] text-sm max-w-[280px]">
         {searchQuery
           ? `No results for "${searchQuery}". Try a different search.`
           : data.description}

@@ -44,14 +44,13 @@ export async function POST(request: NextRequest) {
 
       if (!testResponse.ok) {
         throw new ValidationError(
-          `Cannot reach webhook URL. Make sure your webhook server is running and accessible. Status code: ${testResponse.status}`
+          'Cannot reach webhook URL. Make sure your webhook server is running and accessible.'
         );
       }
     } catch (error) {
       if (error instanceof ValidationError) throw error;
-      const message = error instanceof Error ? error.message : String(error);
       throw new ValidationError(
-        `Cannot connect to webhook URL. Make sure your webhook server is running and accessible. Details: ${message}`
+        'Cannot connect to webhook URL. Make sure your webhook server is running and accessible.'
       );
     }
 

@@ -59,14 +59,19 @@ interface RequestMetrics {
   status: number;
   duration: number;
   timestamp: string;
+  requestId: string;
   userAgent?: string;
   ip?: string;
 }
 
 function logRequest(metrics: RequestMetrics): void {
-  const logLevel = metrics.status >= 500 ? 'ERROR' : metrics.status >= 400 ? 'WARN' : 'INFO';
+  const logLevel = metrics.status >= 500 ? 'error' : metrics.status >= 400 ? 'warn' : 'info';
 
-  console.log(
+  // Middleware runs in Edge Runtime where lib/logger is not available.
+  // Use structured JSON to stdout for log aggregators.
+  const logFn =
+    logLevel === 'error' ? console.error : logLevel === 'warn' ? console.warn : console.info;
+  logFn(
     JSON.stringify({
       level: logLevel,
       type: 'request',
@@ -125,7 +130,7 @@ function buildCspHeader(nonce: string): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.twitter.com https://api.x.com",
+    "connect-src 'self' https://api.twitter.com https://api.x.com https://*.ingest.sentry.io",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -157,6 +162,9 @@ export async function middleware(request: NextRequest) {
   // Generate a fresh nonce for every request (used in CSP header)
   const nonce = generateNonce();
 
+  // Generate or propagate X-Request-ID for request correlation
+  const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
+
   // Skip rate limiting / body-size checks for static files
   if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.includes('.')) {
     return NextResponse.next();
@@ -168,12 +176,14 @@ export async function middleware(request: NextRequest) {
   if (!pathname.startsWith('/api')) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
+    requestHeaders.set('x-request-id', requestId);
 
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     });
 
     applySecurityHeaders(response, nonce);
+    response.headers.set('X-Request-ID', requestId);
     return response;
   }
 
@@ -184,10 +194,25 @@ export async function middleware(request: NextRequest) {
   const clientIp = getClientIp(request);
 
   // ==========================================================================
-  // RATE LIMITING
+  // RATE LIMITING (skip for health endpoint so monitoring services aren't throttled)
   // ==========================================================================
+  if (pathname === '/api/health') {
+    const response = NextResponse.next({
+      request: { headers: new Headers(request.headers) },
+    });
+    applySecurityHeaders(response, nonce);
+    response.headers.set('X-Request-ID', requestId);
+    return response;
+  }
+
   const rateLimitConfig = getRateLimitConfig(pathname, request.method);
-  const rateLimitKey = `${clientIp}:${pathname.split('/').slice(0, 4).join('/')}`;
+  // Use method + route prefix as key. Auth-tier endpoints share a single key
+  // so attackers can't bypass limits by hitting different auth endpoints.
+  const isAuthTier = rateLimitConfig === RATE_LIMIT_CONFIG.auth;
+  const routeKey = isAuthTier
+    ? 'auth'
+    : `${request.method}:${pathname.split('/').slice(0, 4).join('/')}`;
+  const rateLimitKey = `${clientIp}:${routeKey}`;
   const rateLimitResult = await checkRateLimit(
     rateLimitKey,
     rateLimitConfig.limit,
@@ -213,6 +238,7 @@ export async function middleware(request: NextRequest) {
           'X-RateLimit-Limit': String(rateLimitConfig.limit),
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil(rateLimitResult.resetAt / 1000)),
+          'X-Request-ID': requestId,
         },
       }
     );
@@ -242,9 +268,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Process the request — pass nonce via request header for downstream use
+  // Process the request — pass nonce + request ID via request headers for downstream use
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('x-request-id', requestId);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
@@ -261,14 +288,16 @@ export async function middleware(request: NextRequest) {
       status: response.status,
       duration,
       timestamp: new Date().toISOString(),
+      requestId,
       userAgent: request.headers.get('user-agent') || undefined,
       ip: getClientIp(request),
     });
   }
 
-  // Add timing and version headers
+  // Add timing, version, and request ID headers
   response.headers.set('X-Response-Time', `${duration}ms`);
   response.headers.set('X-API-Version', '1');
+  response.headers.set('X-Request-ID', requestId);
 
   // Add rate limit headers
   response.headers.set('X-RateLimit-Limit', String(rateLimitConfig.limit));

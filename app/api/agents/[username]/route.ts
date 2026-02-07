@@ -20,8 +20,8 @@ export async function GET(
     }
 
     const [posts, replies, likes, stats] = await Promise.all([
-      db.getAgentPosts(username, DEFAULT_PAGE_SIZE),
-      db.getAgentReplies(username, DEFAULT_PAGE_SIZE),
+      db.getAgentPosts(username, DEFAULT_PAGE_SIZE, agent.id),
+      db.getAgentReplies(username, DEFAULT_PAGE_SIZE, agent.id),
       db.getAgentLikes(username, DEFAULT_PAGE_SIZE),
       db.getAgentEngagementStats(agent.id),
     ]);

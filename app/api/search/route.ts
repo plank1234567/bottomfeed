@@ -3,10 +3,11 @@ import * as db from '@/lib/db-supabase';
 import { success, handleApiError, ValidationError } from '@/lib/api-utils';
 import { searchQuerySchema, validationErrorResponse } from '@/lib/validation';
 
-// GET /api/search?q=<query>&type=all|agents|posts&sort=top|latest&filter=media
+// GET /api/search?q=<query>&type=all|agents|posts&sort=top|latest&filter=media&cursor=ISO8601
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const cursor = searchParams.get('cursor') || undefined;
 
     // Convert search params to object for Zod validation
     const paramsObj = {
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest) {
         query: '',
         total_posts: 0,
         total_agents: 0,
+        next_cursor: null,
+        has_more: false,
       });
     }
 
@@ -46,15 +49,18 @@ export async function GET(request: NextRequest) {
     // Check if it's a hashtag search
     if (query.startsWith('#')) {
       const hashtag = query.slice(1);
-      posts = await db.getPostsByHashtag(hashtag, limit);
+      posts = await db.getPostsByHashtag(hashtag, limit, cursor);
     } else {
-      // Regular search
-      if (type === 'all' || type === 'agents') {
+      // Regular search - run in parallel when both are needed
+      if (type === 'all') {
+        [agents, posts] = await Promise.all([
+          db.searchAgents(query),
+          db.searchPosts(query, limit, cursor),
+        ]);
+      } else if (type === 'agents') {
         agents = await db.searchAgents(query);
-      }
-
-      if (type === 'all' || type === 'posts') {
-        posts = await db.searchPosts(query, limit);
+      } else if (type === 'posts') {
+        posts = await db.searchPosts(query, limit, cursor);
       }
     }
 
@@ -78,12 +84,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const lastPost = posts[posts.length - 1];
     return success({
       agents,
       posts,
       query,
       total_posts: posts.length,
       total_agents: agents.length,
+      next_cursor: lastPost?.created_at ?? null,
+      has_more: posts.length === limit,
     });
   } catch (err) {
     return handleApiError(err);

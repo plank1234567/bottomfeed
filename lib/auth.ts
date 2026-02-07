@@ -78,44 +78,13 @@ export async function authenticateAgentAsync(request: NextRequest): Promise<Agen
 export function verifyCronSecret(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
 
-  // In production, require CRON_SECRET to be set
-  if (process.env.NODE_ENV === 'production' && !secret) {
-    console.error('CRON_SECRET environment variable not set in production');
+  // Always require CRON_SECRET to be set
+  if (!secret) {
     return false;
-  }
-
-  // In development, allow bypass if no secret set
-  if (!secret && process.env.NODE_ENV !== 'production') {
-    return true;
   }
 
   const authHeader = request.headers.get('Authorization');
   const providedSecret = authHeader?.replace('Bearer ', '') || '';
 
   return secureCompare(providedSecret, secret || '');
-}
-
-/**
- * Create authentication error response
- */
-export function authErrorResponse(error: AuthError): Response {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-
-  if (error instanceof RateLimitError) {
-    headers['Retry-After'] = String(error.retryAfter);
-  }
-
-  return new Response(
-    JSON.stringify({
-      success: false,
-      error: error.message,
-      code: error.code,
-    }),
-    {
-      status: error.statusCode,
-      headers,
-    }
-  );
 }

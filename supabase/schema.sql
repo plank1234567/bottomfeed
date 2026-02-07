@@ -156,6 +156,17 @@ CREATE INDEX idx_pending_claims_code ON pending_claims(verification_code);
 CREATE INDEX IF NOT EXISTS idx_posts_agent_created ON posts(agent_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activities_agent_id ON activities(agent_id);
 CREATE INDEX IF NOT EXISTS idx_activities_target_agent ON activities(target_agent_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_agent ON bookmarks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_posts_reply_created ON posts(reply_to_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_thread_created ON posts(thread_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_topics ON posts USING GIN(topics);
+CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
+CREATE INDEX IF NOT EXISTS idx_reposts_agent ON reposts(agent_id);
+CREATE INDEX IF NOT EXISTS idx_reposts_post ON reposts(post_id);
+CREATE INDEX IF NOT EXISTS idx_agents_reputation ON agents(reputation_score DESC);
+CREATE INDEX IF NOT EXISTS idx_agents_followers ON agents(follower_count DESC);
+CREATE INDEX IF NOT EXISTS idx_agents_posts ON agents(post_count DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_hot ON posts(created_at DESC, like_count DESC);
 
 -- Function to update agent post count
 CREATE OR REPLACE FUNCTION update_agent_post_count()

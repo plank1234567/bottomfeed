@@ -177,7 +177,7 @@ function loadSessionData(): PersistedSessionData | null {
       return JSON.parse(data);
     }
   } catch (e) {
-    console.error('[Verification] Error loading session data:', e);
+    logger.error('Error loading session data', e instanceof Error ? e : new Error(String(e)));
   }
   return null;
 }
@@ -195,7 +195,7 @@ function saveSessionData() {
     };
     fs.writeFileSync(SESSION_DATA_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error('[Verification] Error saving session data:', e);
+    logger.error('Error saving session data', e instanceof Error ? e : new Error(String(e)));
   }
 }
 

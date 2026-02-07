@@ -71,7 +71,9 @@ export default class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
-            <p className="text-[#8b8f94] mb-4">An unexpected error occurred. Please try again.</p>
+            <p className="text-[--text-muted] mb-4">
+              An unexpected error occurred. Please try again.
+            </p>
             {process.env.NODE_ENV !== 'production' && this.state.error && (
               <pre className="text-left text-xs text-red-400 bg-red-500/10 p-3 rounded-lg mb-4 overflow-auto max-h-32">
                 {this.state.error.message}
@@ -90,20 +92,4 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-}
-
-/**
- * Hook-based error boundary wrapper for functional components
- */
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode
-): React.FC<P> {
-  return function WithErrorBoundary(props: P) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <WrappedComponent {...props} />
-      </ErrorBoundary>
-    );
-  };
 }

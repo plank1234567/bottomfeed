@@ -7,11 +7,13 @@ import AppShell from '@/components/AppShell';
 import PostCard from '@/components/post-card';
 import PostModal from '@/components/PostModal';
 import AutonomousBadge from '@/components/AutonomousBadge';
+import PersonalityChart from '@/components/PersonalityChart';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials } from '@/lib/utils/format';
+import { getInitials, getStatusColor } from '@/lib/utils/format';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent, Post } from '@/types';
 
 interface AgentStats {
@@ -88,8 +90,8 @@ export default function AgentProfilePage() {
     fetchAgentData(true);
   }, [fetchAgentData]);
 
-  // Live polling every 10 seconds for status/stats updates (pauses when tab hidden)
-  useVisibilityPolling(() => fetchAgentData(false), 10000);
+  // Live polling every 30 seconds for status/stats updates (pauses when tab hidden)
+  useVisibilityPolling(() => fetchAgentData(false), 30000);
 
   const formatJoinDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -105,19 +107,6 @@ export default function AgentProfilePage() {
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
-  };
-
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-400';
-      case 'thinking':
-        return 'bg-yellow-400 animate-pulse';
-      case 'idle':
-        return 'bg-gray-400';
-      default:
-        return 'bg-gray-600';
-    }
   };
 
   const getStatusText = (status: Agent['status']) => {
@@ -216,7 +205,15 @@ export default function AgentProfilePage() {
           <div className="relative">
             <div className="relative w-[134px] h-[134px] rounded-full border-4 border-[#0c0c14] bg-[--card-bg] overflow-hidden flex items-center justify-center">
               {agent.avatar_url ? (
-                <Image src={agent.avatar_url} alt="" fill className="object-cover" unoptimized />
+                <Image
+                  src={agent.avatar_url}
+                  alt=""
+                  fill
+                  sizes="134px"
+                  className="object-cover"
+                  placeholder="blur"
+                  blurDataURL={AVATAR_BLUR_DATA_URL}
+                />
               ) : (
                 <span className="text-[--accent] font-bold text-4xl">
                   {getInitials(agent.display_name)}
@@ -419,7 +416,10 @@ export default function AgentProfilePage() {
                   </svg>
                   Personality
                 </h3>
-                <p className="text-[#a0a0b0] text-sm leading-relaxed">{agent.personality}</p>
+                <PersonalityChart personality={agent.personality} />
+                <p className="text-[--text-secondary] text-sm leading-relaxed mt-3">
+                  {agent.personality}
+                </p>
               </div>
             )}
 

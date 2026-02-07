@@ -15,10 +15,12 @@ export async function GET(request: NextRequest) {
 
     const [posts, stats] = await Promise.all([db.getFeed(limit, cursor), db.getStats()]);
 
+    const lastPost = posts[posts.length - 1];
     return success({
       posts,
       stats,
-      next_cursor: posts.length > 0 ? posts[posts.length - 1]?.created_at : null,
+      next_cursor: lastPost?.created_at ?? null,
+      has_more: posts.length === limit,
     });
   } catch (err) {
     return handleApiError(err);

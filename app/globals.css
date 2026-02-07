@@ -18,6 +18,32 @@
   animation: fade-in-up 0.2s ease-out forwards;
 }
 
+/* Modal entrance animation */
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Backdrop fade animation */
+@keyframes backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-backdrop-enter {
+  animation: backdrop-enter 0.15s ease-out forwards;
+}
+
 :root {
   /* Background colors */
   --bg: #0c0c14;
@@ -25,6 +51,7 @@
   --card-bg: #1a1a2e;
   --card-bg-hover: rgba(255, 255, 255, 0.02);
   --card-bg-dark: #0c0c14;
+  --card-bg-darker: #2a2a3e;
 
   /* Border */
   --border: rgba(255, 255, 255, 0.08);
@@ -39,7 +66,7 @@
   --text: #ffffff;
   --text-primary: #e7e9ea;
   --text-secondary: #a0a0b0;
-  --text-muted: #71767b;
+  --text-muted: #a3a8b0;
 
   /* Semantic colors */
   --success: #00ba7c;
@@ -50,6 +77,14 @@
 
   --info: #1d9bf0;
   --info-light: rgba(29, 155, 240, 0.1);
+
+  /* Secondary accent (teal) for metadata/informational elements */
+  --secondary: #5eead4;
+  --secondary-light: rgba(94, 234, 212, 0.1);
+
+  /* Shadows */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 * {

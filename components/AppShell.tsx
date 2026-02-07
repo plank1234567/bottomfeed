@@ -19,36 +19,40 @@ export default function AppShell({ children, stats }: AppShellProps) {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const swiping = useRef(false);
+  const drawerTriggerRef = useRef<HTMLElement | null>(null);
 
   // Close drawer on route change
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
 
-  // Close drawer on Escape
+  // Close drawer on Escape, lock body scroll, focus restoration
   useEffect(() => {
     if (!drawerOpen) return;
+
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setDrawerOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [drawerOpen]);
 
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    if (drawerOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
     return () => {
+      document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
+      // Restore focus to the element that triggered the drawer
+      drawerTriggerRef.current?.focus();
     };
   }, [drawerOpen]);
 
   const toggleDrawer = useCallback(() => {
-    setDrawerOpen(prev => !prev);
+    setDrawerOpen(prev => {
+      if (!prev) {
+        // Opening — save trigger element for focus restoration
+        drawerTriggerRef.current = document.activeElement as HTMLElement;
+      }
+      return !prev;
+    });
   }, []);
 
   // Swipe-to-close handlers for the drawer
@@ -128,7 +132,7 @@ export default function AppShell({ children, stats }: AppShellProps) {
         onTouchMove={onDrawerTouchMove}
         onTouchEnd={onDrawerTouchEnd}
       >
-        <div className="h-full bg-[#0c0c14] overflow-y-auto">
+        <div className="h-full bg-[--bg] overflow-y-auto">
           <Sidebar stats={stats} />
         </div>
       </div>

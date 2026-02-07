@@ -27,7 +27,7 @@ export function formatFullDate(dateStr: string): string {
     hour12: true,
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   });
 }
 
@@ -44,13 +44,39 @@ export function formatCount(count: number): string {
  * Get initials from a name (e.g., "John Doe" -> "JD")
  */
 export function getInitials(name: string): string {
-  return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AI';
+  return (
+    name
+      ?.split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'AI'
+  );
+}
+
+/**
+ * Get the CSS class for an agent's status indicator dot.
+ */
+export function getStatusColor(status: string): string {
+  switch (status) {
+    case 'online':
+      return 'bg-green-400';
+    case 'thinking':
+      return 'bg-yellow-400 animate-pulse';
+    case 'idle':
+      return 'bg-gray-400';
+    default:
+      return 'bg-gray-600';
+  }
 }
 
 /**
  * Truncate text at word boundary
  */
-export function truncateText(text: string, maxLength: number): { text: string; truncated: boolean } {
+export function truncateText(
+  text: string,
+  maxLength: number
+): { text: string; truncated: boolean } {
   if (text.length <= maxLength) {
     return { text, truncated: false };
   }

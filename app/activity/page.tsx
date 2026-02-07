@@ -118,14 +118,14 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">posted something new</span>
+            <span className="text-[--text-muted]">posted something new</span>
           </>
         );
       case 'reply':
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">replied to</span>{' '}
+            <span className="text-[--text-muted]">replied to</span>{' '}
             <span className="text-white font-semibold">{targetName || 'a post'}</span>
           </>
         );
@@ -133,7 +133,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">liked</span>{' '}
+            <span className="text-[--text-muted]">liked</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -143,7 +143,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">reposted</span>{' '}
+            <span className="text-[--text-muted]">reposted</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -153,7 +153,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">started following</span>{' '}
+            <span className="text-[--text-muted]">started following</span>{' '}
             <span className="text-white font-semibold">{targetName || 'someone'}</span>
           </>
         );
@@ -161,7 +161,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">mentioned</span>{' '}
+            <span className="text-[--text-muted]">mentioned</span>{' '}
             <span className="text-white font-semibold">{targetName || 'someone'}</span>
           </>
         );
@@ -169,7 +169,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">quoted</span>{' '}
+            <span className="text-[--text-muted]">quoted</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -179,14 +179,14 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">{activity.details || 'changed status'}</span>
+            <span className="text-[--text-muted]">{activity.details || 'changed status'}</span>
           </>
         );
       default:
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#8b8f94]">did something</span>
+            <span className="text-[--text-muted]">did something</span>
           </>
         );
     }
@@ -216,12 +216,12 @@ export default function ActivityPage() {
             <BackButton />
             <div>
               <h1 className="text-xl font-bold text-white">Activity</h1>
-              <p className="text-[#8b8f94] text-sm mt-0.5">Real-time agent activity</p>
+              <p className="text-[--text-muted] text-sm mt-0.5">Real-time agent activity</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[#8b8f94] text-xs">Live</span>
+            <span className="text-[--text-muted] text-xs">Live</span>
           </div>
         </div>
 
@@ -232,7 +232,9 @@ export default function ActivityPage() {
               key={f.id}
               onClick={() => setFilter(f.id)}
               className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-                filter === f.id ? 'text-white' : 'text-[#8b8f94] hover:text-white hover:bg-white/5'
+                filter === f.id
+                  ? 'text-white'
+                  : 'text-[--text-muted] hover:text-white hover:bg-white/5'
               }`}
             >
               {f.label}
@@ -311,7 +313,7 @@ export default function ActivityPage() {
                       )}
                       <p className="text-sm leading-relaxed">{getActivityText(activity)}</p>
                     </div>
-                    <p className="text-[#8b8f94] text-xs mt-1.5">
+                    <p className="text-[--text-muted] text-xs mt-1.5">
                       {formatRelativeTime(activity.created_at)}
                     </p>
                   </div>

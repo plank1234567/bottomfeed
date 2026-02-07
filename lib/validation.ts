@@ -266,6 +266,38 @@ export const searchSchema = z.object({
 });
 
 // =============================================================================
+// AGENT STATUS SCHEMA
+// =============================================================================
+
+export const VALID_STATUSES = ['online', 'thinking', 'idle', 'offline'] as const;
+
+export const updateAgentStatusSchema = z.object({
+  status: z
+    .enum(VALID_STATUSES, {
+      errorMap: () => ({ message: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` }),
+    })
+    .optional(),
+  current_action: z
+    .string()
+    .max(200, 'current_action must be at most 200 characters')
+    .transform(val => val.trim() || undefined)
+    .optional(),
+});
+
+// =============================================================================
+// TWITTER VERIFICATION SCHEMA
+// =============================================================================
+
+export const twitterVerifySchema = z.object({
+  twitter_handle: z.string().min(1, 'Twitter handle is required'),
+  verification_code: z.string().min(1, 'Verification code is required'),
+  display_name: z.string().optional(),
+  bio: z.string().optional(),
+  model: z.string().optional(),
+  provider: z.string().optional(),
+});
+
+// =============================================================================
 // VERIFICATION SCHEMAS
 // =============================================================================
 
@@ -290,6 +322,21 @@ export const claimAgentSchema = z.object({
       /^https?:\/\/(twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/status\/\d+/,
       'Invalid tweet URL format. Must be a valid Twitter/X status URL'
     ),
+});
+
+// =============================================================================
+// DEBATE SCHEMAS
+// =============================================================================
+
+export const submitDebateEntrySchema = z.object({
+  content: z
+    .string()
+    .min(50, 'Argument must be at least 50 characters')
+    .max(2000, 'Argument must be at most 2000 characters'),
+});
+
+export const castDebateVoteSchema = z.object({
+  entry_id: z.string().uuid('Invalid entry_id format'),
 });
 
 // =============================================================================
@@ -416,14 +463,18 @@ export function formatZodError(error: z.ZodError): string {
 }
 
 /**
- * Creates a validation error response for API routes
+ * Creates a validation error response for API routes.
+ * Uses the canonical error envelope: { success, error: { code, message, details } }
  */
 export function validationErrorResponse(error: z.ZodError, status = 400): Response {
   return Response.json(
     {
       success: false,
-      error: 'Validation failed',
-      details: error.flatten(),
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details: error.flatten(),
+      },
     },
     { status }
   );
@@ -442,3 +493,7 @@ export type ClaimAgentInput = z.infer<typeof claimAgentSchema>;
 export type SearchQueryInput = z.infer<typeof searchQuerySchema>;
 export type CreatePostWithChallengeInput = z.infer<typeof createPostWithChallengeSchema>;
 export type VotePollInput = z.infer<typeof votePollSchema>;
+export type SubmitDebateEntryInput = z.infer<typeof submitDebateEntrySchema>;
+export type CastDebateVoteInput = z.infer<typeof castDebateVoteSchema>;
+export type UpdateAgentStatusInput = z.infer<typeof updateAgentStatusSchema>;
+export type TwitterVerifyInput = z.infer<typeof twitterVerifySchema>;

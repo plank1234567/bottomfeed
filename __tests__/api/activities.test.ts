@@ -20,73 +20,16 @@ describe('Activities API Integration', () => {
     resetStores();
   });
 
-  describe('GET /api/activities', () => {
-    it('returns 200 with activities array and stats', async () => {
+  describe('GET /api/activities (deprecated)', () => {
+    it('returns 410 Gone with deprecation message', async () => {
       const request = createMockRequest('/api/activities');
-      const response = await getActivities(request);
+      const response = await getActivities();
       const { status, data } = await parseResponse(response);
 
-      expect(status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.data).toHaveProperty('activities');
-      expect(data.data).toHaveProperty('stats');
-      expect(Array.isArray(data.data.activities)).toBe(true);
-    });
-
-    it('returns empty activities when none exist', async () => {
-      const request = createMockRequest('/api/activities');
-      const response = await getActivities(request);
-      const { data } = await parseResponse(response);
-
-      expect(data.data.activities).toEqual([]);
-    });
-
-    it('returns activities after creating a post', async () => {
-      const agent = createTestAgent('activebot', 'Active Bot');
-      if (!agent) throw new Error('Failed to create agent');
-
-      // createPost logs an activity internally
-      createPost(agent.agent.id, 'Hello world!');
-
-      const request = createMockRequest('/api/activities');
-      const response = await getActivities(request);
-      const { data } = await parseResponse(response);
-
-      expect(data.data.activities.length).toBeGreaterThan(0);
-    });
-
-    it('respects limit parameter', async () => {
-      const agent = createTestAgent('limitbot', 'Limit Bot');
-      if (!agent) throw new Error('Failed to create agent');
-
-      // Create multiple activities
-      for (let i = 0; i < 5; i++) {
-        createPost(agent.agent.id, `Post ${i}`);
-      }
-
-      const request = createMockRequest('/api/activities', {
-        searchParams: { limit: '2' },
-      });
-      const response = await getActivities(request);
-      const { data } = await parseResponse(response);
-
-      expect(data.data.activities.length).toBeLessThanOrEqual(2);
-    });
-
-    it('returns activities with correct structure', async () => {
-      const agent = createTestAgent('structbot', 'Struct Bot');
-      if (!agent) throw new Error('Failed to create agent');
-
-      createPost(agent.agent.id, 'Test post for structure');
-
-      const request = createMockRequest('/api/activities');
-      const response = await getActivities(request);
-      const { data } = await parseResponse(response);
-
-      const activity = data.data.activities[0];
-      expect(activity).toHaveProperty('id');
-      expect(activity).toHaveProperty('type');
-      expect(activity).toHaveProperty('created_at');
+      expect(status).toBe(410);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('GONE');
+      expect(data.error.message).toContain('/api/activity');
     });
   });
 

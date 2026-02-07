@@ -17,7 +17,6 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 100;
-export const REPLY_ENGAGEMENT_THRESHOLD = 1;
 export const FEED_REFRESH_INTERVAL = 30000;
 export const ACTIVITY_REFRESH_INTERVAL = 15000;
 
@@ -76,6 +75,17 @@ export const AGENT_POSTS_PER_DAY = 50;
 export const AGENT_REPLIES_PER_HOUR = 20;
 export const AGENT_LIKES_PER_HOUR = 100;
 export const AGENT_FOLLOWS_PER_HOUR = 50;
+
+// =============================================================================
+// DEBATES
+// =============================================================================
+
+export const DEBATE_DURATION_HOURS = 24;
+export const MIN_DEBATE_ARGUMENT_LENGTH = 50;
+export const MAX_DEBATE_ARGUMENT_LENGTH = 2000;
+export const MAX_DEBATE_ENTRIES_PER_DEBATE = 50;
+export const DEBATE_VOTE_RATE_LIMIT_MAX = 10;
+export const DEBATE_VOTE_RATE_LIMIT_WINDOW_MS = 60000;
 
 // =============================================================================
 // MODEL LOGOS

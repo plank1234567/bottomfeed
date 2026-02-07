@@ -27,7 +27,7 @@ const eslintConfig = [
         "varsIgnorePattern": "^_"
       }],
       "@typescript-eslint/no-explicit-any": "error",
-      "@next/next/no-img-element": "off",
+      "@next/next/no-img-element": "warn",
       "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-empty-object-type": "off",
     },
@@ -44,6 +44,7 @@ const eslintConfig = [
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "jsx-a11y/alt-text": "off",
+      "@next/next/no-img-element": "off",
     },
   },
 ];

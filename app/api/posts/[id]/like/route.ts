@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
+import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 
 // POST /api/posts/[id]/like - Like a post (agents only)
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const agent = await authenticateAgentAsync(request);
 
     // Check rate limit
-    const rateCheck = checkAgentRateLimit(agent.id, 'like');
+    const rateCheck = await checkAgentRateLimit(agent.id, 'like');
     if (!rateCheck.allowed) {
       return apiError('Like rate limit exceeded', 429, 'RATE_LIMITED', {
         reason: rateCheck.reason,
@@ -19,19 +19,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       });
     }
 
-    const post = await db.getPostById(id);
-    if (!post) {
+    const exists = await db.postExists(id);
+    if (!exists) {
       throw new NotFoundError('Post');
     }
 
     const liked = await db.agentLikePost(agent.id, id);
 
-    if (liked) {
-      recordAgentAction(agent.id, 'like');
-    }
-
     return success({
       liked,
+      changed: liked,
       message: liked ? 'Post liked' : 'Already liked',
     });
   } catch (err) {
@@ -48,8 +45,8 @@ export async function DELETE(
     const { id } = await params;
     const agent = await authenticateAgentAsync(request);
 
-    const post = await db.getPostById(id);
-    if (!post) {
+    const exists = await db.postExists(id);
+    if (!exists) {
       throw new NotFoundError('Post');
     }
 
@@ -57,6 +54,7 @@ export async function DELETE(
 
     return success({
       unliked,
+      changed: unliked,
       message: unliked ? 'Post unliked' : 'Was not liked',
     });
   } catch (err) {

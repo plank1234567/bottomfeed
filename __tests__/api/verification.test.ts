@@ -82,7 +82,7 @@ describe('Verification API Integration', () => {
       expect(status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data).toHaveProperty('verification_code');
-      expect(data.data.verification_code).toMatch(/^bf_/);
+      expect(data.data.verification_code).toMatch(/^reef-/);
       expect(data.data).toHaveProperty('tweet_template');
       expect(data.data).toHaveProperty('instructions');
       expect(Array.isArray(data.data.instructions)).toBe(true);
@@ -197,16 +197,32 @@ describe('Verification API Integration', () => {
   });
 
   describe('GET /api/verification-data', () => {
-    it('returns stats by default in test env (no CRON_SECRET = bypass)', async () => {
+    it('returns 401 when no CRON_SECRET is configured', async () => {
+      delete process.env.CRON_SECRET;
       const request = createMockRequest('/api/verification-data');
       const response = await getVerificationData(request);
-      const { status, data } = await parseResponse(response);
+      const { status } = await parseResponse(response);
 
-      // In test env without CRON_SECRET, verifyCronSecret returns true (bypass)
-      expect(status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.data).toHaveProperty('type');
-      expect(data.data.type).toBe('stats');
+      expect(status).toBe(401);
+    });
+
+    it('returns stats when authenticated with CRON_SECRET', async () => {
+      process.env.CRON_SECRET = 'test-verification-secret';
+      try {
+        const request = createAuthenticatedRequest(
+          '/api/verification-data',
+          'test-verification-secret'
+        );
+        const response = await getVerificationData(request);
+        const { status, data } = await parseResponse(response);
+
+        expect(status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(data.data).toHaveProperty('type');
+        expect(data.data.type).toBe('stats');
+      } finally {
+        delete process.env.CRON_SECRET;
+      }
     });
 
     it('rejects request when CRON_SECRET is set but not provided', async () => {
@@ -250,26 +266,47 @@ describe('Verification API Integration', () => {
     });
 
     it('returns data with exported_at timestamp', async () => {
-      const request = createMockRequest('/api/verification-data');
-      const response = await getVerificationData(request);
-      const { data } = await parseResponse(response);
+      process.env.CRON_SECRET = 'test-exported-secret';
+      try {
+        const request = createAuthenticatedRequest(
+          '/api/verification-data',
+          'test-exported-secret'
+        );
+        const response = await getVerificationData(request);
+        const { data } = await parseResponse(response);
 
-      expect(data.data).toHaveProperty('exported_at');
-      expect(typeof data.data.exported_at).toBe('string');
+        expect(data.data).toHaveProperty('exported_at');
+        expect(typeof data.data.exported_at).toBe('string');
+      } finally {
+        delete process.env.CRON_SECRET;
+      }
     });
   });
 
   describe('GET /api/cron/verification', () => {
-    it('succeeds in test env without CRON_SECRET (bypass)', async () => {
+    it('returns 401 when no CRON_SECRET is configured', async () => {
+      delete process.env.CRON_SECRET;
       const request = createMockRequest('/api/cron/verification');
       const response = await cronVerification(request);
-      const responseData = await response.json();
 
-      expect(response.status).toBe(200);
-      expect(responseData.success).toBe(true);
-      expect(responseData).toHaveProperty('summary');
-      expect(responseData.summary).toHaveProperty('challenges_sent');
-      expect(responseData.summary).toHaveProperty('spot_checks_processed');
+      expect(response.status).toBe(401);
+    });
+
+    it('succeeds with valid CRON_SECRET', async () => {
+      process.env.CRON_SECRET = 'test-cron-secret';
+      try {
+        const request = createAuthenticatedRequest('/api/cron/verification', 'test-cron-secret');
+        const response = await cronVerification(request);
+        const responseData = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(responseData.success).toBe(true);
+        expect(responseData.data).toHaveProperty('summary');
+        expect(responseData.data.summary).toHaveProperty('challenges_sent');
+        expect(responseData.data.summary).toHaveProperty('spot_checks_processed');
+      } finally {
+        delete process.env.CRON_SECRET;
+      }
     });
 
     it('rejects request when CRON_SECRET is set but not provided', async () => {
@@ -311,13 +348,18 @@ describe('Verification API Integration', () => {
     });
 
     it('returns processing results with counts', async () => {
-      const request = createMockRequest('/api/cron/verification');
-      const response = await cronVerification(request);
-      const data = await response.json();
+      process.env.CRON_SECRET = 'test-counts-secret';
+      try {
+        const request = createAuthenticatedRequest('/api/cron/verification', 'test-counts-secret');
+        const response = await cronVerification(request);
+        const data = await response.json();
 
-      expect(typeof data.summary.challenges_sent).toBe('number');
-      expect(typeof data.summary.sessions_processed).toBe('number');
-      expect(typeof data.summary.spot_checks_processed).toBe('number');
+        expect(typeof data.data.summary.challenges_sent).toBe('number');
+        expect(typeof data.data.summary.sessions_processed).toBe('number');
+        expect(typeof data.data.summary.spot_checks_processed).toBe('number');
+      } finally {
+        delete process.env.CRON_SECRET;
+      }
     });
   });
 });

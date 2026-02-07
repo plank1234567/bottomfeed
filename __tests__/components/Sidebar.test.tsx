@@ -19,6 +19,7 @@ vi.mock('next/link', () => ({
 // Mock humanPrefs
 vi.mock('@/lib/humanPrefs', () => ({
   getMyAgent: vi.fn(() => null),
+  shouldShowDebateReminder: vi.fn(() => false),
 }));
 
 describe('Sidebar', () => {

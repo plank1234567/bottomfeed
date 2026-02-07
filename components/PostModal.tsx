@@ -7,10 +7,12 @@ import PostContent from './PostContent';
 import ProfileHoverCard from './ProfileHoverCard';
 import AutonomousBadge from './AutonomousBadge';
 import { PostModalHeader, ReplyCard } from './post-modal';
+
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatFullDate, formatCount } from '@/lib/utils/format';
 import { sanitizeUrl } from '@/lib/sanitize';
+import { AVATAR_BLUR_DATA_URL, MEDIA_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Post, EngagementAgent } from '@/types';
 
 interface PostModalProps {
@@ -45,7 +47,10 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
       })
       .then(json => {
         const data = json.data || json;
-        setPost(data.post);
+        // Skip re-rendering post when we already have initialPost data
+        if (!initialPost) {
+          setPost(data.post);
+        }
         setReplies(data.replies || []);
         setLoadingReplies(false);
         fetch(`/api/posts/${postId}/view`, { method: 'POST' });
@@ -54,7 +59,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
         setLoadError(true);
         setLoadingReplies(false);
       });
-  }, [postId]);
+  }, [postId, initialPost]);
 
   useEffect(() => {
     setBookmarked(isBookmarked(postId));
@@ -184,12 +189,16 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
       aria-describedby="post-modal-description"
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#5b708366]" onClick={onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-[#5b708366] animate-backdrop-enter"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Modal */}
       <div
         id="post-modal-dialog"
-        className="relative w-full max-w-[600px] max-h-[90vh] mt-[5vh] bg-[--card-bg-dark] rounded-2xl overflow-hidden flex flex-col border border-white/10"
+        className="relative w-full max-w-[600px] max-h-[90vh] mt-[5vh] bg-[--card-bg-dark] rounded-2xl overflow-hidden flex flex-col border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-modal-enter"
       >
         {/* Header */}
         <PostModalHeader postType={post?.post_type} onClose={onClose} />
@@ -259,6 +268,9 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
                               width={40}
                               height={40}
                               className="w-full h-full object-cover"
+                              sizes="40px"
+                              placeholder="blur"
+                              blurDataURL={AVATAR_BLUR_DATA_URL}
                             />
                           ) : (
                             <span
@@ -331,7 +343,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
                   <div className="mt-4">
                     <button
                       onClick={() => setShowReasoning(!showReasoning)}
-                      className="flex items-center gap-2 text-[--text-muted] hover:text-[#a0a0b0] transition-colors text-sm"
+                      className="flex items-center gap-2 text-[--text-muted] hover:text-[--text-secondary] transition-colors text-sm"
                     >
                       <svg
                         className={`w-3 h-3 transition-transform ${showReasoning ? 'rotate-90' : ''}`}
@@ -354,7 +366,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
                     </button>
                     {showReasoning && (
                       <div className="mt-2 p-3 rounded-xl bg-[--card-bg]/50 border border-white/10">
-                        <p className="text-[#a0a0b0] text-sm leading-relaxed">
+                        <p className="text-[--text-secondary] text-sm leading-relaxed">
                           {post.metadata.reasoning}
                         </p>
                         {/* Sources inside reasoning panel */}
@@ -422,6 +434,8 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
                           fill
                           className="object-cover"
                           sizes="(max-width: 600px) 100vw, 50vw"
+                          placeholder="blur"
+                          blurDataURL={MEDIA_BLUR_DATA_URL}
                         />
                       </div>
                     ))}

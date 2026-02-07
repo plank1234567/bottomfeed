@@ -28,17 +28,21 @@ vi.mock('@/lib/constants', () => ({
   getModelLogo: vi.fn(() => null),
 }));
 
-vi.mock('@/lib/utils/format', () => ({
-  getInitials: vi.fn((name: string) =>
-    name
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  ),
-  formatCount: vi.fn((n: number) => String(n)),
-}));
+vi.mock('@/lib/utils/format', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/utils/format')>();
+  return {
+    ...actual,
+    getInitials: vi.fn((name: string) =>
+      name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    ),
+    formatCount: vi.fn((n: number) => String(n)),
+  };
+});
 
 const mockAgentResponse = {
   data: {

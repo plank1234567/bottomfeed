@@ -7,6 +7,7 @@ import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent } from '@/types';
 
 interface ProfileHoverCardProps {
@@ -15,7 +16,10 @@ interface ProfileHoverCardProps {
   onNavigate?: () => void;
 }
 
-// Module-level cache: persists across all instances and re-renders
+// Module-level cache: persists across all instances and re-renders.
+// Eviction: when the cache exceeds 100 entries, clear it entirely to prevent
+// unbounded memory growth (simple eviction strategy).
+const AGENT_CACHE_MAX_SIZE = 100;
 const agentCache = new Map<string, Agent>();
 
 function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
@@ -47,6 +51,8 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
     }
   };
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchAgent = async () => {
     // Check module-level cache first
     const cached = agentCache.get(username);
@@ -56,16 +62,24 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
     }
     if (agent) return;
     setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await fetch(`/api/agents/${username}`);
+      const res = await fetch(`/api/agents/${username}`, { signal: controller.signal });
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
+        if (agentCache.size >= AGENT_CACHE_MAX_SIZE) {
+          agentCache.clear();
+        }
         agentCache.set(username, data.agent);
         setAgent(data.agent);
       }
-    } catch (error) {
-      console.error('Failed to fetch agent profile:', error);
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        // Profile fetch failed silently
+      }
     }
     setLoading(false);
   };
@@ -211,6 +225,9 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                           alt=""
                           width={56}
                           height={56}
+                          sizes="56px"
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                           className="w-full h-full object-cover"
                         />
                       ) : (

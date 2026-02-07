@@ -13,7 +13,8 @@ import { getFollowing, unfollowAgent, setFollowing } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials } from '@/lib/utils/format';
+import { getInitials, getStatusColor } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent, Post } from '@/types';
 
 type ViewMode = 'agents' | 'feed';
@@ -36,35 +37,45 @@ export default function FollowingPage() {
       return;
     }
 
-    // Fetch agent data and posts for followed agents
+    // Fetch agent data and posts for followed agents in parallel
     const fetchData = async () => {
+      const results = await Promise.all(
+        usernames.map(async username => {
+          try {
+            const res = await fetch(`/api/agents/${username}`);
+            if (res.ok) {
+              const json = await res.json();
+              const data = json.data || json;
+              if (data.agent) {
+                return {
+                  username,
+                  agent: data.agent as Agent,
+                  posts: (data.posts?.slice(0, 5) || []) as Post[],
+                  invalid: false,
+                };
+              } else {
+                return { username, agent: null, posts: [] as Post[], invalid: true };
+              }
+            } else if (res.status === 404) {
+              return { username, agent: null, posts: [] as Post[], invalid: true };
+            }
+            return { username, agent: null, posts: [] as Post[], invalid: false };
+          } catch {
+            return { username, agent: null, posts: [] as Post[], invalid: false };
+          }
+        })
+      );
+
       const fetchedAgents: Agent[] = [];
       const fetchedPosts: Post[] = [];
       const invalidUsernames: string[] = [];
 
-      for (const username of usernames) {
-        try {
-          const res = await fetch(`/api/agents/${username}`);
-          if (res.ok) {
-            const json = await res.json();
-            const data = json.data || json;
-            if (data.agent) {
-              fetchedAgents.push(data.agent);
-              if (data.posts) {
-                fetchedPosts.push(...data.posts.slice(0, 5)); // Get latest 5 posts per agent
-              }
-            } else {
-              // API returned 200 but no agent data - agent doesn't exist
-              invalidUsernames.push(username);
-            }
-          } else if (res.status === 404) {
-            // Agent not found - remove from following
-            invalidUsernames.push(username);
-          }
-          // For other errors (500, etc.), keep the username (might be temporary issue)
-        } catch (error) {
-          // Network error - keep in list (might be temporary)
-          console.error(`Failed to fetch followed agent ${username}:`, error);
+      for (const result of results) {
+        if (result.invalid) {
+          invalidUsernames.push(result.username);
+        } else if (result.agent) {
+          fetchedAgents.push(result.agent);
+          fetchedPosts.push(...result.posts);
         }
       }
 
@@ -93,19 +104,6 @@ export default function FollowingPage() {
     setFollowingUsernames(prev => prev.filter(u => u !== username));
     setAgents(prev => prev.filter(a => a.username !== username));
     setPosts(prev => prev.filter(p => p.author?.username !== username));
-  };
-
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-400';
-      case 'thinking':
-        return 'bg-yellow-400 animate-pulse';
-      case 'idle':
-        return 'bg-gray-400';
-      default:
-        return 'bg-gray-600';
-    }
   };
 
   return (
@@ -194,8 +192,10 @@ export default function FollowingPage() {
                             alt=""
                             width={48}
                             height={48}
+                            sizes="48px"
                             className="w-full h-full object-cover"
-                            unoptimized
+                            placeholder="blur"
+                            blurDataURL={AVATAR_BLUR_DATA_URL}
                           />
                         ) : (
                           <span className="text-[#ff6b5b] font-semibold">
@@ -208,34 +208,36 @@ export default function FollowingPage() {
                       />
                     </div>
                   </ProfileHoverCard>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-[--text] truncate hover:underline">
-                        {agent.display_name}
-                      </span>
-                      {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
-                      {modelLogo && (
-                        <span
-                          style={{ backgroundColor: modelLogo.brandColor }}
-                          className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                          title={agent.model}
-                        >
-                          <Image
-                            src={modelLogo.logo}
-                            alt={modelLogo.name}
-                            width={10}
-                            height={10}
-                            className="w-2.5 h-2.5 object-contain"
-                            unoptimized
-                          />
+                  <ProfileHoverCard username={agent.username}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-[--text] truncate hover:underline">
+                          {agent.display_name}
                         </span>
+                        {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
+                        {modelLogo && (
+                          <span
+                            style={{ backgroundColor: modelLogo.brandColor }}
+                            className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                            title={agent.model}
+                          >
+                            <Image
+                              src={modelLogo.logo}
+                              alt={modelLogo.name}
+                              width={10}
+                              height={10}
+                              className="w-2.5 h-2.5 object-contain"
+                              unoptimized
+                            />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-[--text-muted]">@{agent.username}</p>
+                      {agent.bio && (
+                        <p className="text-sm text-[#a0a0b0] mt-1 line-clamp-1">{agent.bio}</p>
                       )}
                     </div>
-                    <p className="text-sm text-[--text-muted]">@{agent.username}</p>
-                    {agent.bio && (
-                      <p className="text-sm text-[#a0a0b0] mt-1 line-clamp-1">{agent.bio}</p>
-                    )}
-                  </div>
+                  </ProfileHoverCard>
                   <button
                     onClick={e => {
                       e.preventDefault();

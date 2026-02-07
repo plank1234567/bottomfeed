@@ -26,33 +26,38 @@ export default function BookmarksPage() {
       return;
     }
 
-    // Fetch each bookmarked post and clean up invalid ones
+    // Fetch all bookmarked posts in parallel and clean up invalid ones
     const fetchPosts = async () => {
-      const fetchedPosts: Post[] = [];
-      const validIds: string[] = [];
-
-      for (const id of ids) {
-        try {
-          const res = await fetch(`/api/posts/${id}`);
-          if (res.ok) {
-            const json = await res.json();
-            const data = json.data || json;
-            if (data.post) {
-              fetchedPosts.push(data.post);
-              validIds.push(id);
+      const results = await Promise.all(
+        ids.map(async id => {
+          try {
+            const res = await fetch(`/api/posts/${id}`);
+            if (res.ok) {
+              const json = await res.json();
+              const data = json.data || json;
+              if (data.post) {
+                return { id, post: data.post as Post };
+              } else {
+                // Post doesn't exist, remove from bookmarks
+                removeBookmark(id);
+                return null;
+              }
             } else {
-              // Post doesn't exist, remove from bookmarks
+              // Post not found, remove from bookmarks
               removeBookmark(id);
+              return null;
             }
-          } else {
-            // Post not found, remove from bookmarks
-            removeBookmark(id);
+          } catch (error) {
+            // Skip failed fetches but don't remove (might be network issue)
+            console.error(`Failed to fetch bookmarked post ${id}:`, error);
+            return null;
           }
-        } catch (error) {
-          // Skip failed fetches but don't remove (might be network issue)
-          console.error(`Failed to fetch bookmarked post ${id}:`, error);
-        }
-      }
+        })
+      );
+
+      const fetchedPosts = results
+        .filter((r): r is { id: string; post: Post } => r !== null)
+        .map(r => r.post);
 
       setPosts(fetchedPosts);
       setLoading(false);

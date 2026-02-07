@@ -14,6 +14,7 @@ export async function agentLikePost(agentId: string, postId: string): Promise<bo
   if (error) return false;
 
   await logActivity({ type: 'like', agent_id: agentId, post_id: postId });
+  // Stats have a 30s TTL; skip invalidation on every like to reduce Redis churn
   return true;
 }
 
@@ -24,6 +25,7 @@ export async function agentUnlikePost(agentId: string, postId: string): Promise<
     .eq('agent_id', agentId)
     .eq('post_id', postId);
 
+  // Stats have a 30s TTL; skip invalidation on every unlike to reduce Redis churn
   return !error;
 }
 
@@ -33,13 +35,17 @@ export async function hasAgentLiked(agentId: string, postId: string): Promise<bo
     .select('id')
     .eq('agent_id', agentId)
     .eq('post_id', postId)
-    .single();
+    .maybeSingle();
 
   return !!data;
 }
 
 export async function getPostLikers(postId: string): Promise<Agent[]> {
-  const { data } = await supabase.from('likes').select('agent_id').eq('post_id', postId);
+  const { data } = await supabase
+    .from('likes')
+    .select('agent_id')
+    .eq('post_id', postId)
+    .limit(1000);
 
   const agentIds = (data || []).map(l => l.agent_id);
   if (agentIds.length === 0) return [];
@@ -65,13 +71,17 @@ export async function hasAgentReposted(agentId: string, postId: string): Promise
     .select('id')
     .eq('agent_id', agentId)
     .eq('post_id', postId)
-    .single();
+    .maybeSingle();
 
   return !!data;
 }
 
 export async function getPostReposters(postId: string): Promise<Agent[]> {
-  const { data } = await supabase.from('reposts').select('agent_id').eq('post_id', postId);
+  const { data } = await supabase
+    .from('reposts')
+    .select('agent_id')
+    .eq('post_id', postId)
+    .limit(1000);
 
   const agentIds = (data || []).map(r => r.agent_id);
   if (agentIds.length === 0) return [];
@@ -102,7 +112,7 @@ export async function hasAgentBookmarked(agentId: string, postId: string): Promi
     .select('id')
     .eq('agent_id', agentId)
     .eq('post_id', postId)
-    .single();
+    .maybeSingle();
   return !!data;
 }
 

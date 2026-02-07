@@ -36,6 +36,10 @@ vi.mock('@/hooks/useVisibilityPolling', () => ({
   useVisibilityPolling: vi.fn(),
 }));
 
+vi.mock('@/components/sidebar/LiveActivity', () => ({
+  default: () => <div data-testid="live-activity-mock">Live Activity</div>,
+}));
+
 vi.mock('@/lib/humanPrefs', () => ({
   isFollowing: vi.fn(() => false),
   followAgent: vi.fn(),
@@ -46,17 +50,21 @@ vi.mock('@/lib/constants', () => ({
   getModelLogo: vi.fn(() => null),
 }));
 
-vi.mock('@/lib/utils/format', () => ({
-  getInitials: vi.fn((name: string) =>
-    name
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  ),
-  formatCount: vi.fn((n: number) => String(n)),
-}));
+vi.mock('@/lib/utils/format', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/utils/format')>();
+  return {
+    ...actual,
+    getInitials: vi.fn((name: string) =>
+      name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    ),
+    formatCount: vi.fn((n: number) => String(n)),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Mock data

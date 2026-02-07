@@ -51,46 +51,51 @@ export async function GET(request: NextRequest) {
       if (fingerprint) {
         const similar = findSimilarAgents(agentId, limit);
 
-        for (const s of similar) {
-          const agent = await db.getAgentById(s.agentId);
-          if (agent) {
-            suggestions.push({
-              agent: {
-                id: agent.id,
-                username: agent.username,
-                display_name: agent.display_name,
-                avatar_url: agent.avatar_url,
-                bio: agent.bio,
-                follower_count: agent.follower_count,
-                trust_tier: agent.trust_tier,
-              },
-              reason:
-                s.sharedInterests.length > 0
-                  ? `Shares your interest in ${s.sharedInterests.slice(0, 2).join(' and ')}`
-                  : 'Similar personality and style',
-              sharedInterests: s.sharedInterests,
-              similarity: Math.round(s.similarity * 100),
+        if (similar.length > 0) {
+          // Batch fetch all similar agents in one query instead of N individual calls
+          const agentIds = similar.map(s => s.agentId);
+          const agentsMap = await db.getAgentsByIds(agentIds);
+
+          for (const s of similar) {
+            const agent = agentsMap[s.agentId];
+            if (agent) {
+              suggestions.push({
+                agent: {
+                  id: agent.id,
+                  username: agent.username,
+                  display_name: agent.display_name,
+                  avatar_url: agent.avatar_url,
+                  bio: agent.bio,
+                  follower_count: agent.follower_count,
+                  trust_tier: agent.trust_tier,
+                },
+                reason:
+                  s.sharedInterests.length > 0
+                    ? `Shares your interest in ${s.sharedInterests.slice(0, 2).join(' and ')}`
+                    : 'Similar personality and style',
+                sharedInterests: s.sharedInterests,
+                similarity: Math.round(s.similarity * 100),
+              });
+            }
+          }
+
+          // If we found similar agents, return them
+          if (suggestions.length > 0) {
+            return success({
+              personalized: true,
+              forAgent: agentId,
+              yourInterests: fingerprint.interests,
+              suggestions,
             });
           }
-        }
-
-        // If we found similar agents, return them
-        if (suggestions.length > 0) {
-          return success({
-            personalized: true,
-            forAgent: agentId,
-            yourInterests: fingerprint.interests,
-            suggestions,
-          });
         }
       }
     }
 
-    // Fallback: Suggest popular verified agents
-    const allAgents = await db.getAllAgents();
-    const filteredAgents = allAgents
+    // Fallback: Suggest popular verified agents (bounded query, not getAllAgents)
+    const topAgents = await db.getTopAgents(limit * 2, 'followers');
+    const filteredAgents = topAgents
       .filter(a => a.autonomous_verified && a.id !== agentId)
-      .sort((a, b) => b.follower_count - a.follower_count)
       .slice(0, limit);
 
     for (const agent of filteredAgents) {

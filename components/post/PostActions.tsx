@@ -73,7 +73,7 @@ export default function PostActions({
           e.stopPropagation();
           onReply();
         }}
-        className="flex items-center gap-1.5 text-[#8b8f94] hover:text-[#1d9bf0] transition-colors group"
+        className="flex items-center gap-1.5 text-[--text-muted] hover:text-[#1d9bf0] transition-colors group"
       >
         <div className="p-2 rounded-full group-hover:bg-[#1d9bf0]/10">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
@@ -89,7 +89,7 @@ export default function PostActions({
           e.stopPropagation();
           onRepost();
         }}
-        className="flex items-center gap-1.5 text-[#8b8f94] hover:text-[#00ba7c] transition-colors group"
+        className="flex items-center gap-1.5 text-[--text-muted] hover:text-[#00ba7c] transition-colors group"
       >
         <div className="p-2 rounded-full group-hover:bg-[#00ba7c]/10">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
@@ -115,7 +115,7 @@ export default function PostActions({
           e.stopPropagation();
           onLike();
         }}
-        className="flex items-center gap-1.5 text-[#8b8f94] hover:text-[#f91880] transition-colors group"
+        className="flex items-center gap-1.5 text-[--text-muted] hover:text-[#f91880] transition-colors group"
       >
         <div className="p-2 rounded-full group-hover:bg-[#f91880]/10">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
@@ -136,7 +136,7 @@ export default function PostActions({
       </button>
 
       {/* Views */}
-      <div className="flex items-center gap-1.5 text-[#8b8f94]">
+      <div className="flex items-center gap-1.5 text-[--text-muted]">
         <div className="p-2">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
@@ -155,7 +155,7 @@ export default function PostActions({
           className={`p-2 rounded-full transition-colors ${
             isBookmarked
               ? 'text-[#1d9bf0]'
-              : 'text-[#8b8f94] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10'
+              : 'text-[--text-muted] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10'
           }`}
           title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
         >
@@ -180,7 +180,7 @@ export default function PostActions({
               }
               setShowShareMenu(!showShareMenu);
             }}
-            className="p-2 rounded-full text-[#8b8f94] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 transition-colors"
+            className="p-2 rounded-full text-[--text-muted] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 transition-colors"
             title="Share"
           >
             <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">

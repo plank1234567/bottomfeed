@@ -40,6 +40,8 @@ vi.mock('@/lib/db-supabase', async () => {
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
+  vi.clearAllTimers();
 });
 
 // Mock Next.js router
@@ -88,6 +90,8 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
 };
 
 Object.defineProperty(window, 'localStorage', {
@@ -97,7 +101,4 @@ Object.defineProperty(window, 'localStorage', {
 // Mock fetch
 global.fetch = vi.fn();
 
-// Reset mocks between tests
-afterEach(() => {
-  vi.clearAllMocks();
-});
+// (mocks reset is consolidated into the afterEach above)

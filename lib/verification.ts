@@ -1,5 +1,8 @@
 import crypto from 'crypto';
 import { generateNonce, generateSecureId, secureCompare } from './security';
+import { getRedis } from './redis';
+import { logger } from './logger';
+import { checkRateLimit as unifiedCheckRateLimit } from './rate-limit';
 
 // Properly typed challenge interface
 interface StoredChallenge {
@@ -8,17 +11,27 @@ interface StoredChallenge {
   prompt: string;
   createdAt: number;
   agentId: string;
-  validator: (answer: string) => boolean;
   nonce: string;
 }
 
-// Challenge store - in production use Redis with TTL
-const challenges = new Map<string, StoredChallenge>();
+// Serializable subset for Redis (validator functions can't be serialized)
+interface SerializedChallenge extends StoredChallenge {
+  /** Index into CHALLENGE_PROMPTS so we can reconstruct the validator */
+  promptIndex: number;
+}
 
-// Maximum challenges to prevent memory exhaustion
+// Redis key prefix for challenges
+const CHALLENGE_PREFIX = 'bf:challenge:';
+// Challenge TTL in seconds (matches the 30-second expiry window + buffer)
+const CHALLENGE_TTL_SECONDS = 60;
+
+// In-memory fallback store (used when Redis is unavailable)
+const challenges = new Map<string, StoredChallenge & { promptIndex: number }>();
+
+// Maximum challenges to prevent memory exhaustion (fallback only)
 const MAX_CHALLENGES = 10000;
 
-// Challenge cleanup interval management
+// Challenge cleanup interval management (fallback only)
 let challengeCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
 function startChallengeCleanup(): void {
@@ -110,6 +123,80 @@ const CHALLENGE_PROMPTS = [
   },
 ];
 
+/**
+ * Store a challenge in Redis (primary) with in-memory fallback.
+ */
+async function storeChallenge(challengeId: string, data: SerializedChallenge): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.set(`${CHALLENGE_PREFIX}${challengeId}`, data, {
+        ex: CHALLENGE_TTL_SECONDS,
+      });
+      return;
+    } catch (err) {
+      logger.warn('Redis challenge store error, falling back to memory', {
+        error: String(err),
+      });
+    }
+  }
+
+  // In-memory fallback
+  startChallengeCleanup();
+  if (challenges.size >= MAX_CHALLENGES) {
+    const oldestKey = challenges.keys().next().value;
+    if (oldestKey) challenges.delete(oldestKey);
+  }
+  challenges.set(challengeId, data);
+}
+
+/**
+ * Retrieve a challenge from Redis (primary) with in-memory fallback.
+ */
+async function retrieveChallenge(
+  challengeId: string
+): Promise<(SerializedChallenge & { validator: (answer: string) => boolean }) | null> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const data = await redis.get<SerializedChallenge>(`${CHALLENGE_PREFIX}${challengeId}`);
+      if (data) {
+        const prompt = CHALLENGE_PROMPTS[data.promptIndex];
+        if (!prompt) return null;
+        return { ...data, validator: prompt.validator };
+      }
+      return null;
+    } catch (err) {
+      logger.warn('Redis challenge retrieve error, falling back to memory', {
+        error: String(err),
+      });
+    }
+  }
+
+  // In-memory fallback
+  const memData = challenges.get(challengeId);
+  if (!memData) return null;
+  const prompt = CHALLENGE_PROMPTS[memData.promptIndex];
+  if (!prompt) return null;
+  return { ...memData, validator: prompt.validator };
+}
+
+/**
+ * Delete a challenge from Redis (primary) and in-memory fallback.
+ */
+async function deleteChallenge(challengeId: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.del(`${CHALLENGE_PREFIX}${challengeId}`);
+    } catch (err) {
+      logger.warn('Redis challenge delete error', { error: String(err) });
+    }
+  }
+  // Always clean up memory fallback too
+  challenges.delete(challengeId);
+}
+
 // Generate a challenge for an agent
 export function generateChallenge(agentId: string): {
   challengeId: string;
@@ -117,33 +204,34 @@ export function generateChallenge(agentId: string): {
   expiresIn: number;
   instructions: string;
 } {
-  // Start cleanup on first use (lazy initialization)
-  startChallengeCleanup();
-
-  // Enforce max challenges to prevent memory exhaustion
-  if (challenges.size >= MAX_CHALLENGES) {
-    // Remove oldest challenge
-    const oldestKey = challenges.keys().next().value;
-    if (oldestKey) challenges.delete(oldestKey);
-  }
-
   const challengeId = generateSecureId();
-  const selectedChallenge =
-    CHALLENGE_PROMPTS[Math.floor(Math.random() * CHALLENGE_PROMPTS.length)]!;
+  const promptIndex = Math.floor(Math.random() * CHALLENGE_PROMPTS.length);
+  const selectedChallenge = CHALLENGE_PROMPTS[promptIndex]!;
 
   // Generate cryptographically secure nonce
   const nonce = generateNonce().slice(0, 16); // 64 bits for nonce
 
-  // Store challenge with proper typing
-  challenges.set(challengeId, {
+  const serialized: SerializedChallenge = {
     challenge: selectedChallenge.prompt,
     expectedAnswer: '', // We use validator function instead
     prompt: selectedChallenge.prompt,
     createdAt: Date.now(),
     agentId,
-    validator: selectedChallenge.validator,
     nonce,
-  });
+    promptIndex,
+  };
+
+  // Fire-and-forget async store (challenge is available immediately from memory fallback)
+  // Also store in memory as immediate fallback in case Redis write is slow
+  startChallengeCleanup();
+  if (challenges.size >= MAX_CHALLENGES) {
+    const oldestKey = challenges.keys().next().value;
+    if (oldestKey) challenges.delete(oldestKey);
+  }
+  challenges.set(challengeId, serialized);
+
+  // Async store to Redis (don't block the response)
+  void storeChallenge(challengeId, serialized);
 
   return {
     challengeId,
@@ -154,14 +242,14 @@ export function generateChallenge(agentId: string): {
 }
 
 // Verify a challenge response
-export function verifyChallenge(
+export async function verifyChallenge(
   challengeId: string,
   agentId: string,
   answer: string,
   nonce: string,
   responseTimeMs: number
-): { valid: boolean; reason?: string } {
-  const challenge = challenges.get(challengeId);
+): Promise<{ valid: boolean; reason?: string }> {
+  const challenge = await retrieveChallenge(challengeId);
 
   if (!challenge) {
     return { valid: false, reason: 'Challenge not found or expired' };
@@ -174,7 +262,7 @@ export function verifyChallenge(
   // Check if challenge expired (30 seconds)
   const age = Date.now() - challenge.createdAt;
   if (age > 30000) {
-    challenges.delete(challengeId);
+    void deleteChallenge(challengeId);
     return { valid: false, reason: 'Challenge expired' };
   }
 
@@ -196,7 +284,7 @@ export function verifyChallenge(
   }
 
   // Clean up used challenge
-  challenges.delete(challengeId);
+  void deleteChallenge(challengeId);
 
   return { valid: true };
 }
@@ -248,35 +336,29 @@ export function analyzeContentPatterns(
   return { score, flags };
 }
 
-// Rate limiting per agent
-const rateLimits = new Map<string, { count: number; windowStart: number }>();
-
+// Rate limiting per agent - delegates to unified Redis-backed rate limiter
 /**
- * Clear all rate limits (for testing)
+ * @deprecated Kept for backward compatibility. Internally delegates to the
+ * unified `checkRateLimit` from `@/lib/rate-limit` (Redis-backed).
  */
 export function clearVerificationRateLimits(): void {
-  rateLimits.clear();
+  // No-op: unified rate limiter manages its own cleanup
 }
 
-export function checkRateLimit(agentId: string): { allowed: boolean; resetIn?: number } {
-  const now = Date.now();
+export async function checkRateLimit(
+  agentId: string
+): Promise<{ allowed: boolean; resetIn?: number }> {
   const WINDOW_MS = 60000; // 1 minute
   const MAX_POSTS = 10; // 10 posts per minute max
 
-  const limit = rateLimits.get(agentId);
+  const result = await unifiedCheckRateLimit(agentId, MAX_POSTS, WINDOW_MS, 'verification-burst');
 
-  if (!limit || now - limit.windowStart > WINDOW_MS) {
-    rateLimits.set(agentId, { count: 1, windowStart: now });
-    return { allowed: true };
-  }
-
-  if (limit.count >= MAX_POSTS) {
+  if (!result.allowed) {
     return {
       allowed: false,
-      resetIn: Math.ceil((limit.windowStart + WINDOW_MS - now) / 1000),
+      resetIn: Math.ceil((result.resetAt - Date.now()) / 1000),
     };
   }
 
-  limit.count++;
   return { allowed: true };
 }

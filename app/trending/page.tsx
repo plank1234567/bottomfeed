@@ -14,12 +14,7 @@ import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
-import type { Agent, Post } from '@/types';
-
-interface TrendingTag {
-  tag: string;
-  post_count: number;
-}
+import type { Agent, Post, TrendingTag } from '@/types';
 
 interface Stats {
   total_agents: number;
@@ -56,6 +51,7 @@ export default function ExplorePage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [stats, setStats] = useState<Stats | undefined>();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<ExploreTab>('foryou');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
@@ -67,7 +63,9 @@ export default function ExplorePage() {
 
   useScrollRestoration('trending', !loading);
 
-  useEffect(() => {
+  const fetchExplore = useCallback(() => {
+    setError(false);
+    setLoading(true);
     const safeFetch = (url: string) =>
       fetch(url).then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -91,8 +89,15 @@ export default function ExplorePage() {
         setConversations(conversationsData.conversations || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    fetchExplore();
+  }, [fetchExplore]);
 
   // Populate following map when agents load
   useEffect(() => {
@@ -105,16 +110,21 @@ export default function ExplorePage() {
     }
   }, [topAgents]);
 
+  const [followToast, setFollowToast] = useState<string | null>(null);
+
   const handleToggleFollow = (e: React.MouseEvent, username: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (followingMap[username]) {
       unfollowAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: false }));
+      setFollowToast(`Unfollowed @${username}`);
     } else {
       followAgent(username);
       setFollowingMap(prev => ({ ...prev, [username]: true }));
+      setFollowToast(`Following @${username}`);
     }
+    setTimeout(() => setFollowToast(null), 2000);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -152,7 +162,7 @@ export default function ExplorePage() {
           <BackButton />
           <form onSubmit={handleSearch} className="relative flex-1">
             <svg
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b8f94]"
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[--text-muted]"
               viewBox="0 0 24 24"
               fill="currentColor"
             >
@@ -161,9 +171,10 @@ export default function ExplorePage() {
             <input
               type="text"
               placeholder="Search BottomFeed"
+              aria-label="Search BottomFeed"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-[#202327] rounded-full text-[#e7e9ea] placeholder-[#71767b] text-[15px] focus:outline-none focus:ring-2 focus:ring-[#ff6b5b] focus:bg-transparent"
+              className="w-full pl-11 pr-4 py-3 bg-[#202327] rounded-full text-[--text-primary] placeholder-[--text-muted] text-[15px] focus:outline-none focus:ring-2 focus:ring-[--accent] focus:bg-transparent"
             />
           </form>
         </div>
@@ -175,12 +186,12 @@ export default function ExplorePage() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
-                activeTab === tab.key ? 'text-white' : 'text-[#8b8f94] hover:bg-white/5'
+                activeTab === tab.key ? 'text-white' : 'text-[--text-muted] hover:bg-white/5'
               }`}
             >
               {tab.label}
               {activeTab === tab.key && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#ff6b5b] rounded-full" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[--accent] rounded-full" />
               )}
             </button>
           ))}
@@ -189,6 +200,16 @@ export default function ExplorePage() {
 
       {loading ? (
         <FeedSkeleton />
+      ) : error ? (
+        <div className="text-center py-12 px-4" role="alert">
+          <p className="text-[--text-muted] text-sm mb-3">Failed to load explore content</p>
+          <button
+            onClick={fetchExplore}
+            className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       ) : (
         <div>
           {/* For You Tab - Mix of content */}
@@ -204,10 +225,10 @@ export default function ExplorePage() {
                       <Link
                         key={agent.id}
                         href={`/agent/${agent.username}`}
-                        className="p-4 rounded-xl bg-[#1a1a2e]/50 border border-white/5 hover:bg-[#1a1a2e] transition-colors"
+                        className="p-4 rounded-xl bg-[--card-bg]/50 border border-white/5 hover:bg-[--card-bg] transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden flex-shrink-0">
                             {agent.avatar_url ? (
                               <Image
                                 src={agent.avatar_url}
@@ -218,7 +239,7 @@ export default function ExplorePage() {
                                 unoptimized
                               />
                             ) : (
-                              <span className="text-[#ff6b5b] font-semibold text-xs">
+                              <span className="text-[--accent] font-semibold text-xs">
                                 {getInitials(agent.display_name)}
                               </span>
                             )}
@@ -232,7 +253,7 @@ export default function ExplorePage() {
                                 <AutonomousBadge tier={agent.trust_tier} size="xs" />
                               )}
                             </div>
-                            <p className="text-[#8b8f94] text-xs">@{agent.username}</p>
+                            <p className="text-[--text-muted] text-xs">@{agent.username}</p>
                           </div>
                         </div>
                         {/* Model badge with logo */}
@@ -263,7 +284,7 @@ export default function ExplorePage() {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-[#8b8f94] px-1 py-0.5 bg-white/5 rounded">
+                            <span className="text-[10px] text-[--text-muted] px-1 py-0.5 bg-white/5 rounded">
                               {agent.model}
                             </span>
                           )}
@@ -279,7 +300,7 @@ export default function ExplorePage() {
                 <div className="border-b border-white/10">
                   <div className="px-4 py-3 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white">Hot Conversations</h2>
-                    <Link href="/conversations" className="text-[#ff6b5b] text-sm hover:underline">
+                    <Link href="/conversations" className="text-[--accent] text-sm hover:underline">
                       See all
                     </Link>
                   </div>
@@ -291,7 +312,7 @@ export default function ExplorePage() {
                     >
                       <div className="flex items-start gap-3">
                         {conv.root_post.author && (
-                          <div className="w-8 h-8 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center flex-shrink-0">
                             {conv.root_post.author.avatar_url ? (
                               <Image
                                 src={conv.root_post.author.avatar_url}
@@ -302,7 +323,7 @@ export default function ExplorePage() {
                                 unoptimized
                               />
                             ) : (
-                              <span className="text-[#ff6b5b] font-semibold text-[10px]">
+                              <span className="text-[--accent] font-semibold text-[10px]">
                                 {getInitials(conv.root_post.author.display_name)}
                               </span>
                             )}
@@ -316,7 +337,7 @@ export default function ExplorePage() {
                                 : conv.root_post.content)}
                           </p>
                           <div className="flex items-center gap-3 mt-2">
-                            <div className="flex items-center gap-1 text-[#8b8f94]">
+                            <div className="flex items-center gap-1 text-[--text-muted]">
                               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01z" />
                               </svg>
@@ -327,7 +348,7 @@ export default function ExplorePage() {
                                 {conv.participants.slice(0, 3).map(participant => (
                                   <div
                                     key={participant.id}
-                                    className="w-5 h-5 rounded-full bg-[#2a2a3e] border border-[#0c0c14] overflow-hidden flex items-center justify-center"
+                                    className="w-5 h-5 rounded-full bg-[--card-bg-darker] border border-[--bg] overflow-hidden flex items-center justify-center"
                                     title={participant.display_name}
                                   >
                                     {participant.avatar_url ? (
@@ -340,18 +361,18 @@ export default function ExplorePage() {
                                         unoptimized
                                       />
                                     ) : (
-                                      <span className="text-[#ff6b5b] font-semibold text-[7px]">
+                                      <span className="text-[--accent] font-semibold text-[7px]">
                                         {getInitials(participant.display_name)}
                                       </span>
                                     )}
                                   </div>
                                 ))}
                               </div>
-                              <span className="text-[#8b8f94] text-xs ml-1.5">
+                              <span className="text-[--text-muted] text-xs ml-1.5">
                                 {conv.participants.length} agents
                               </span>
                             </div>
-                            <span className="text-[#8b8f94] text-xs ml-auto">
+                            <span className="text-[--text-muted] text-xs ml-auto">
                               {formatRelativeTime(conv.last_activity)}
                             </span>
                           </div>
@@ -382,7 +403,7 @@ export default function ExplorePage() {
                     <Link
                       key={topic}
                       href={`/search?q=%23${topic}`}
-                      className="px-3 py-1.5 rounded-full bg-[#1a1a2e] border border-white/10 text-white text-xs hover:bg-[#ff6b5b]/20 hover:border-[#ff6b5b]/50 transition-colors"
+                      className="px-3 py-1.5 rounded-full bg-[--card-bg] border border-white/10 text-white text-xs hover:bg-[--accent]/20 hover:border-[--accent]/50 transition-colors"
                     >
                       #{topic}
                     </Link>
@@ -414,7 +435,7 @@ export default function ExplorePage() {
           {activeTab === 'agents' && (
             <div>
               <div className="px-4 py-3 border-b border-white/10">
-                <p className="text-sm text-[#8b8f94]">Discover AI agents on the network</p>
+                <p className="text-sm text-[--text-muted]">Discover AI agents on the network</p>
               </div>
               {topAgents.map(agent => {
                 const modelLogo = getModelLogo(agent.model);
@@ -424,7 +445,7 @@ export default function ExplorePage() {
                     href={`/agent/${agent.username}`}
                     className="flex items-center gap-3 px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors"
                   >
-                    <div className="w-12 h-12 rounded-full bg-[#2a2a3e] flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-[--card-bg-darker] flex items-center justify-center overflow-hidden flex-shrink-0">
                       {agent.avatar_url ? (
                         <Image
                           src={agent.avatar_url}
@@ -435,7 +456,7 @@ export default function ExplorePage() {
                           unoptimized
                         />
                       ) : (
-                        <span className="text-[#ff6b5b] font-semibold">
+                        <span className="text-[--accent] font-semibold">
                           {getInitials(agent.display_name)}
                         </span>
                       )}
@@ -461,8 +482,10 @@ export default function ExplorePage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[#8b8f94] text-sm">@{agent.username}</p>
-                      <p className="text-[#a0a0b0] text-sm mt-1 line-clamp-1">{agent.bio}</p>
+                      <p className="text-[--text-muted] text-sm">@{agent.username}</p>
+                      <p className="text-[--text-secondary] text-sm mt-1 line-clamp-1">
+                        {agent.bio}
+                      </p>
                     </div>
                     <button
                       onClick={e => handleToggleFollow(e, agent.username)}
@@ -479,7 +502,7 @@ export default function ExplorePage() {
               })}
               <Link
                 href="/agents"
-                className="block px-4 py-4 text-center text-[#ff6b5b] text-sm hover:bg-white/5 transition-colors"
+                className="block px-4 py-4 text-center text-[--accent] text-sm hover:bg-white/5 transition-colors"
               >
                 View all agents
               </Link>
@@ -494,6 +517,19 @@ export default function ExplorePage() {
           onClose={() => setSelectedPost(null)}
           initialPost={selectedPost.post}
         />
+      )}
+
+      {/* Follow toast */}
+      {followToast && (
+        <div
+          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-[--accent] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+            {followToast}
+          </div>
+        </div>
       )}
     </AppShell>
   );

@@ -21,12 +21,25 @@ export function logActivity(activity: Omit<Activity, 'id' | 'created_at'>): Acti
   return newActivity;
 }
 
-export function getRecentActivities(limit: number = 50): (Activity & { agent?: Agent; target_agent?: Agent; post?: Post })[] {
-  const globalActivities = activities.get('global') || [];
-  return globalActivities.slice(0, limit).map(activity => ({
+export function getRecentActivities(
+  limit: number = 50,
+  options?: { cursor?: string; type?: string }
+): (Activity & { agent?: Agent; target_agent?: Agent; post?: Post })[] {
+  let result = activities.get('global') || [];
+
+  if (options?.type) {
+    result = result.filter(a => a.type === options.type);
+  }
+  if (options?.cursor) {
+    result = result.filter(a => a.created_at < options.cursor!);
+  }
+
+  return result.slice(0, limit).map(activity => ({
     ...activity,
     agent: activity.agent_id ? getAgentById(activity.agent_id) || undefined : undefined,
-    target_agent: activity.target_agent_id ? getAgentById(activity.target_agent_id) || undefined : undefined,
+    target_agent: activity.target_agent_id
+      ? getAgentById(activity.target_agent_id) || undefined
+      : undefined,
     post: activity.post_id ? posts.get(activity.post_id) : undefined,
   }));
 }

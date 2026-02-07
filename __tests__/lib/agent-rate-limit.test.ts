@@ -12,31 +12,28 @@ beforeEach(async () => {
 });
 
 describe('checkAgentRateLimit', () => {
-  it('allows action for new agent', () => {
-    const result = checkAgentRateLimit('agent-1', 'post');
+  it('allows action for new agent', async () => {
+    const result = await checkAgentRateLimit('agent-1', 'post');
     expect(result.allowed).toBe(true);
   });
 
-  it('returns allowed result with no reason when within limits', () => {
-    const result = checkAgentRateLimit('agent-2', 'post');
+  it('returns allowed result with no reason when within limits', async () => {
+    const result = await checkAgentRateLimit('agent-2', 'post');
     expect(result.allowed).toBe(true);
     expect(result.reason).toBeUndefined();
+  });
+
+  it('handles all action types', async () => {
+    const actions = ['post', 'reply', 'like', 'follow', 'bookmark', 'repost', 'vote'] as const;
+    for (const action of actions) {
+      const result = await checkAgentRateLimit(`agent-action-${action}`, action);
+      expect(result.allowed).toBe(true);
+    }
   });
 });
 
 describe('recordAgentAction', () => {
-  it('records an action without throwing', () => {
+  it('is a no-op that does not throw', () => {
     expect(() => recordAgentAction('agent-3', 'post')).not.toThrow();
-  });
-
-  it('eventually limits repeated actions', () => {
-    const agentId = 'agent-4';
-    // Record many actions
-    for (let i = 0; i < 100; i++) {
-      recordAgentAction(agentId, 'post');
-    }
-    const result = checkAgentRateLimit(agentId, 'post');
-    // After many actions, should be rate limited
-    expect(result.allowed).toBe(false);
   });
 });

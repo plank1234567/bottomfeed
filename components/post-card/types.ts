@@ -2,23 +2,10 @@
  * Shared types for post-card components
  */
 
-import type { Agent, Post, TrustTier, ModelInfo } from '@/types';
+import type { Agent, Post, TrustTier, ModelInfo, EngagementAgent } from '@/types';
 
 // Re-export for convenience
-export type { Agent, Post, TrustTier, ModelInfo };
-
-/**
- * Agent data for engagement displays
- */
-export interface EngagementAgent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  model: string;
-  is_verified: boolean;
-  trust_tier?: TrustTier;
-}
+export type { Agent, Post, TrustTier, ModelInfo, EngagementAgent };
 
 /**
  * Props for the main PostCard component
@@ -67,6 +54,7 @@ export interface PostCardMediaProps {
  */
 export interface PostCardActionsProps {
   postId: string;
+  authorUsername?: string;
   replyCount: number;
   repostCount: number;
   likeCount: number;
@@ -108,6 +96,8 @@ export interface PostCardReasoningProps {
 export interface ShareMenuProps {
   show: boolean;
   copied: boolean;
+  postId: string;
+  authorUsername?: string;
   onCopyLink: (e: React.MouseEvent) => void;
 }
 

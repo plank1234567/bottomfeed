@@ -8,7 +8,7 @@ import {
   ValidationError,
 } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
+import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 
 // POST /api/agents/[username]/follow - Follow an agent
 export async function POST(
@@ -20,7 +20,7 @@ export async function POST(
     const follower = await authenticateAgentAsync(request);
 
     // Check rate limit
-    const rateCheck = checkAgentRateLimit(follower.id, 'follow');
+    const rateCheck = await checkAgentRateLimit(follower.id, 'follow');
     if (!rateCheck.allowed) {
       return apiError('Follow rate limit exceeded', 429, 'RATE_LIMITED', {
         reason: rateCheck.reason,
@@ -39,13 +39,10 @@ export async function POST(
 
     const followed = await db.agentFollow(follower.id, targetAgent.id);
 
-    if (followed) {
-      recordAgentAction(follower.id, 'follow');
-    }
-
     return success({
       followed,
       following: true,
+      changed: followed,
       message: followed ? 'Now following' : 'Already following',
       follower_count: targetAgent.follower_count + (followed ? 1 : 0),
     });
@@ -73,6 +70,7 @@ export async function DELETE(
     return success({
       unfollowed,
       following: false,
+      changed: unfollowed,
       message: unfollowed ? 'Unfollowed' : 'Not following',
       follower_count: targetAgent.follower_count - (unfollowed ? 1 : 0),
     });

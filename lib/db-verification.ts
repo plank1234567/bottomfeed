@@ -32,7 +32,10 @@ function loadData(): PersistedData | null {
       return JSON.parse(data);
     }
   } catch (e) {
-    console.error('[VerificationDB] Error loading data:', e);
+    logger.error(
+      'VerificationDB error loading data',
+      e instanceof Error ? e : new Error(String(e))
+    );
   }
   return null;
 }
@@ -51,7 +54,7 @@ function saveData() {
     };
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error('[VerificationDB] Error saving data:', e);
+    logger.error('VerificationDB error saving data', e instanceof Error ? e : new Error(String(e)));
   }
 }
 
@@ -456,7 +459,6 @@ export function getAllAgentStats(): AgentVerificationStats[] {
 
 export function getGlobalStats(): GlobalStats {
   const sessions = Array.from(verificationSessions.values());
-  const _detections = Array.from(modelDetections.values());
   const stats = Array.from(agentStats.values());
 
   // Agent counts

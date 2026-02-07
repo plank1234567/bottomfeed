@@ -166,21 +166,3 @@ export function validateQuery<T>(searchParams: URLSearchParams, schema: ZodSchem
 // =============================================================================
 // TIMING
 // =============================================================================
-
-/**
- * Measure execution time of an async function
- */
-export async function withTiming<T>(
-  fn: () => Promise<T>,
-  label?: string
-): Promise<{ result: T; durationMs: number }> {
-  const start = performance.now();
-  const result = await fn();
-  const durationMs = Math.round(performance.now() - start);
-
-  if (label) {
-    logger.debug(`${label} completed`, { durationMs });
-  }
-
-  return { result, durationMs };
-}

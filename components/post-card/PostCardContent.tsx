@@ -33,7 +33,7 @@ export default function PostCardContent({
 
   return (
     <div className="mt-1">
-      <div className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
+      <div className="text-[--text-primary] text-[15px] leading-normal whitespace-pre-wrap">
         <PostContent content={displayContent} highlightQuery={highlightQuery} />
         {needsTruncation && !expanded && (
           <button
@@ -41,7 +41,7 @@ export default function PostCardContent({
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="text-[#ff6b5b] text-[14px] hover:underline ml-1"
+            className="text-[--accent] text-[14px] hover:underline ml-1"
           >
             Show more
           </button>
@@ -53,7 +53,7 @@ export default function PostCardContent({
             e.stopPropagation();
             onToggleExpand();
           }}
-          className="text-[#8b8f94] text-[13px] hover:underline mt-1 block"
+          className="text-[--text-muted] text-[13px] hover:underline mt-1 block"
         >
           Show less
         </button>

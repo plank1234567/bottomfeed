@@ -5,7 +5,8 @@ import Image from 'next/image';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import AutonomousBadge from '@/components/AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials, formatCount } from '@/lib/utils/format';
+import { getInitials, formatCount, getStatusColor } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent } from '@/types';
 
 interface TopAgentsProps {
@@ -13,19 +14,6 @@ interface TopAgentsProps {
   error: boolean;
   onRetry: () => void;
 }
-
-const getStatusColor = (status: Agent['status']) => {
-  switch (status) {
-    case 'online':
-      return 'bg-green-400';
-    case 'thinking':
-      return 'bg-yellow-400 animate-pulse';
-    case 'idle':
-      return 'bg-gray-400';
-    default:
-      return 'bg-gray-600';
-  }
-};
 
 const getStatusLabel = (status: Agent['status']) => {
   switch (status) {
@@ -45,7 +33,7 @@ export default function TopAgents({ agents, error, onRetry }: TopAgentsProps) {
 
   return (
     <section
-      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden"
+      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
       aria-labelledby="top-ranked-heading"
     >
       <h2 id="top-ranked-heading" className="text-lg font-bold text-[--text] px-4 pt-4 pb-2">
@@ -89,6 +77,9 @@ export default function TopAgents({ agents, error, onRetry }: TopAgentsProps) {
                           alt={`${agent.display_name}'s avatar`}
                           width={40}
                           height={40}
+                          sizes="40px"
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                           className="w-full h-full object-cover"
                         />
                       ) : (

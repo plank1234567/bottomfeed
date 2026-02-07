@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
-import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
+import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 import { success, error, handleApiError } from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
+import { authenticateAgentAsync } from '@/lib/auth';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@/lib/constants';
 
@@ -15,9 +16,15 @@ export async function GET(request: NextRequest) {
       parseInt(searchParams.get('limit') || String(DEFAULT_PAGE_SIZE), 10),
       MAX_PAGE_SIZE
     );
+    const cursor = searchParams.get('cursor') || undefined;
 
-    const posts = await db.getFeed(limit);
-    return success({ posts });
+    const posts = await db.getFeed(limit, cursor);
+    const lastPost = posts[posts.length - 1];
+    return success({
+      posts,
+      next_cursor: lastPost?.created_at ?? null,
+      has_more: posts.length === limit,
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -28,18 +35,7 @@ export async function POST(request: NextRequest) {
   const requestStartTime = Date.now();
 
   try {
-    // Get API key from Authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return error('API key required. Use Authorization: Bearer <api_key>', 401, 'UNAUTHORIZED');
-    }
-
-    const apiKey = authHeader.slice(7);
-    const agent = await db.getAgentByApiKey(apiKey);
-
-    if (!agent) {
-      return error('Invalid API key', 401, 'UNAUTHORIZED');
-    }
+    const agent = await authenticateAgentAsync(request);
 
     // Check if agent has passed AI verification
     if (!agent.autonomous_verified) {
@@ -71,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check burst rate limit (per minute)
-    const burstRateCheck = checkRateLimit(agent.id);
+    const burstRateCheck = await checkRateLimit(agent.id);
     if (!burstRateCheck.allowed) {
       return error('Rate limit exceeded', 429, 'RATE_LIMITED', {
         reset_in_seconds: burstRateCheck.resetIn,
@@ -80,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check per-agent rate limits (hourly/daily)
-    const agentRateCheck = checkAgentRateLimit(agent.id, 'post');
+    const agentRateCheck = await checkAgentRateLimit(agent.id, 'post');
     if (!agentRateCheck.allowed) {
       return error('Agent rate limit exceeded', 429, 'RATE_LIMITED', {
         reason: agentRateCheck.reason,
@@ -115,7 +111,7 @@ export async function POST(request: NextRequest) {
     const responseTimeMs = Date.now() - requestStartTime;
 
     // Verify the challenge
-    const verification = verifyChallenge(
+    const verification = await verifyChallenge(
       challenge_id,
       agent.id,
       challenge_answer,
@@ -199,10 +195,7 @@ export async function POST(request: NextRequest) {
         return error('Failed to create poll', 500, 'INTERNAL_ERROR');
       }
 
-      // Record the action for rate limiting
-      recordAgentAction(agent.id, 'post');
-
-      return NextResponse.json(
+      return success(
         {
           post: pollResult.post,
           poll: pollResult.poll,
@@ -211,7 +204,7 @@ export async function POST(request: NextRequest) {
             pattern_score: patternAnalysis.score,
           },
         },
-        { status: 201 }
+        201
       );
     }
 
@@ -239,10 +232,7 @@ export async function POST(request: NextRequest) {
       return error('Failed to create post', 500, 'INTERNAL_ERROR');
     }
 
-    // Record the action for rate limiting
-    recordAgentAction(agent.id, reply_to_id ? 'reply' : 'post');
-
-    return NextResponse.json(
+    return success(
       {
         post,
         verification: {
@@ -250,7 +240,7 @@ export async function POST(request: NextRequest) {
           pattern_score: patternAnalysis.score,
         },
       },
-      { status: 201 }
+      201
     );
   } catch (err) {
     logger.error('Create post error', err);

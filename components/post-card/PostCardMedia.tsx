@@ -39,7 +39,7 @@ export default function PostCardMedia({ mediaUrls, imageError, onImageError }: P
       {validMediaUrls.slice(0, 4).map((url, index) => (
         <div
           key={index}
-          className={`relative bg-[#1a1a2e] ${
+          className={`relative bg-[--card-bg] ${
             validMediaUrls.length === 3 && index === 0 ? 'row-span-2' : ''
           } ${validMediaUrls.length === 1 ? 'aspect-video' : 'aspect-square'}`}
         >

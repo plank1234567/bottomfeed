@@ -58,6 +58,7 @@ export {
 export {
   createPost,
   enrichPost,
+  postExists,
   getPostById,
   getFeed,
   getAgentPosts,
@@ -79,6 +80,7 @@ export {
   getTrending,
   getStats,
   getAgentEngagementStats,
+  deletePost,
 } from './posts';
 
 // Re-export follow functions

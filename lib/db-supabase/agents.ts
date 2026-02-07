@@ -9,7 +9,8 @@ import {
   Agent,
   PendingClaim,
 } from './client';
-import { getCachedSync, setCacheSync, invalidatePattern } from '@/lib/cache';
+import { getCached, setCache, invalidatePattern } from '@/lib/cache';
+import { logger } from '@/lib/logger';
 
 // ============ AGENT FUNCTIONS ============
 
@@ -49,7 +50,7 @@ export async function createAgent(
     .single();
 
   if (error || !agent) {
-    console.error('Create agent error:', error);
+    logger.error('Create agent error', error);
     return null;
   }
 
@@ -80,7 +81,7 @@ export async function registerAgent(
     .from('agents')
     .select('id')
     .eq('username', username)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     username = username.substring(0, 15) + '_' + crypto.randomBytes(2).toString('hex');
@@ -106,7 +107,7 @@ export async function registerAgent(
     .single();
 
   if (error || !agent) {
-    console.error('Register agent error:', error);
+    logger.error('Register agent error', error);
     return null;
   }
 
@@ -135,11 +136,16 @@ export async function registerAgent(
 export async function getAgentByApiKey(apiKey: string): Promise<Agent | null> {
   const keyHash = hashApiKey(apiKey);
 
+  // Cache agent lookups by key hash to avoid 2 sequential queries on every auth request
+  const CACHE_KEY = `agent:key:${keyHash}`;
+  const cached = await getCached<Agent>(CACHE_KEY);
+  if (cached) return cached;
+
   const { data: keyRecord } = await supabase
     .from('api_keys')
     .select('agent_id')
     .eq('key_hash', keyHash)
-    .single();
+    .maybeSingle();
 
   if (!keyRecord) return null;
 
@@ -147,13 +153,17 @@ export async function getAgentByApiKey(apiKey: string): Promise<Agent | null> {
     .from('agents')
     .select('*')
     .eq('id', keyRecord.agent_id)
-    .single();
+    .maybeSingle();
+
+  if (agent) {
+    void setCache(CACHE_KEY, agent, 60_000); // Cache for 60s
+  }
 
   return agent as Agent | null;
 }
 
 export async function getAgentById(id: string): Promise<Agent | null> {
-  const { data } = await supabase.from('agents').select('*').eq('id', id).single();
+  const { data } = await supabase.from('agents').select('*').eq('id', id).maybeSingle();
 
   return data as Agent | null;
 }
@@ -163,7 +173,7 @@ export async function getAgentByUsername(username: string): Promise<Agent | null
     .from('agents')
     .select('*')
     .eq('username', username.toLowerCase())
-    .single();
+    .maybeSingle();
 
   return data as Agent | null;
 }
@@ -175,28 +185,39 @@ export async function getAgentByTwitterHandle(twitterHandle: string): Promise<Ag
     .from('agents')
     .select('*')
     .eq('twitter_handle', cleanHandle)
-    .single();
+    .maybeSingle();
 
   return data as Agent | null;
 }
 
-export async function getAllAgents(): Promise<Agent[]> {
-  const { data } = await supabase
-    .from('agents')
-    .select('*')
-    .order('created_at', { ascending: false });
+export async function getAllAgents(limit: number = 500, cursor?: string): Promise<Agent[]> {
+  let query = supabase.from('agents').select('*').order('created_at', { ascending: false });
 
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  const { data } = await query.limit(limit);
   return (data || []) as Agent[];
 }
 
-export async function getOnlineAgents(): Promise<Agent[]> {
-  const { data } = await supabase.from('agents').select('*').neq('status', 'offline');
+export async function getOnlineAgents(limit: number = 200, cursor?: string): Promise<Agent[]> {
+  let query = supabase
+    .from('agents')
+    .select('*')
+    .neq('status', 'offline')
+    .order('created_at', { ascending: false });
 
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  const { data } = await query.limit(limit);
   return (data || []) as Agent[];
 }
 
 export async function getThinkingAgents(): Promise<Agent[]> {
-  const { data } = await supabase.from('agents').select('*').eq('status', 'thinking');
+  const { data } = await supabase.from('agents').select('*').eq('status', 'thinking').limit(100);
 
   return (data || []) as Agent[];
 }
@@ -206,7 +227,7 @@ export async function getTopAgents(
   sortBy: 'reputation' | 'followers' | 'posts' | 'popularity' = 'reputation'
 ): Promise<Agent[]> {
   const CACHE_KEY = `topAgents:${sortBy}:${limit}`;
-  const cached = getCachedSync<Agent[]>(CACHE_KEY);
+  const cached = await getCached<Agent[]>(CACHE_KEY);
   if (cached) return cached;
 
   let query = supabase.from('agents').select('*');
@@ -229,7 +250,7 @@ export async function getTopAgents(
   const { data } = await query.limit(limit);
   const result = (data || []) as Agent[];
 
-  setCacheSync(CACHE_KEY, result, 30_000);
+  void setCache(CACHE_KEY, result, 30_000);
   return result;
 }
 
@@ -275,6 +296,7 @@ export async function updateAgentProfile(
 
   // Invalidate agent-related caches
   void invalidatePattern('topAgents:*');
+  void invalidatePattern('stats:*');
 
   return data as Agent | null;
 }
@@ -298,7 +320,7 @@ export async function getPendingClaim(verificationCode: string): Promise<Pending
     .from('pending_claims')
     .select('*')
     .eq('verification_code', verificationCode)
-    .single();
+    .maybeSingle();
 
   return data as PendingClaim | null;
 }
@@ -308,7 +330,7 @@ export async function getPendingClaimByAgentId(agentId: string): Promise<Pending
     .from('pending_claims')
     .select('*')
     .eq('agent_id', agentId)
-    .single();
+    .maybeSingle();
 
   return data as PendingClaim | null;
 }

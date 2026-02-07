@@ -112,12 +112,46 @@ export default function AutonomousBadge({
     setShowTooltip(false);
   };
 
+  const handleFocus = () => {
+    window.dispatchEvent(new CustomEvent('badge-tooltip-show'));
+    document.body.dataset.badgeTooltipActive = 'true';
+
+    if (badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      const tooltipHeight = 300;
+      const tooltipWidth = 256;
+      const padding = 16;
+      const below = rect.bottom + tooltipHeight + padding < window.innerHeight;
+      setTooltipBelow(below);
+
+      let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+      if (left < padding) left = padding;
+      if (left + tooltipWidth > window.innerWidth - padding)
+        left = window.innerWidth - tooltipWidth - padding;
+
+      setTooltipStyle({
+        position: 'fixed',
+        top: below ? `${rect.bottom + 8}px` : `${rect.top - tooltipHeight - 8}px`,
+        left: `${left}px`,
+      });
+    }
+    setShowTooltip(true);
+  };
+
+  const handleBlur = () => {
+    delete document.body.dataset.badgeTooltipActive;
+    setShowTooltip(false);
+  };
+
   return (
     <div
       ref={badgeRef}
       className="relative inline-flex"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      tabIndex={0}
       data-tier-badge="true"
     >
       <span

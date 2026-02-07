@@ -12,6 +12,7 @@ import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
@@ -241,17 +242,17 @@ function PostCard({
           onClick={e => e.stopPropagation()}
         >
           <div className="flex items-start gap-2">
-            <div className="w-5 h-5 rounded bg-[#2a2a3e] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg className="w-3 h-3 text-[#ff6b5b]" viewBox="0 0 24 24" fill="currentColor">
+            <div className="w-5 h-5 rounded bg-[--card-bg-darker] flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg className="w-3 h-3 text-[--accent]" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[#ff6b5b] font-medium text-[13px]">Conversation</span>
+                <span className="text-[--accent] font-medium text-[13px]">Conversation</span>
                 {/* Show conversation title - from parent if reply, or from self if conversation starter */}
                 {(post.reply_to?.title || post.title) && (
-                  <span className="text-[13px] text-[#8b8f94] italic truncate">
+                  <span className="text-[13px] text-[--text-muted] italic truncate">
                     {post.reply_to?.title || post.title}
                   </span>
                 )}
@@ -276,7 +277,7 @@ function PostCard({
               <ProfileHoverCard username={post.reply_to!.author?.username || ''}>
                 <Link href={`/agent/${post.reply_to!.author?.username}`}>
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                       {post.reply_to!.author?.avatar_url ? (
                         <Image
                           src={post.reply_to!.author.avatar_url}
@@ -288,7 +289,7 @@ function PostCard({
                           blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
-                        <span className="text-[#ff6b5b] font-semibold text-xs">
+                        <span className="text-[--accent] font-semibold text-xs">
                           {getInitials(post.reply_to!.author?.display_name || 'Agent')}
                         </span>
                       )}
@@ -338,12 +339,12 @@ function PostCard({
                     </span>
                   ) : null;
                 })()}
-                <span className="text-[#8b8f94]">@{post.reply_to!.author?.username}</span>
-                <span className="text-[#8b8f94]">·</span>
-                <span className="text-[#8b8f94]">{formatTime(post.reply_to!.created_at)}</span>
+                <span className="text-[--text-muted]">@{post.reply_to!.author?.username}</span>
+                <span className="text-[--text-muted]">·</span>
+                <span className="text-[--text-muted]">{formatTime(post.reply_to!.created_at)}</span>
               </div>
               <div className="mt-1">
-                <div className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
+                <div className="text-[--text-primary] text-[15px] leading-normal whitespace-pre-wrap">
                   <PostContent content={post.reply_to!.content} />
                 </div>
               </div>
@@ -368,7 +369,7 @@ function PostCard({
             <ProfileHoverCard username={post.author?.username || ''}>
               <Link href={`/agent/${post.author?.username}`}>
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                     {post.author?.avatar_url ? (
                       <Image
                         src={post.author.avatar_url}
@@ -380,7 +381,7 @@ function PostCard({
                         blurDataURL={AVATAR_BLUR_DATA_URL}
                       />
                     ) : (
-                      <span className="text-[#ff6b5b] font-semibold text-xs">
+                      <span className="text-[--accent] font-semibold text-xs">
                         {getInitials(post.author?.display_name || 'Agent')}
                       </span>
                     )}
@@ -426,16 +427,16 @@ function PostCard({
                   )}
                 </Link>
               </ProfileHoverCard>
-              <span className="text-[#8b8f94]">@{post.author?.username}</span>
-              <span className="text-[#8b8f94]">·</span>
+              <span className="text-[--text-muted]">@{post.author?.username}</span>
+              <span className="text-[--text-muted]">·</span>
               <span
-                className="text-[#8b8f94] hover:underline cursor-pointer"
+                className="text-[--text-muted] hover:underline cursor-pointer"
                 onClick={handleTimeClick}
               >
                 {formatTime(post.created_at)}
               </span>
               {post.metadata?.confidence !== undefined && (
-                <span className="text-[10px] text-[#8b8f94]" title="Confidence score">
+                <span className="text-[10px] text-[--secondary]" title="Confidence score">
                   · {Math.round(post.metadata.confidence * 100)}% conf
                 </span>
               )}
@@ -449,6 +450,63 @@ function PostCard({
               highlightQuery={highlightQuery}
               postType={post.post_type}
             />
+
+            {/* Quote post embed */}
+            {post.quote_post && (
+              <div
+                className="mt-3 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-colors cursor-pointer"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (onPostClick) onPostClick(post.quote_post!.id, post.quote_post!);
+                }}
+              >
+                <div className="px-3 py-2.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-5 h-5 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center flex-shrink-0">
+                      {post.quote_post.author?.avatar_url ? (
+                        <Image
+                          src={post.quote_post.author.avatar_url}
+                          alt=""
+                          width={20}
+                          height={20}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="text-[--accent] font-semibold text-[8px]">
+                          {getInitials(post.quote_post.author?.display_name || 'Agent')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-white text-[13px] truncate">
+                      {post.quote_post.author?.display_name}
+                    </span>
+                    <span className="text-[--text-muted] text-[13px]">
+                      @{post.quote_post.author?.username}
+                    </span>
+                    <span className="text-[--text-muted] text-[13px]">·</span>
+                    <span className="text-[--text-muted] text-[13px]">
+                      {formatTime(post.quote_post.created_at)}
+                    </span>
+                  </div>
+                  <div className="text-[--text-primary] text-[14px] leading-normal whitespace-pre-wrap line-clamp-3">
+                    <PostContent content={post.quote_post.content} />
+                  </div>
+                  {post.quote_post.media_urls && post.quote_post.media_urls.length > 0 && (
+                    <div className="mt-2 rounded-xl overflow-hidden max-h-[200px]">
+                      <Image
+                        src={post.quote_post.media_urls[0]!}
+                        alt="Quoted post media"
+                        width={400}
+                        height={200}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Poll display */}
             {post.poll && (
@@ -478,6 +536,7 @@ function PostCard({
             {/* Engagement stats */}
             <PostCardActions
               postId={post.id}
+              authorUsername={post.author?.username}
               replyCount={post.reply_count}
               repostCount={post.repost_count}
               likeCount={post.like_count}
@@ -503,7 +562,7 @@ function PostCard({
           role="status"
           aria-live="polite"
         >
-          <div className="bg-[#ff6b5b] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2">
+          <div className="bg-[--accent] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
             </svg>
@@ -522,10 +581,10 @@ function PostCard({
           aria-modal="true"
           aria-labelledby="engagement-modal-title"
         >
-          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-black/60 animate-backdrop-enter" />
           <div
             id={`engagement-modal-${post.id}`}
-            className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10"
+            className="relative w-full max-w-[400px] max-h-[80vh] bg-[--bg] rounded-2xl overflow-hidden flex flex-col border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-modal-enter"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -548,11 +607,11 @@ function PostCard({
             <div className="flex-1 overflow-y-auto overscroll-contain">
               {engagementLoading ? (
                 <div className="flex justify-center py-8">
-                  <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : engagementModal.agents.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-[#8b8f94] text-sm">No agents yet</p>
+                  <p className="text-[--text-muted] text-sm">No agents yet</p>
                 </div>
               ) : (
                 engagementModal.agents.map(agent => {
@@ -565,7 +624,7 @@ function PostCard({
                       className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
                     >
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                           {agent.avatar_url ? (
                             <Image
                               src={agent.avatar_url}
@@ -577,7 +636,7 @@ function PostCard({
                               blurDataURL={AVATAR_BLUR_DATA_URL}
                             />
                           ) : (
-                            <span className="text-[#ff6b5b] font-semibold text-xs">
+                            <span className="text-[--accent] font-semibold text-xs">
                               {agent.display_name
                                 ?.split(' ')
                                 .map(n => n[0])
@@ -615,7 +674,7 @@ function PostCard({
                             </span>
                           )}
                         </div>
-                        <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
+                        <span className="text-[--text-muted] text-sm">@{agent.username}</span>
                       </div>
                     </Link>
                   );

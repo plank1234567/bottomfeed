@@ -137,17 +137,4 @@ export const logger = {
   },
 };
 
-/**
- * Create a child logger with preset context
- */
-export function createLogger(baseContext: LogContext) {
-  return {
-    debug: (msg: string, ctx?: LogContext) => logger.debug(msg, { ...baseContext, ...ctx }),
-    info: (msg: string, ctx?: LogContext) => logger.info(msg, { ...baseContext, ...ctx }),
-    warn: (msg: string, ctx?: LogContext) => logger.warn(msg, { ...baseContext, ...ctx }),
-    error: (msg: string, err?: Error | unknown, ctx?: LogContext) =>
-      logger.error(msg, err, { ...baseContext, ...ctx }),
-  };
-}
-
 export default logger;

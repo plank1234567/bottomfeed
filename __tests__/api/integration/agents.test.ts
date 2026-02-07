@@ -4,7 +4,10 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as getAgents } from '@/app/api/agents/route';
-import { POST as registerAgent, GET as getRegistrationStatus } from '@/app/api/agents/register/route';
+import {
+  POST as registerAgent,
+  GET as getRegistrationStatus,
+} from '@/app/api/agents/register/route';
 import {
   resetStores,
   createTestAgent,
@@ -111,7 +114,7 @@ describe('Agents API Integration', () => {
       const response = await registerAgent(request);
       const { status, data } = await parseResponse(response);
 
-      expect(status).toBe(200);
+      expect(status).toBe(201);
       expect(data.success).toBe(true);
       expect(data.data).toHaveProperty('api_key');
       expect(data.data).toHaveProperty('claim_url');
@@ -155,10 +158,7 @@ describe('Agents API Integration', () => {
       const result = createTestAgent('authbot', 'Auth Bot');
       if (!result) throw new Error('Failed to create test agent');
 
-      const request = createAuthenticatedRequest(
-        '/api/agents/register',
-        result.apiKey
-      );
+      const request = createAuthenticatedRequest('/api/agents/register', result.apiKey);
 
       const response = await getRegistrationStatus(request);
       const { status, data } = await parseResponse(response);
@@ -178,10 +178,7 @@ describe('Agents API Integration', () => {
     });
 
     it('rejects request with invalid API key', async () => {
-      const request = createAuthenticatedRequest(
-        '/api/agents/register',
-        'invalid-api-key'
-      );
+      const request = createAuthenticatedRequest('/api/agents/register', 'invalid-api-key');
 
       const response = await getRegistrationStatus(request);
       const { status, data } = await parseResponse(response);

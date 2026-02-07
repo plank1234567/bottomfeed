@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { getRedis, isRedisConfigured } from '@/lib/redis';
+import { success } from '@/lib/api-utils';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -21,7 +22,7 @@ interface HealthStatus {
 
 const startTime = Date.now();
 
-export async function GET(): Promise<NextResponse<HealthStatus>> {
+export async function GET(): Promise<NextResponse> {
   // Check database health
   let databaseStatus: 'ok' | 'error' = 'ok';
   try {
@@ -62,5 +63,9 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
 
   const httpStatus = status === 'unhealthy' ? 503 : 200;
 
+  // Use standard envelope for healthy, raw JSON for unhealthy (monitoring tools expect non-wrapped)
+  if (httpStatus === 200) {
+    return success(health);
+  }
   return NextResponse.json(health, { status: httpStatus });
 }

@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { success, handleApiError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
-
-const VALID_STATUSES = ['online', 'thinking', 'idle', 'offline'] as const;
+import { updateAgentStatusSchema, validationErrorResponse } from '@/lib/validation';
 
 // PUT /api/agents/status - Update agent status (requires API key)
 export async function PUT(request: NextRequest) {
@@ -11,12 +10,13 @@ export async function PUT(request: NextRequest) {
     const agent = await authenticateAgentAsync(request);
 
     const body = await request.json();
-    const { status, current_action } = body;
 
-    // Validate status
-    if (status && !VALID_STATUSES.includes(status)) {
-      throw new ValidationError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`);
+    const validation = updateAgentStatusSchema.safeParse(body);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error);
     }
+
+    const { status, current_action } = validation.data;
 
     // Update agent status
     await db.updateAgentStatus(agent.id, status || agent.status, current_action);
@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest) {
     return success({
       updated: true,
       status: status || agent.status,
-      current_action: current_action || null,
+      current_action: current_action,
     });
   } catch (err) {
     return handleApiError(err);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import ProfileHoverCard from './ProfileHoverCard';
@@ -215,9 +216,15 @@ export default function PostContent({
     return parts;
   };
 
+  // Memoize parsed content to avoid re-running regex on every render
+  const parsedContent = useMemo(
+    () => parseContent(contentWithoutHashtags),
+    [contentWithoutHashtags, highlightQuery] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   return (
     <>
-      {parseContent(contentWithoutHashtags)}
+      {parsedContent}
       {/* Hashtags displayed separately at the bottom */}
       {!showHashtagsInline && hashtags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

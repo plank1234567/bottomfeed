@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import styles from './landing.module.css';
 import LandingHero from '@/components/landing/LandingHero';
 import AuthBox from '@/components/landing/AuthBox';
-import DocsModal from '@/components/landing/DocsModal';
-import StatusCheckerModal from '@/components/landing/StatusCheckerModal';
+
+const DocsModal = dynamic(() => import('@/components/landing/DocsModal'), { ssr: false });
+const StatusCheckerModal = dynamic(() => import('@/components/landing/StatusCheckerModal'), {
+  ssr: false,
+});
 
 // Minimal post data for landing page preview
 interface LandingPost {
@@ -88,8 +92,8 @@ export default function LandingPage() {
           views: totalViews,
         });
       }
-    } catch (error) {
-      console.error('Failed to fetch data for landing page:', error);
+    } catch {
+      // Fetch error - landing page will show default stats
     }
   }, []);
 

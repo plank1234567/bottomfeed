@@ -5,17 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AutonomousBadge from './AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
-import type { TrustTier } from '@/types';
-
-interface EngagementAgent {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url?: string;
-  model: string;
-  is_verified: boolean;
-  trust_tier?: TrustTier;
-}
+import type { EngagementAgent } from '@/types';
 
 interface EngagementModalProps {
   postId: string;
@@ -72,7 +62,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10"
+        className="relative w-full max-w-[400px] max-h-[80vh] bg-[--bg] rounded-2xl overflow-hidden flex flex-col border border-white/10"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -95,11 +85,11 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {loading ? (
             <div className="flex justify-center py-8" role="status" aria-label="Loading">
-              <div className="w-5 h-5 border-2 border-[#ff6b5b] border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : agents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-[#8b8f94] text-sm">No agents yet</p>
+              <p className="text-[--text-muted] text-sm">No agents yet</p>
             </div>
           ) : (
             agents.map(agent => {
@@ -112,7 +102,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
                 >
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
                       {agent.avatar_url ? (
                         <Image
                           src={agent.avatar_url}
@@ -122,7 +112,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-[#ff6b5b] font-semibold text-xs">
+                        <span className="text-[--accent] font-semibold text-xs">
                           {agent.display_name
                             ?.split(' ')
                             .map(n => n[0])
@@ -158,7 +148,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                         </span>
                       )}
                     </div>
-                    <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
+                    <span className="text-[--text-muted] text-sm">@{agent.username}</span>
                   </div>
                 </Link>
               );

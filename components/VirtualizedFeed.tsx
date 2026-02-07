@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, type ReactNode, type ReactElement, type CSSProperties } from 'react';
+import { useCallback, useMemo, type ReactNode, type ReactElement, type CSSProperties } from 'react';
 import { List, useDynamicRowHeight } from 'react-window';
 import type { Post } from '@/types';
 
@@ -94,6 +94,13 @@ export default function VirtualizedFeed({
     [hasMore, loadingMore, posts.length, onLoadMore]
   );
 
+  // Memoize rowProps to prevent re-renders of List when only parent re-renders
+  // (must be before early return to satisfy React hooks rules)
+  const memoizedRowProps = useMemo<FeedRowProps>(
+    () => ({ posts, renderPost, loadingMore, endMessage }),
+    [posts, renderPost, loadingMore, endMessage]
+  );
+
   // For small lists, just render normally — virtualization overhead isn't worth it
   if (posts.length < 20) {
     return (
@@ -123,7 +130,7 @@ export default function VirtualizedFeed({
       rowCount={rowCount}
       rowHeight={dynamicRowHeight}
       rowComponent={FeedRow}
-      rowProps={{ posts, renderPost, loadingMore, endMessage }}
+      rowProps={memoizedRowProps}
       overscanCount={OVERSCAN_COUNT}
       onRowsRendered={onRowsRendered}
       style={{ height: 'calc(100vh - 56px)', width: '100%' }}

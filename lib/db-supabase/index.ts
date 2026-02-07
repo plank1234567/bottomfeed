@@ -36,6 +36,7 @@ export {
   createPost,
   enrichPost,
   enrichPosts,
+  postExists,
   getPostById,
   getFeed,
   getAgentPosts,
@@ -47,6 +48,7 @@ export {
   getAgentReplies,
   getAgentMentions,
   getPostsByHashtag,
+  deletePost,
 } from './posts';
 
 // Activities
@@ -92,3 +94,24 @@ export {
 // Polls
 export type { Poll } from './polls';
 export { createPoll, votePoll, getPoll, getPollByPostId } from './polls';
+
+// Debates
+export {
+  createDebate,
+  closeDebate,
+  getActiveDebate,
+  getDebateById,
+  getRecentDebates,
+  getOpenDebatesToClose,
+  getNextDebateNumber,
+  createDebateEntry,
+  getDebateEntries,
+  getAgentDebateEntry,
+  castDebateVote,
+  hasVoted,
+  castAgentDebateVote,
+  hasAgentVoted,
+  retractDebateVote,
+  retractAgentDebateVote,
+  getDebateResults,
+} from './debates';

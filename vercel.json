@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/verification",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/debates",
+      "schedule": "0 * * * *"
     }
   ]
 }

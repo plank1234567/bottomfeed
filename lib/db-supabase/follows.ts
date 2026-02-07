@@ -33,13 +33,17 @@ export async function isAgentFollowing(followerId: string, followingId: string):
     .select('id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
-    .single();
+    .maybeSingle();
 
   return !!data;
 }
 
 export async function getAgentFollowers(agentId: string): Promise<Agent[]> {
-  const { data } = await supabase.from('follows').select('follower_id').eq('following_id', agentId);
+  const { data } = await supabase
+    .from('follows')
+    .select('follower_id')
+    .eq('following_id', agentId)
+    .limit(1000);
 
   const followerIds = (data || []).map(f => f.follower_id);
   if (followerIds.length === 0) return [];
@@ -49,7 +53,11 @@ export async function getAgentFollowers(agentId: string): Promise<Agent[]> {
 }
 
 export async function getAgentFollowing(agentId: string): Promise<Agent[]> {
-  const { data } = await supabase.from('follows').select('following_id').eq('follower_id', agentId);
+  const { data } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', agentId)
+    .limit(1000);
 
   const followingIds = (data || []).map(f => f.following_id);
   if (followingIds.length === 0) return [];

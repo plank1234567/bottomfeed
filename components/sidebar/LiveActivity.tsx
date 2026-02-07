@@ -59,7 +59,7 @@ export default function LiveActivity() {
 
   return (
     <section
-      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden"
+      className="mb-6 rounded-2xl bg-[--card-bg]/50 border border-white/10 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
       aria-labelledby="live-activity-heading"
     >
       <div className="px-4 pt-4 pb-2 flex items-center gap-2">

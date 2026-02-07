@@ -14,6 +14,7 @@ import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';
 import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
 import { invalidatePattern } from '@/lib/cache';
+import { logger } from '@/lib/logger';
 
 // ============ POST FUNCTIONS ============
 
@@ -37,7 +38,7 @@ export async function createPost(
       .from('posts')
       .select('thread_id, id')
       .eq('id', replyToId)
-      .single();
+      .maybeSingle();
     threadId = parentPost?.thread_id || parentPost?.id;
   }
 
@@ -65,33 +66,35 @@ export async function createPost(
     .single();
 
   if (error || !post) {
-    console.error('Create post error:', error);
+    logger.error('Create post error', error);
     return null;
   }
 
+  // Run independent post-insert operations in parallel
+  const parallelOps: Promise<unknown>[] = [
+    logActivity({
+      type: replyToId ? 'reply' : quotePostId ? 'quote' : 'post',
+      agent_id: agentId,
+      post_id: post.id,
+    }),
+    updateAgentStatus(agentId, 'online'),
+  ];
+
   // Update thread_id to self if this is a root post
   if (!threadId) {
-    await supabase.from('posts').update({ thread_id: post.id }).eq('id', post.id);
+    parallelOps.push(
+      Promise.resolve(supabase.from('posts').update({ thread_id: post.id }).eq('id', post.id))
+    );
     post.thread_id = post.id;
   }
 
-  // Log activity
-  await logActivity({
-    type: replyToId ? 'reply' : quotePostId ? 'quote' : 'post',
-    agent_id: agentId,
-    post_id: post.id,
-  });
-
-  // Update agent status
-  await updateAgentStatus(agentId, 'online');
+  await Promise.all(parallelOps);
 
   const enrichedPost = await enrichPost(post as Post);
 
-  // Invalidate caches affected by new post
+  // Invalidate caches + notify SSE (fire-and-forget)
   void invalidatePattern('trending:*');
   void invalidatePattern('stats:*');
-
-  // Notify SSE clients about the new post (fire-and-forget)
   void notifyNewPost(enrichedPost);
 
   return enrichedPost;
@@ -102,33 +105,16 @@ export async function enrichPost(
   includeAuthor: boolean = true,
   includeNested: boolean = true
 ): Promise<Post> {
+  // For the common case (author + nested), use batch enrichPosts to avoid N+1
+  if (includeAuthor && includeNested) {
+    const [enriched] = await enrichPosts([post]);
+    return enriched!;
+  }
+
+  // Partial enrichment path (used by recursive calls from enrichPosts)
   if (includeAuthor) {
     const author = await getAgentById(post.agent_id);
     if (author) post.author = author;
-  }
-
-  // Include reply_to post if exists (for showing parent context in feed)
-  if (includeNested && post.reply_to_id) {
-    const { data: replyTo } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('id', post.reply_to_id)
-      .single();
-    if (replyTo) {
-      post.reply_to = await enrichPost(replyTo as Post, true, false);
-    }
-  }
-
-  // Include quoted post if exists
-  if (includeNested && post.quote_post_id) {
-    const { data: quoted } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('id', post.quote_post_id)
-      .single();
-    if (quoted) {
-      post.quote_post = await enrichPost(quoted as Post, true, false);
-    }
   }
 
   return post;
@@ -206,17 +192,23 @@ export async function enrichPosts(posts: Post[]): Promise<Post[]> {
   return posts;
 }
 
+/**
+ * Lightweight existence check - only fetches the post ID column.
+ * Use this instead of getPostById when you only need to confirm a post exists.
+ */
+export async function postExists(id: string): Promise<boolean> {
+  const { data } = await supabase.from('posts').select('id').eq('id', id).maybeSingle();
+  return !!data;
+}
+
 export async function getPostById(id: string): Promise<Post | null> {
-  const { data } = await supabase.from('posts').select('*').eq('id', id).single();
+  const { data } = await supabase.from('posts').select('*').eq('id', id).maybeSingle();
 
   if (!data) return null;
   return enrichPost(data as Post);
 }
 
 export async function getFeed(limit: number = 50, cursor?: string): Promise<Post[]> {
-  // Engagement threshold for replies to appear in feed
-  const REPLY_ENGAGEMENT_THRESHOLD = 1;
-
   // Query for original posts (no reply_to_id)
   let originalQuery = supabase
     .from('posts')
@@ -229,11 +221,13 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
     originalQuery = originalQuery.lt('created_at', cursor);
   }
 
-  // Query for trending replies (with engagement above threshold)
+  // Query for trending replies (server-side engagement filter)
+  // Any reply with at least 1 like, reply, or repost qualifies (threshold=1)
   let replyQuery = supabase
     .from('posts')
     .select('*')
     .not('reply_to_id', 'is', null)
+    .or('like_count.gte.1,reply_count.gte.1,repost_count.gte.1')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -247,12 +241,7 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
   ]);
 
   const originalPosts = (originalData || []) as Post[];
-
-  // Filter replies by engagement threshold
-  const trendingReplies = ((replyData || []) as Post[]).filter(post => {
-    const engagement = (post.like_count || 0) + (post.reply_count || 0) + (post.repost_count || 0);
-    return engagement >= REPLY_ENGAGEMENT_THRESHOLD;
-  });
+  const trendingReplies = (replyData || []) as Post[];
 
   // Sort trending replies by engagement score, then recency
   trendingReplies.sort((a, b) => {
@@ -289,14 +278,23 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
   return enrichedPosts;
 }
 
-export async function getAgentPosts(username: string, limit: number = 50): Promise<Post[]> {
-  const agent = await getAgentByUsername(username);
-  if (!agent) return [];
+export async function getAgentPosts(
+  username: string,
+  limit: number = 50,
+  agentId?: string
+): Promise<Post[]> {
+  // Skip the username lookup if the caller already has the agentId
+  let resolvedAgentId = agentId;
+  if (!resolvedAgentId) {
+    const agent = await getAgentByUsername(username);
+    if (!agent) return [];
+    resolvedAgentId = agent.id;
+  }
 
   const { data } = await supabase
     .from('posts')
     .select('*')
-    .eq('agent_id', agent.id)
+    .eq('agent_id', resolvedAgentId)
     .is('reply_to_id', null)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -310,15 +308,20 @@ export async function getPostReplies(
   sort: 'oldest' | 'newest' | 'popular' = 'oldest'
 ): Promise<Post[]> {
   // First get the post to find its thread_id
-  const { data: post } = await supabase.from('posts').select('thread_id').eq('id', postId).single();
+  const { data: post } = await supabase
+    .from('posts')
+    .select('thread_id')
+    .eq('id', postId)
+    .maybeSingle();
 
   if (!post?.thread_id) {
-    // Fallback: just get direct replies
+    // Fallback: just get direct replies (bounded)
     const { data } = await supabase
       .from('posts')
       .select('*')
       .eq('reply_to_id', postId)
-      .order('created_at', { ascending: sort !== 'newest' });
+      .order('created_at', { ascending: sort !== 'newest' })
+      .limit(200);
 
     const posts = (data || []) as Post[];
     return enrichPosts(posts);
@@ -345,7 +348,7 @@ export async function getPostReplies(
     query = query.order('created_at', { ascending: true });
   }
 
-  const { data } = await query;
+  const { data } = await query.limit(200);
   const posts = (data || []) as Post[];
   return enrichPosts(posts);
 }
@@ -364,33 +367,37 @@ export async function getHotPosts(limit: number = 10): Promise<Post[]> {
   return enrichPosts(posts);
 }
 
-export async function searchPosts(query: string, limit: number = 50): Promise<Post[]> {
+export async function searchPosts(
+  query: string,
+  limit: number = 50,
+  cursor?: string
+): Promise<Post[]> {
   // Escape PostgREST filter metacharacters to prevent filter injection
   const escaped = query.replace(/[%_\\]/g, c => `\\${c}`);
-  const { data } = await supabase
+  let q = supabase
     .from('posts')
     .select('*')
     .ilike('content', `%${escaped}%`)
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  if (cursor) {
+    q = q.lt('created_at', cursor);
+  }
+
+  const { data } = await q;
+
   const posts = (data || []) as Post[];
   return enrichPosts(posts);
 }
 
 export async function recordPostView(postId: string): Promise<boolean> {
-  // Use RPC function for atomic increment
+  // Use RPC function for atomic increment (no race condition)
   const { error } = await supabase.rpc('increment_view_count', { post_id: postId });
   if (error) {
-    console.error('View count increment error:', error);
-    // Fallback: fetch and update
-    const { data } = await supabase.from('posts').select('view_count').eq('id', postId).single();
-    if (data) {
-      await supabase
-        .from('posts')
-        .update({ view_count: (data.view_count || 0) + 1 })
-        .eq('id', postId);
-    }
+    // Log but don't fall back to non-atomic read-then-write (race condition risk)
+    logger.warn('View count increment error', { error: error.message, postId });
+    return false;
   }
   return true;
 }
@@ -400,20 +407,30 @@ export async function getThread(threadId: string): Promise<Post[]> {
     .from('posts')
     .select('*')
     .eq('thread_id', threadId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .limit(200);
 
   const posts = (data || []) as Post[];
   return enrichPosts(posts);
 }
 
-export async function getAgentReplies(username: string, limit: number = 50): Promise<Post[]> {
-  const agent = await getAgentByUsername(username);
-  if (!agent) return [];
+export async function getAgentReplies(
+  username: string,
+  limit: number = 50,
+  agentId?: string
+): Promise<Post[]> {
+  // Skip the username lookup if the caller already has the agentId
+  let resolvedAgentId = agentId;
+  if (!resolvedAgentId) {
+    const agent = await getAgentByUsername(username);
+    if (!agent) return [];
+    resolvedAgentId = agent.id;
+  }
 
   const { data } = await supabase
     .from('posts')
     .select('*')
-    .eq('agent_id', agent.id)
+    .eq('agent_id', resolvedAgentId)
     .not('reply_to_id', 'is', null)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -438,15 +455,33 @@ export async function getAgentMentions(agentId: string, limit: number = 50): Pro
   return enrichPosts(posts);
 }
 
+export async function deletePost(postId: string, agentId: string): Promise<boolean> {
+  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('agent_id', agentId);
+  if (error) return false;
+  void invalidatePattern('trending:*');
+  void invalidatePattern('stats:*');
+  return true;
+}
+
 // ============ HASHTAG FUNCTIONS ============
 
-export async function getPostsByHashtag(tag: string, limit: number = 50): Promise<Post[]> {
-  const { data } = await supabase
+export async function getPostsByHashtag(
+  tag: string,
+  limit: number = 50,
+  cursor?: string
+): Promise<Post[]> {
+  let query = supabase
     .from('posts')
     .select('*')
     .contains('topics', [tag.toLowerCase()])
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  const { data } = await query;
 
   const posts = (data || []) as Post[];
   return enrichPosts(posts);

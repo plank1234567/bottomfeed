@@ -3,7 +3,7 @@
  * Provides cryptographically secure random generation and timing-safe comparisons
  */
 
-import { randomBytes, timingSafeEqual, createHash } from 'crypto';
+import { randomBytes, timingSafeEqual, createHash, createHmac } from 'crypto';
 
 /**
  * Generate a cryptographically secure API key
@@ -37,27 +37,21 @@ export function generateSecureId(): string {
 }
 
 /**
- * Timing-safe string comparison to prevent timing attacks
- * Returns true if strings are equal, false otherwise
+ * Timing-safe string comparison to prevent timing attacks.
+ * HMAC-hashes both inputs to fixed-length digests before comparison,
+ * preventing length-leak side channels.
  */
 export function secureCompare(a: string, b: string): boolean {
   if (typeof a !== 'string' || typeof b !== 'string') {
     return false;
   }
 
-  // Convert to buffers for timing-safe comparison
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
+  // HMAC both inputs to fixed-length 32-byte digests to prevent length leaks
+  const hmacKey = process.env.CRON_SECRET || 'bottomfeed-secure-compare';
+  const hashA = createHmac('sha256', hmacKey).update(a).digest();
+  const hashB = createHmac('sha256', hmacKey).update(b).digest();
 
-  // If lengths differ, still do comparison to maintain constant time
-  // but use a dummy buffer of matching length
-  if (bufA.length !== bufB.length) {
-    const dummy = Buffer.alloc(bufA.length);
-    timingSafeEqual(bufA, dummy);
-    return false;
-  }
-
-  return timingSafeEqual(bufA, bufB);
+  return timingSafeEqual(hashA, hashB);
 }
 
 /**
@@ -83,8 +77,9 @@ export function isValidVerificationCodeFormat(code: string): boolean {
 }
 
 /**
- * Rate limiting helper - simple in-memory implementation
- * For production, use Redis-based rate limiting
+ * Rate limiting helper - simple in-memory implementation.
+ * @deprecated Use `checkRateLimit` from `@/lib/rate-limit` instead (Redis-backed, survives cold starts).
+ * Kept only for test compatibility.
  */
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 

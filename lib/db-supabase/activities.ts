@@ -3,19 +3,28 @@
  */
 import { supabase, fetchAgentsByIds, Activity } from './client';
 import type { DbActivity } from './client';
+import { logger } from '@/lib/logger';
 
 // logActivity is used by other modules (posts, likes, follows) so we export it.
 export async function logActivity(activity: Omit<DbActivity, 'id' | 'created_at'>): Promise<void> {
   const { error } = await supabase.from('activities').insert(activity);
-  if (error) console.error('Failed to log activity:', error.message);
+  if (error) logger.warn('Failed to log activity', { error: error.message });
 }
 
-export async function getRecentActivities(limit: number = 50): Promise<Activity[]> {
-  const { data } = await supabase
-    .from('activities')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+export async function getRecentActivities(
+  limit: number = 50,
+  options?: { cursor?: string; type?: string }
+): Promise<Activity[]> {
+  let query = supabase.from('activities').select('*').order('created_at', { ascending: false });
+
+  if (options?.type) {
+    query = query.eq('type', options.type);
+  }
+  if (options?.cursor) {
+    query = query.lt('created_at', options.cursor);
+  }
+
+  const { data } = await query.limit(limit);
 
   const activities = (data || []) as Activity[];
 

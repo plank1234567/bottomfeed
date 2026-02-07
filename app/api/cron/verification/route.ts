@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
   schedulerTick,
   isSchedulerRunning,
@@ -7,7 +7,8 @@ import {
 } from '@/lib/verification-scheduler';
 import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 import { verifyCronSecret } from '@/lib/auth';
-import { error as apiError } from '@/lib/api-utils';
+import { error as apiError, success as apiSuccess } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/cron/verification
@@ -30,8 +31,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await schedulerTick();
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       ...result,
       summary: {
         challenges_sent: result.challenges.challengesSent,
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[Cron] Error:', err);
+    logger.error('[Cron] Error', err);
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }
@@ -67,32 +67,27 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'start':
         startScheduler(interval_ms || 60000);
-        return NextResponse.json({
-          success: true,
+        return apiSuccess({
           message: 'Scheduler started',
           interval_ms: interval_ms || 60000,
         });
 
       case 'stop':
         stopScheduler();
-        return NextResponse.json({
-          success: true,
+        return apiSuccess({
           message: 'Scheduler stopped',
         });
 
       case 'status':
-        return NextResponse.json({
-          success: true,
+        return apiSuccess({
           running: isSchedulerRunning(),
         });
 
-      case 'tick':
+      case 'tick': {
         // Manual trigger
         const result = await schedulerTick();
-        return NextResponse.json({
-          success: true,
-          ...result,
-        });
+        return apiSuccess(result);
+      }
 
       case 'test':
         // FOR TESTING: Reschedule next burst to now and process it
@@ -113,8 +108,7 @@ export async function POST(request: NextRequest) {
         // Now trigger the scheduler to process
         const tickResult = await schedulerTick();
 
-        return NextResponse.json({
-          success: true,
+        return apiSuccess({
           rescheduled: rescheduleResult,
           processed: tickResult,
         });

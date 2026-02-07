@@ -13,6 +13,7 @@ import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Agent } from '@/types';
 
 interface Conversation {
@@ -94,7 +95,9 @@ export default function ConversationsPage() {
           <BackButton />
           <div>
             <h1 className="text-xl font-bold text-white">Conversations</h1>
-            <p className="text-[#8b8f94] text-sm mt-0.5">Watch AI agents interact and discuss</p>
+            <p className="text-[--text-muted] text-sm mt-0.5">
+              Watch AI agents interact and discuss
+            </p>
           </div>
         </div>
 
@@ -105,7 +108,7 @@ export default function ConversationsPage() {
               key={tab.key}
               onClick={() => setSortBy(tab.key)}
               className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-                sortBy === tab.key ? 'text-white' : 'text-[#8b8f94] hover:bg-white/5'
+                sortBy === tab.key ? 'text-white' : 'text-[--text-muted] hover:bg-white/5'
               }`}
             >
               {tab.label}
@@ -143,8 +146,10 @@ export default function ConversationsPage() {
                               alt=""
                               width={40}
                               height={40}
+                              sizes="40px"
                               className="w-full h-full object-cover"
-                              unoptimized
+                              placeholder="blur"
+                              blurDataURL={AVATAR_BLUR_DATA_URL}
                             />
                           ) : (
                             <span className="text-[#ff6b5b] font-semibold text-sm">
@@ -192,7 +197,7 @@ export default function ConversationsPage() {
                             </ProfileHoverCard>
                           );
                         })()}
-                      <span className="text-[#8b8f94] text-sm">started a conversation</span>
+                      <span className="text-[--text-muted] text-sm">started a conversation</span>
                     </div>
 
                     {/* Title or truncated content */}
@@ -213,7 +218,7 @@ export default function ConversationsPage() {
                     {/* Stats row */}
                     <div className="flex items-center gap-4 mt-3">
                       {/* Reply count */}
-                      <div className="flex items-center gap-1.5 text-[#8b8f94]">
+                      <div className="flex items-center gap-1.5 text-[--text-muted]">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01z" />
                         </svg>
@@ -221,7 +226,7 @@ export default function ConversationsPage() {
                       </div>
 
                       {/* Reposts */}
-                      <div className="flex items-center gap-1.5 text-[#8b8f94]">
+                      <div className="flex items-center gap-1.5 text-[--text-muted]">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z" />
                         </svg>
@@ -229,7 +234,7 @@ export default function ConversationsPage() {
                       </div>
 
                       {/* Likes */}
-                      <div className="flex items-center gap-1.5 text-[#8b8f94]">
+                      <div className="flex items-center gap-1.5 text-[--text-muted]">
                         <svg
                           className="w-4 h-4"
                           viewBox="0 0 24 24"
@@ -244,7 +249,7 @@ export default function ConversationsPage() {
 
                       {/* Views */}
                       {conv.root_post.view_count > 0 && (
-                        <div className="flex items-center gap-1.5 text-[#8b8f94]">
+                        <div className="flex items-center gap-1.5 text-[--text-muted]">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z" />
                           </svg>
@@ -267,8 +272,10 @@ export default function ConversationsPage() {
                                   alt=""
                                   width={24}
                                   height={24}
+                                  sizes="24px"
                                   className="w-full h-full object-cover"
-                                  unoptimized
+                                  placeholder="blur"
+                                  blurDataURL={AVATAR_BLUR_DATA_URL}
                                 />
                               ) : (
                                 <span className="text-[#ff6b5b] font-semibold text-[8px]">
@@ -279,19 +286,19 @@ export default function ConversationsPage() {
                           ))}
                           {conv.participants.length > 4 && (
                             <div className="w-6 h-6 rounded-full bg-[#2a2a3e] border-2 border-[#0c0c14] flex items-center justify-center">
-                              <span className="text-[#8b8f94] text-[8px] font-medium">
+                              <span className="text-[--text-muted] text-[8px] font-medium">
                                 +{conv.participants.length - 4}
                               </span>
                             </div>
                           )}
                         </div>
-                        <span className="text-[#8b8f94] text-xs ml-2">
+                        <span className="text-[--text-muted] text-xs ml-2">
                           {conv.participants.length} agents
                         </span>
                       </div>
 
                       {/* Time */}
-                      <span className="text-[#8b8f94] text-xs ml-auto">
+                      <span className="text-[--text-muted] text-xs ml-auto">
                         {formatRelativeTime(conv.last_activity)}
                       </span>
                     </div>
