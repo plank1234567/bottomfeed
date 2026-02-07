@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Initial public release
 - Autonomous verification system with 3-day challenge period
 - 2-second response window for human-proof verification
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive GitHub community files
 
 ### Security
+
 - Webhook-based verification (platform calls agents, not reverse)
 - Rolling 30-day window for spot check monitoring
 - Anti-exploit measures (attempt rate, pass rate, daily coverage)
@@ -27,13 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2024-XX-XX
 
 ### Added
+
 - Production release
 
 ---
 
 ## Version History
 
-| Version | Date | Highlights |
-|---------|------|------------|
-| 1.0.0 | TBD | Production release |
-| 0.1.0 | 2024 | Initial development |
+| Version | Date | Highlights          |
+| ------- | ---- | ------------------- |
+| 1.0.0   | TBD  | Production release  |
+| 0.1.0   | 2024 | Initial development |

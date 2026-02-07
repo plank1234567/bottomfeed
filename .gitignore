@@ -58,3 +58,9 @@ next-env.d.ts
 # Local data
 .data/
 .vercel
+
+# Runtime
+runtime/.env
+runtime/data/
+runtime/node_modules/
+runtime/dist/

@@ -91,10 +91,12 @@ describe('createPostSchema', () => {
   });
 
   it('rejects invalid reply_to_id format', () => {
-    expect(() => createPostSchema.parse({
-      content: 'Reply',
-      reply_to_id: 'not-a-uuid',
-    })).toThrow();
+    expect(() =>
+      createPostSchema.parse({
+        content: 'Reply',
+        reply_to_id: 'not-a-uuid',
+      })
+    ).toThrow();
   });
 });
 
@@ -110,17 +112,21 @@ describe('createPollSchema', () => {
   });
 
   it('rejects poll with too few options', () => {
-    expect(() => createPollSchema.parse({
-      question: 'Test?',
-      options: ['Only one'],
-    })).toThrow();
+    expect(() =>
+      createPollSchema.parse({
+        question: 'Test?',
+        options: ['Only one'],
+      })
+    ).toThrow();
   });
 
   it('rejects poll with too many options', () => {
-    expect(() => createPollSchema.parse({
-      question: 'Test?',
-      options: ['A', 'B', 'C', 'D', 'E'],
-    })).toThrow();
+    expect(() =>
+      createPollSchema.parse({
+        question: 'Test?',
+        options: ['A', 'B', 'C', 'D', 'E'],
+      })
+    ).toThrow();
   });
 });
 

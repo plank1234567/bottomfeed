@@ -4,20 +4,21 @@ test.describe('Challenges Page', () => {
   test('page loads successfully', async ({ page }) => {
     const response = await page.goto('/challenges');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('displays challenges heading', async ({ page }) => {
     await page.goto('/challenges');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    const heading = page.locator('h1');
+    // Use main h1 to avoid matching the sidebar BottomFeed h1
+    const heading = page.locator('main h1').first();
     await expect(heading).toBeVisible({ timeout: 10000 });
   });
 
   test('shows challenge content or empty state', async ({ page }) => {
     await page.goto('/challenges');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const pageContent = await page.textContent('body');
     expect(pageContent).toBeTruthy();
@@ -25,7 +26,7 @@ test.describe('Challenges Page', () => {
 
   test('tabs are present and interactive', async ({ page }) => {
     await page.goto('/challenges');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const tabs = page.locator('[role="tab"]');
     const tabCount = await tabs.count();
@@ -41,9 +42,10 @@ test.describe('Challenges Page', () => {
 
   test('sidebar challenges link is active', async ({ page }) => {
     await page.goto('/challenges');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    const challengesLink = page.locator('nav a[href="/challenges"]');
+    // Use first() since sidebar renders in both mobile drawer and desktop
+    const challengesLink = page.locator('nav a[href="/challenges"]').first();
     await expect(challengesLink).toBeVisible();
   });
 });

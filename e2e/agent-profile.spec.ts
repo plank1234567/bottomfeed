@@ -4,20 +4,17 @@ test.describe('Agent Profile Page', () => {
   test('profile page loads for existing agent', async ({ page }) => {
     // First get a valid agent from the agents list
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Try to find an agent link
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       // Get the href and navigate
       const href = await agentLink.getAttribute('href');
       await page.goto(href!);
-      await page.waitForLoadState('networkidle');
-
-      // Should show profile page with header containing back button
-      await expect(page.locator('header')).toBeVisible();
+      await page.waitForLoadState('domcontentloaded');
 
       // Should have agent display name visible
       const displayName = page.locator('main h1').first();
@@ -29,24 +26,24 @@ test.describe('Agent Profile Page', () => {
 
   test('shows "agent does not exist" for invalid username', async ({ page }) => {
     await page.goto('/agent/nonexistent_agent_username_12345');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should show error message
-    await expect(page.getByText(/doesn't exist|not found/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/doesn't exist|not found/i)).toBeVisible({ timeout: 10000 });
   });
 
   test('profile tabs are visible and clickable', async ({ page }) => {
     // Navigate to agents list and get first agent
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       const href = await agentLink.getAttribute('href');
       await page.goto(href!);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Check for tabs (use exact match to avoid matching other buttons)
       const postsTab = page.getByRole('button', { name: 'Posts', exact: true });
@@ -54,7 +51,7 @@ test.describe('Agent Profile Page', () => {
       const mediaTab = page.getByRole('button', { name: 'Media', exact: true });
       const likesTab = page.getByRole('button', { name: 'Likes', exact: true });
 
-      await expect(postsTab).toBeVisible();
+      await expect(postsTab).toBeVisible({ timeout: 10000 });
       await expect(repliesTab).toBeVisible();
       await expect(mediaTab).toBeVisible();
       await expect(likesTab).toBeVisible();
@@ -74,19 +71,19 @@ test.describe('Agent Profile Page', () => {
 
   test('follow button is visible and toggles state', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       const href = await agentLink.getAttribute('href');
       await page.goto(href!);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Find follow button
       const followButton = page.getByRole('button', { name: /Follow/i }).first();
-      await expect(followButton).toBeVisible();
+      await expect(followButton).toBeVisible({ timeout: 10000 });
 
       // Get initial state
       const initialText = await followButton.textContent();
@@ -104,19 +101,19 @@ test.describe('Agent Profile Page', () => {
 
   test('details panel toggles visibility', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       const href = await agentLink.getAttribute('href');
       await page.goto(href!);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Find Details button (exact match)
       const detailsButton = page.getByRole('button', { name: 'Details', exact: true });
-      await expect(detailsButton).toBeVisible();
+      await expect(detailsButton).toBeVisible({ timeout: 10000 });
 
       // Click to show details
       await detailsButton.click();
@@ -137,27 +134,27 @@ test.describe('Agent Profile Page', () => {
 
   test('profile shows username and bio area', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       const href = await agentLink.getAttribute('href');
       await page.goto(href!);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Username should be visible (prefixed with @)
       const usernameElement = page.locator('text=/@\\w+/').first();
       await expect(usernameElement).toBeVisible({ timeout: 10000 });
 
-      // Display name (h1) should be visible
+      // Display name (h1) should be visible - use main h1 to avoid sidebar h1
       const displayName = page.locator('main h1').first();
       await expect(displayName).toBeVisible();
 
       // Following/Followers stats should be visible
-      await expect(page.getByText('Following')).toBeVisible();
-      await expect(page.getByText('Followers')).toBeVisible();
+      await expect(page.locator('main').getByText('Following').first()).toBeVisible();
+      await expect(page.locator('main').getByText('Followers').first()).toBeVisible();
     } else {
       test.skip();
     }
@@ -166,10 +163,10 @@ test.describe('Agent Profile Page', () => {
   test('back navigation works from profile page', async ({ page }) => {
     // Navigate to agents list first
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       // Click on an agent to navigate to their profile

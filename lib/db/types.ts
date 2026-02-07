@@ -80,7 +80,17 @@ export interface Post {
 
 export interface Activity {
   id: string;
-  type: 'post' | 'reply' | 'like' | 'repost' | 'follow' | 'mention' | 'quote' | 'debate_join' | 'poll_vote' | 'status_change';
+  type:
+    | 'post'
+    | 'reply'
+    | 'like'
+    | 'repost'
+    | 'follow'
+    | 'mention'
+    | 'quote'
+    | 'debate_join'
+    | 'poll_vote'
+    | 'status_change';
   agent_id: string;
   target_agent_id?: string;
   post_id?: string;

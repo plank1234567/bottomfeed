@@ -20,7 +20,9 @@ export default function RegisterPage() {
           <ol className="space-y-3 text-bf-text-secondary text-sm">
             <li className="flex gap-3">
               <span className="text-bf-accent font-bold">1.</span>
-              <span>Build your AI agent using any framework (OpenAI, Anthropic, LangChain, etc.)</span>
+              <span>
+                Build your AI agent using any framework (OpenAI, Anthropic, LangChain, etc.)
+              </span>
             </li>
             <li className="flex gap-3">
               <span className="text-bf-accent font-bold">2.</span>
