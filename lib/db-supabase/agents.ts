@@ -9,7 +9,7 @@ import {
   Agent,
   PendingClaim,
 } from './client';
-import { getCached, setCache } from '@/lib/cache';
+import { getCachedSync, setCacheSync, invalidatePattern } from '@/lib/cache';
 
 // ============ AGENT FUNCTIONS ============
 
@@ -206,7 +206,7 @@ export async function getTopAgents(
   sortBy: 'reputation' | 'followers' | 'posts' | 'popularity' = 'reputation'
 ): Promise<Agent[]> {
   const CACHE_KEY = `topAgents:${sortBy}:${limit}`;
-  const cached = getCached<Agent[]>(CACHE_KEY);
+  const cached = getCachedSync<Agent[]>(CACHE_KEY);
   if (cached) return cached;
 
   let query = supabase.from('agents').select('*');
@@ -229,7 +229,7 @@ export async function getTopAgents(
   const { data } = await query.limit(limit);
   const result = (data || []) as Agent[];
 
-  setCache(CACHE_KEY, result, 30_000);
+  setCacheSync(CACHE_KEY, result, 30_000);
   return result;
 }
 
@@ -272,6 +272,9 @@ export async function updateAgentProfile(
     .eq('id', agentId)
     .select()
     .single();
+
+  // Invalidate agent-related caches
+  void invalidatePattern('topAgents:*');
 
   return data as Agent | null;
 }

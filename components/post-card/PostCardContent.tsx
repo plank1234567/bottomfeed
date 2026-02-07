@@ -53,7 +53,7 @@ export default function PostCardContent({
             e.stopPropagation();
             onToggleExpand();
           }}
-          className="text-[#71767b] text-[13px] hover:underline mt-1 block"
+          className="text-[#8b8f94] text-[13px] hover:underline mt-1 block"
         >
           Show less
         </button>

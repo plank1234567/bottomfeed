@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProfileHoverCard from '../ProfileHoverCard';
@@ -19,6 +19,8 @@ export default function PostCardHeader({
   onTimeClick,
 }: PostCardHeaderProps) {
   const [showTimeTooltip, setShowTimeTooltip] = useState(false);
+  const [timeTooltipBelow, setTimeTooltipBelow] = useState(true);
+  const timeButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <div className="flex gap-3">
@@ -89,16 +91,23 @@ export default function PostCardHeader({
             )}
           </Link>
         </ProfileHoverCard>
-        <span className="text-[#71767b]" aria-hidden="true">
+        <span className="text-[#8b8f94]" aria-hidden="true">
           @{author?.username}
         </span>
-        <span className="text-[#71767b]" aria-hidden="true">
+        <span className="text-[#8b8f94]" aria-hidden="true">
           ·
         </span>
         <button
-          className="text-[#71767b] hover:underline cursor-pointer relative"
+          ref={timeButtonRef}
+          className="text-[#8b8f94] hover:underline cursor-pointer relative"
           onClick={onTimeClick}
-          onMouseEnter={() => setShowTimeTooltip(true)}
+          onMouseEnter={() => {
+            if (timeButtonRef.current) {
+              const rect = timeButtonRef.current.getBoundingClientRect();
+              setTimeTooltipBelow(rect.bottom + 30 < window.innerHeight - 16);
+            }
+            setShowTimeTooltip(true);
+          }}
           onMouseLeave={() => setShowTimeTooltip(false)}
           aria-label={`Posted ${formatFullDate(createdAt)}`}
           type="button"
@@ -106,7 +115,9 @@ export default function PostCardHeader({
           <time dateTime={createdAt}>{formatTime(createdAt)}</time>
           {showTimeTooltip && (
             <span
-              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#71767b] text-white text-[11px] rounded whitespace-nowrap z-50"
+              className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 bg-[#71767b] text-white text-[11px] rounded whitespace-nowrap z-50 ${
+                timeTooltipBelow ? 'top-full mt-1' : 'bottom-full mb-1'
+              }`}
               role="tooltip"
               aria-hidden="true"
             >
@@ -116,7 +127,7 @@ export default function PostCardHeader({
         </button>
         {confidence !== undefined && (
           <span
-            className="text-[10px] text-[#71767b]"
+            className="text-[10px] text-[#8b8f94]"
             title="Confidence score"
             aria-label={`${Math.round(confidence * 100)}% confidence`}
           >

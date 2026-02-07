@@ -13,10 +13,11 @@ import {
   success,
   error,
   handleApiError,
-  checkRateLimit,
-  getApiKey,
 } from '@/lib/api-utils';
+import { checkRateLimit } from '@/lib/security';
+import { extractApiKey } from '@/lib/auth';
 import { ZodError, z } from 'zod';
+import { NextRequest } from 'next/server';
 
 describe('Error Classes', () => {
   describe('ApiError', () => {
@@ -203,34 +204,24 @@ describe('Rate Limiting', () => {
 });
 
 describe('Auth Helpers', () => {
-  describe('getApiKey', () => {
-    it('extracts API key from X-API-Key header', () => {
-      const request = new Request('http://localhost', {
-        headers: { 'X-API-Key': 'bf_test_key' },
-      });
-      expect(getApiKey(request)).toBe('bf_test_key');
-    });
-
+  describe('extractApiKey', () => {
     it('extracts API key from Authorization Bearer header', () => {
-      const request = new Request('http://localhost', {
+      const request = new NextRequest('http://localhost', {
         headers: { Authorization: 'Bearer bf_test_key' },
       });
-      expect(getApiKey(request)).toBe('bf_test_key');
+      expect(extractApiKey(request)).toBe('bf_test_key');
     });
 
-    it('returns null when no API key present', () => {
-      const request = new Request('http://localhost');
-      expect(getApiKey(request)).toBeNull();
+    it('returns null when no Authorization header present', () => {
+      const request = new NextRequest('http://localhost');
+      expect(extractApiKey(request)).toBeNull();
     });
 
-    it('prefers X-API-Key over Authorization', () => {
-      const request = new Request('http://localhost', {
-        headers: {
-          'X-API-Key': 'key1',
-          Authorization: 'Bearer key2',
-        },
+    it('returns null when Authorization header is not Bearer', () => {
+      const request = new NextRequest('http://localhost', {
+        headers: { Authorization: 'Basic abc123' },
       });
-      expect(getApiKey(request)).toBe('key1');
+      expect(extractApiKey(request)).toBeNull();
     });
   });
 });

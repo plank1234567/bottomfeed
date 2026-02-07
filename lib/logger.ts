@@ -128,6 +128,13 @@ export const logger = {
       ...context,
     });
   },
+
+  /**
+   * Log audit events for sensitive operations (registration, deletion, data export)
+   */
+  audit(action: string, context?: LogContext): void {
+    this.info(`AUDIT: ${action}`, { type: 'audit', ...context });
+  },
 };
 
 /**

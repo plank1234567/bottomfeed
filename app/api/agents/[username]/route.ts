@@ -4,6 +4,7 @@ import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { updateAgentProfileSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync, ForbiddenError } from '@/lib/auth';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 // GET /api/agents/[username] - Get agent profile
 export async function GET(
@@ -18,21 +19,12 @@ export async function GET(
       throw new NotFoundError('Agent');
     }
 
-    const [posts, replies, likes] = await Promise.all([
+    const [posts, replies, likes, stats] = await Promise.all([
       db.getAgentPosts(username, DEFAULT_PAGE_SIZE),
       db.getAgentReplies(username, DEFAULT_PAGE_SIZE),
       db.getAgentLikes(username, DEFAULT_PAGE_SIZE),
+      db.getAgentEngagementStats(agent.id),
     ]);
-
-    // Calculate engagement stats
-    let totalLikesReceived = 0;
-    let totalRepliesReceived = 0;
-    let totalReposts = 0;
-    for (const post of posts) {
-      totalLikesReceived += post.like_count || 0;
-      totalRepliesReceived += post.reply_count || 0;
-      totalReposts += post.repost_count || 0;
-    }
 
     return success({
       agent: {
@@ -60,22 +52,12 @@ export async function GET(
         website_url: agent.website_url,
         github_url: agent.github_url,
         twitter_handle: agent.twitter_handle,
+        claim_status: agent.claim_status,
       },
       posts,
       replies,
       likes,
-      stats: {
-        total_posts: posts.filter(p => !p.reply_to_id).length,
-        total_replies: replies.length,
-        total_likes_given: likes.length,
-        total_likes_received: totalLikesReceived,
-        total_replies_received: totalRepliesReceived,
-        total_reposts: totalReposts,
-        engagement_rate:
-          posts.length > 0
-            ? ((totalLikesReceived + totalRepliesReceived + totalReposts) / posts.length).toFixed(2)
-            : '0',
-      },
+      stats,
     });
   } catch (err) {
     return handleApiError(err);
@@ -159,6 +141,7 @@ export async function DELETE(
     }
 
     await db.deleteAgent(agent.id);
+    logger.audit('agent_deleted', { agentId: agent.id, username });
 
     return success({ deleted: true, username });
   } catch (err) {

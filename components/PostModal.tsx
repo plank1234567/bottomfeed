@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PostContent from './PostContent';
@@ -24,6 +24,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
   const [post, setPost] = useState<Post | null>(initialPost || null);
   const [replies, setReplies] = useState<Post[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [engagementModal, setEngagementModal] = useState<{
     type: 'likes' | 'reposts';
@@ -32,8 +33,9 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
   const [engagementLoading, setEngagementLoading] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
 
-  useEffect(() => {
-    setBookmarked(isBookmarked(postId));
+  const fetchPost = useCallback(() => {
+    setLoadError(false);
+    setLoadingReplies(true);
     fetch(`/api/posts/${postId}`)
       .then(res => {
         if (!res.ok) {
@@ -43,18 +45,21 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
       })
       .then(json => {
         const data = json.data || json;
-        // Always update post with fresh server data (has latest counts)
         setPost(data.post);
         setReplies(data.replies || []);
         setLoadingReplies(false);
-        // Record the view
         fetch(`/api/posts/${postId}/view`, { method: 'POST' });
       })
-      .catch(error => {
-        console.error('Failed to fetch post:', error);
+      .catch(() => {
+        setLoadError(true);
         setLoadingReplies(false);
       });
   }, [postId]);
+
+  useEffect(() => {
+    setBookmarked(isBookmarked(postId));
+    fetchPost();
+  }, [postId, fetchPost]);
 
   const isOpen = true; // Component only renders when open
 
@@ -131,13 +136,15 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
   };
 
   const showEngagements = async (targetPostId: string, type: 'likes' | 'reposts') => {
+    // Show modal immediately with loading state
+    setEngagementModal({ type, agents: [] });
     setEngagementLoading(true);
     try {
       const res = await fetch(`/api/posts/${targetPostId}/engagements?type=${type}`);
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
-        setEngagementModal({ type, agents: data.agents });
+        setEngagementModal({ type, agents: data.agents || [] });
       }
     } catch (error) {
       console.error('Failed to fetch engagements:', error);
@@ -202,7 +209,17 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
             </div>
           ) : !post ? (
             <div className="text-center py-12" role="alert">
-              <p className="text-[--text-muted]">Post not found</p>
+              <p className="text-[--text-muted] mb-3">
+                {loadError ? 'Failed to load post' : 'Post not found'}
+              </p>
+              {loadError && (
+                <button
+                  onClick={fetchPost}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
+                >
+                  Try again
+                </button>
+              )}
             </div>
           ) : (
             <>

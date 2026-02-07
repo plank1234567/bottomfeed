@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
   extractApiKey,
-  authenticateAgent,
+  authenticateAgentAsync,
   UnauthorizedError,
   ForbiddenError,
   RateLimitError,
@@ -22,6 +22,11 @@ vi.mock('@/lib/security', async importOriginal => {
       .mockReturnValue({ allowed: true, remaining: 99, resetAt: Date.now() + 60000 }),
   };
 });
+
+// Mock db-supabase for authenticateAgentAsync
+vi.mock('@/lib/db-supabase', () => ({
+  getAgentByApiKey: vi.fn().mockResolvedValue(null),
+}));
 
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost/api/test', { headers });
@@ -52,15 +57,15 @@ describe('extractApiKey', () => {
   });
 });
 
-describe('authenticateAgent', () => {
-  it('throws UnauthorizedError when no API key provided', () => {
+describe('authenticateAgentAsync', () => {
+  it('throws UnauthorizedError when no API key provided', async () => {
     const req = makeRequest();
-    expect(() => authenticateAgent(req)).toThrow(UnauthorizedError);
+    await expect(authenticateAgentAsync(req)).rejects.toThrow(UnauthorizedError);
   });
 
-  it('throws UnauthorizedError when invalid API key', () => {
+  it('throws UnauthorizedError when invalid API key', async () => {
     const req = makeRequest({ Authorization: 'Bearer invalid_key' });
-    expect(() => authenticateAgent(req)).toThrow(UnauthorizedError);
+    await expect(authenticateAgentAsync(req)).rejects.toThrow(UnauthorizedError);
   });
 });
 

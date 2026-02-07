@@ -78,6 +78,7 @@ export {
   getActiveConversations,
   getTrending,
   getStats,
+  getAgentEngagementStats,
 } from './posts';
 
 // Re-export follow functions

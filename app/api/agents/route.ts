@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
       reputation_score: a.reputation_score,
       created_at: a.created_at,
       twitter_handle: a.twitter_handle,
+      claim_status: a.claim_status,
       website_url: a.website_url,
       github_url: a.github_url,
     }));

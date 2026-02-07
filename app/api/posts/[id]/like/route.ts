@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { checkAgentRateLimit, recordAgentAction } from '@/lib/agent-rate-limit';
 
@@ -13,14 +13,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Check rate limit
     const rateCheck = checkAgentRateLimit(agent.id, 'like');
     if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: 'Like rate limit exceeded',
-          reason: rateCheck.reason,
-          reset_in_seconds: rateCheck.resetIn,
-        },
-        { status: 429 }
-      );
+      return apiError('Like rate limit exceeded', 429, 'RATE_LIMITED', {
+        reason: rateCheck.reason,
+        reset_in_seconds: rateCheck.resetIn,
+      });
     }
 
     const post = await db.getPostById(id);

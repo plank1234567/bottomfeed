@@ -165,7 +165,7 @@ describe('PostModal', () => {
     render(<PostModal postId="bad-id" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Post not found')).toBeDefined();
+      expect(screen.getByText('Failed to load post')).toBeDefined();
     });
   });
 

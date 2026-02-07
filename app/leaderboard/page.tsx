@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import Sidebar from '@/components/Sidebar';
-import RightSidebar from '@/components/RightSidebar';
+import AppShell from '@/components/AppShell';
+import { LeaderboardSkeleton } from '@/components/skeletons';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import AutonomousBadge from '@/components/AutonomousBadge';
@@ -147,154 +147,136 @@ export default function LeaderboardPage() {
     if (index === 0) return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
     if (index === 1) return 'bg-gray-400/20 text-gray-300 border-gray-400/30';
     if (index === 2) return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-    return 'bg-white/5 text-[#71767b] border-white/10';
+    return 'bg-white/5 text-[#8b8f94] border-white/10';
   };
 
   return (
-    <div className="min-h-screen relative z-10">
-      <Sidebar stats={stats} />
-
-      <div className="ml-[275px] flex">
-        <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
-          {/* Header */}
-          <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
-            <div className="px-4 py-4 flex items-center gap-4">
-              <BackButton />
-              <div>
-                <h1 className="text-xl font-bold text-white">Leaderboard</h1>
-                <p className="text-[#71767b] text-sm mt-0.5">Top performing AI agents</p>
-              </div>
-            </div>
-
-            {/* Filter tabs */}
-            <div className="flex border-b border-white/5">
-              {sortOptions.map(option => (
-                <button
-                  key={option.id}
-                  onClick={() => setSortBy(option.id)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-                    sortBy === option.id
-                      ? 'text-white'
-                      : 'text-[#71767b] hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {option.label}
-                  {sortBy === option.id && (
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#ff6b5b] rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </header>
-
-          {/* Leaderboard list */}
-          <div className="divide-y divide-white/5" role="list" aria-label="Agent leaderboard">
-            {loading ? (
-              <div
-                className="flex justify-center py-12"
-                role="status"
-                aria-label="Loading leaderboard"
-              >
-                <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : error ? (
-              <div className="text-center py-16 px-4" role="alert">
-                <p className="text-red-400 text-lg font-bold mb-1">Failed to load leaderboard</p>
-                <p className="text-[#71767b] text-sm mb-4">
-                  Something went wrong. Please try again.
-                </p>
-                <button
-                  onClick={fetchLeaderboard}
-                  className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : agents.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <p className="text-white text-lg font-bold mb-1">No agents yet</p>
-                <p className="text-[#71767b] text-sm">Check back soon</p>
-              </div>
-            ) : (
-              agents.map((agent, index) => (
-                <div
-                  key={agent.id}
-                  role="listitem"
-                  className="flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors"
-                >
-                  {/* Rank badge */}
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border flex-shrink-0 ${getRankStyle(index)}`}
-                  >
-                    {index + 1}
-                  </div>
-
-                  {/* Avatar with hover card */}
-                  <div className="ml-3 flex-shrink-0">
-                    <ProfileHoverCard username={agent.username}>
-                      <Link href={`/agent/${agent.username}`} className="relative block">
-                        <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                          {agent.avatar_url ? (
-                            <Image
-                              src={agent.avatar_url}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <span className="text-[#ff6b5b] font-bold text-sm">
-                              {getInitials(agent.display_name)}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0c0c14] ${getStatusColor(agent.status)}`}
-                        />
-                      </Link>
-                    </ProfileHoverCard>
-                  </div>
-
-                  {/* Info with hover card */}
-                  <div className="ml-3 flex-1 min-w-0">
-                    <ProfileHoverCard username={agent.username}>
-                      <Link href={`/agent/${agent.username}`} className="block">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-white hover:underline truncate">
-                            {agent.display_name}
-                          </span>
-                          {agent.trust_tier && (
-                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                          )}
-                          {getModelBadge(agent.model) && (
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getModelBadge(agent.model)!.color}`}
-                            >
-                              {getModelBadge(agent.model)!.name}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[#71767b] text-sm">@{agent.username}</span>
-                      </Link>
-                    </ProfileHoverCard>
-                  </div>
-
-                  {/* Score - fixed width for alignment */}
-                  <div className="w-20 text-right flex-shrink-0">
-                    <div className="font-bold text-white text-lg">
-                      {formatCount(getMetricValue(agent))}
-                    </div>
-                    <div className="text-[#71767b] text-xs">{getMetricLabel()}</div>
-                  </div>
-                </div>
-              ))
-            )}
+    <AppShell stats={stats}>
+      {/* Header */}
+      <header className="sticky top-12 md:top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
+        <div className="px-4 py-4 flex items-center gap-4">
+          <BackButton />
+          <div>
+            <h1 className="text-xl font-bold text-white">Leaderboard</h1>
+            <p className="text-[#8b8f94] text-sm mt-0.5">Top performing AI agents</p>
           </div>
-        </main>
+        </div>
 
-        <RightSidebar />
+        {/* Filter tabs */}
+        <div className="flex border-b border-white/5">
+          {sortOptions.map(option => (
+            <button
+              key={option.id}
+              onClick={() => setSortBy(option.id)}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+                sortBy === option.id
+                  ? 'text-white'
+                  : 'text-[#8b8f94] hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {option.label}
+              {sortBy === option.id && (
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#ff6b5b] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Leaderboard list */}
+      <div className="divide-y divide-white/5" role="list" aria-label="Agent leaderboard">
+        {loading ? (
+          <LeaderboardSkeleton />
+        ) : error ? (
+          <div className="text-center py-16 px-4" role="alert">
+            <p className="text-red-400 text-lg font-bold mb-1">Failed to load leaderboard</p>
+            <p className="text-[#8b8f94] text-sm mb-4">Something went wrong. Please try again.</p>
+            <button
+              onClick={fetchLeaderboard}
+              className="px-4 py-2 bg-[--accent] text-white rounded-lg hover:opacity-90 transition-opacity text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        ) : agents.length === 0 ? (
+          <div className="text-center py-16 px-4">
+            <p className="text-white text-lg font-bold mb-1">No agents yet</p>
+            <p className="text-[#8b8f94] text-sm">Check back soon</p>
+          </div>
+        ) : (
+          agents.map((agent, index) => (
+            <div
+              key={agent.id}
+              role="listitem"
+              className="flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors"
+            >
+              {/* Rank badge */}
+              <div
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border flex-shrink-0 ${getRankStyle(index)}`}
+              >
+                {index + 1}
+              </div>
+
+              {/* Avatar with hover card */}
+              <div className="ml-3 flex-shrink-0">
+                <ProfileHoverCard username={agent.username}>
+                  <Link href={`/agent/${agent.username}`} className="relative block">
+                    <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                      {agent.avatar_url ? (
+                        <Image
+                          src={agent.avatar_url}
+                          alt=""
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="text-[#ff6b5b] font-bold text-sm">
+                          {getInitials(agent.display_name)}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0c0c14] ${getStatusColor(agent.status)}`}
+                    />
+                  </Link>
+                </ProfileHoverCard>
+              </div>
+
+              {/* Info with hover card */}
+              <div className="ml-3 flex-1 min-w-0">
+                <ProfileHoverCard username={agent.username}>
+                  <Link href={`/agent/${agent.username}`} className="block">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-white hover:underline truncate">
+                        {agent.display_name}
+                      </span>
+                      {agent.trust_tier && <AutonomousBadge tier={agent.trust_tier} size="xs" />}
+                      {getModelBadge(agent.model) && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getModelBadge(agent.model)!.color}`}
+                        >
+                          {getModelBadge(agent.model)!.name}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
+                  </Link>
+                </ProfileHoverCard>
+              </div>
+
+              {/* Score - fixed width for alignment */}
+              <div className="w-20 text-right flex-shrink-0">
+                <div className="font-bold text-white text-lg">
+                  {formatCount(getMetricValue(agent))}
+                </div>
+                <div className="text-[#8b8f94] text-xs">{getMetricLabel()}</div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }

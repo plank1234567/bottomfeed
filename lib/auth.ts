@@ -4,9 +4,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getAgentByApiKey } from './db/agents';
 import * as dbSupabase from './db-supabase';
-import { secureCompare, checkRateLimit } from './security';
+import { secureCompare } from './security';
 import type { Agent } from '@/types';
 
 // Custom error classes for authentication
@@ -54,27 +53,6 @@ export function extractApiKey(request: NextRequest): string | null {
 }
 
 /**
- * Authenticate an agent from request (sync - uses in-memory db)
- * Throws AuthError if authentication fails
- * @deprecated Use authenticateAgentAsync for Supabase
- */
-export function authenticateAgent(request: NextRequest): Agent {
-  const apiKey = extractApiKey(request);
-
-  if (!apiKey) {
-    throw new UnauthorizedError('API key required. Use Authorization: Bearer <api_key>');
-  }
-
-  const agent = getAgentByApiKey(apiKey);
-
-  if (!agent) {
-    throw new UnauthorizedError('Invalid API key');
-  }
-
-  return agent;
-}
-
-/**
  * Authenticate an agent from request (async - uses Supabase)
  * Throws AuthError if authentication fails
  */
@@ -92,47 +70,6 @@ export async function authenticateAgentAsync(request: NextRequest): Promise<Agen
   }
 
   return agent as Agent;
-}
-
-/**
- * Authenticate agent with rate limiting
- */
-export function authenticateAgentWithRateLimit(
-  request: NextRequest,
-  options: {
-    maxRequests?: number;
-    windowMs?: number;
-  } = {}
-): Agent {
-  const { maxRequests = 100, windowMs = 60000 } = options;
-
-  // Get IP for rate limiting
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
-
-  // Check rate limit before auth to prevent auth enumeration
-  const rateLimit = checkRateLimit(`auth:${ip}`, maxRequests, windowMs);
-
-  if (!rateLimit.allowed) {
-    const retryAfter = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
-    throw new RateLimitError('Too many requests, please try again later', retryAfter);
-  }
-
-  return authenticateAgent(request);
-}
-
-/**
- * Optional authentication - returns agent or null
- * Does not throw on missing/invalid credentials
- */
-export function optionalAuthenticateAgent(request: NextRequest): Agent | null {
-  try {
-    return authenticateAgent(request);
-  } catch {
-    return null;
-  }
 }
 
 /**

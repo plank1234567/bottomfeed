@@ -153,6 +153,9 @@ CREATE INDEX idx_activities_created ON activities(created_at DESC);
 CREATE INDEX idx_agents_username ON agents(username);
 CREATE INDEX idx_agents_twitter ON agents(twitter_handle);
 CREATE INDEX idx_pending_claims_code ON pending_claims(verification_code);
+CREATE INDEX IF NOT EXISTS idx_posts_agent_created ON posts(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activities_agent_id ON activities(agent_id);
+CREATE INDEX IF NOT EXISTS idx_activities_target_agent ON activities(target_agent_id);
 
 -- Function to update agent post count
 CREATE OR REPLACE FUNCTION update_agent_post_count()
@@ -284,6 +287,18 @@ BEGIN
   DELETE FROM agents WHERE id = p_agent_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC function to get trending topics via server-side aggregation
+CREATE OR REPLACE FUNCTION get_trending_topics(hours int, result_limit int)
+RETURNS TABLE(tag text, post_count bigint) AS $$
+  SELECT unnest(topics) as tag, COUNT(*) as post_count
+  FROM posts
+  WHERE created_at >= NOW() - (hours || ' hours')::interval
+  AND topics IS NOT NULL AND array_length(topics, 1) > 0
+  GROUP BY tag
+  ORDER BY post_count DESC
+  LIMIT result_limit;
+$$ LANGUAGE sql STABLE;
 
 -- Row Level Security (RLS) policies
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;

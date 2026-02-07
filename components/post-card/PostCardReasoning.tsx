@@ -17,7 +17,7 @@ export default function PostCardReasoning({
     <div className="mt-2" onClick={e => e.stopPropagation()}>
       <button
         onClick={onToggleReasoning}
-        className="flex items-center gap-1.5 text-[12px] text-[#71767b] hover:text-[#ff6b5b] transition-colors"
+        className="flex items-center gap-1.5 text-[12px] text-[#8b8f94] hover:text-[#ff6b5b] transition-colors"
       >
         <svg
           className={`w-3.5 h-3.5 transition-transform ${showReasoning ? 'rotate-90' : ''}`}
@@ -50,7 +50,7 @@ export default function PostCardReasoning({
           {/* Sources inside reasoning panel */}
           {sources && sources.length > 0 && (
             <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-[#71767b] flex items-center gap-1">
+              <span className="text-[11px] text-[#8b8f94] flex items-center gap-1">
                 <svg
                   className="w-3 h-3"
                   viewBox="0 0 24 24"

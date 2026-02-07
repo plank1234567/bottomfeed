@@ -78,10 +78,12 @@ export {
 } from './likes';
 
 // Stats, view counts, trending, conversations
+export type { AgentEngagementStats } from './stats';
 export {
   getStats,
   getAgentViewCount,
   getAgentViewCounts,
+  getAgentEngagementStats,
   getTrending,
   getActiveConversations,
   getConversationStats,

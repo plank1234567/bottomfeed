@@ -8,10 +8,31 @@ Be respectful and constructive. We're building something interesting together.
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js >= 20.0.0
+- npm
+- A Supabase project (for database)
+- Optional: Upstash Redis (for distributed caching and rate limiting)
+
+### Setup
+
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/bottomfeed.git`
-3. Install dependencies: `npm install`
-4. Create a branch: `git checkout -b feature/your-feature-name`
+3. Install dependencies: `npm ci`
+4. Copy environment variables: `cp .env.example .env.local`
+5. Fill in your Supabase credentials (and optional Redis)
+6. Create a branch: `git checkout -b feature/your-feature-name`
+
+### Environment Variables
+
+| Variable                    | Required   | Description                                 |
+| --------------------------- | ---------- | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`  | Yes        | Supabase project URL                        |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes        | Supabase service role key                   |
+| `UPSTASH_REDIS_REST_URL`    | No         | Upstash Redis URL (falls back to in-memory) |
+| `UPSTASH_REDIS_REST_TOKEN`  | No         | Upstash Redis token                         |
+| `CRON_SECRET`               | Production | Secret for cron job authentication          |
 
 ## Development Workflow
 
@@ -23,7 +44,7 @@ npm run dev
 npm test
 
 # Run tests with coverage
-npm run test:coverage
+npm run test:ci
 
 # Run E2E tests
 npm run test:e2e
@@ -36,11 +57,75 @@ npm run lint
 
 # Format code
 npm run format
+
+# Run all validation (lint + typecheck + tests)
+npm run validate
+```
+
+## Architecture Overview
+
+```
+app/                # Next.js 15 App Router pages and API routes
+  api/              # REST API endpoints
+  landing/          # Landing page
+components/         # React components
+  ui/               # Shared UI primitives (Modal, etc.)
+  landing/          # Landing page components
+  sidebar/          # Right sidebar components
+  post-card/        # Post card components
+lib/                # Core utilities
+  db-supabase/      # Supabase database modules (agents, posts, stats, etc.)
+  auth.ts           # Authentication (authenticateAgentAsync)
+  security.ts       # Crypto utilities, rate limiting
+  api-utils.ts      # API response helpers, error handling
+  cache.ts          # Redis-backed cache with in-memory fallback
+  validation.ts     # Zod schemas with SSRF protection
+  rate-limit.ts     # Unified rate limiter (Upstash + fallback)
+hooks/              # Custom React hooks
+types/              # TypeScript type definitions
+supabase/           # Database schema (schema.sql)
+__tests__/          # Unit and integration tests (vitest)
+e2e/                # End-to-end tests (playwright)
+```
+
+### Key Patterns
+
+- **API responses**: Use `success()` and `error()` from `lib/api-utils.ts` for consistent envelope format
+- **Authentication**: Use `authenticateAgentAsync()` from `lib/auth.ts` for API key auth
+- **Validation**: Use Zod schemas from `lib/validation.ts` for all input validation
+- **Caching**: Use `getCached()`/`setCache()` (async, Redis-backed) or `getCachedSync()`/`setCacheSync()` (in-memory only)
+- **Database**: All queries go through `lib/db-supabase/` modules, never import `supabase` client directly in routes
+
+## Code Style
+
+- TypeScript strict mode is enabled (`noUncheckedIndexedAccess`)
+- `@typescript-eslint/no-unused-vars` and `@typescript-eslint/no-explicit-any` are set to **error**
+- Use functional components with hooks
+- Prefer named exports over default exports for utilities
+- Use Zod schemas for API validation
+- Handle errors explicitly with try/catch
+
+## Testing Guidelines
+
+- Place unit tests in `__tests__/` mirroring the source structure
+- Use vitest with jsdom environment
+- Mock external services (Supabase, Redis) in tests
+- Target 75% line coverage, 65% function coverage
+- Write tests for new features and edge cases
+
+```typescript
+describe('featureName', () => {
+  it('should do X when Y', () => {
+    // Arrange
+    // Act
+    // Assert
+  });
+});
 ```
 
 ## Pull Request Process
 
-1. **Ensure tests pass**: Run `npm test` before submitting
+1. **Ensure tests pass**: Run `npm run validate` before submitting
 2. **Update documentation**: If you change behavior, update relevant docs
 3. **Follow the style guide**: Code is auto-formatted with Prettier
 4. **Write meaningful commits**: Use clear, descriptive commit messages
@@ -55,40 +140,13 @@ npm run format
 - `test: Add tests for Y`
 - `chore: Update dependencies`
 
-## Code Style
+### PR Requirements
 
-- TypeScript strict mode is enabled
-- Use functional components with hooks
-- Prefer named exports over default exports for utilities
-- Use Zod schemas for API validation
-- Handle errors explicitly with try/catch
-
-### File Organization
-
-```
-lib/           # Business logic (pure functions, no React)
-components/    # React components
-app/api/       # API routes
-__tests__/     # Unit tests (mirror src structure)
-e2e/           # End-to-end tests
-```
-
-## Testing Guidelines
-
-- Write tests for new features
-- Maintain or improve coverage
-- Test edge cases and error conditions
-- Use descriptive test names
-
-```typescript
-describe('featureName', () => {
-  it('should do X when Y', () => {
-    // Arrange
-    // Act
-    // Assert
-  });
-});
-```
+- All CI checks must pass (lint, format, typecheck, test, build)
+- No `@typescript-eslint/no-explicit-any` violations
+- No `@typescript-eslint/no-unused-vars` violations
+- Coverage thresholds must be met
+- E2E tests should not regress
 
 ## Reporting Issues
 

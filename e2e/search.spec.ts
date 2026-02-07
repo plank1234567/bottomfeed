@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Search Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/search');
+    await page.waitForLoadState('networkidle');
   });
 
   test('search page loads with input field', async ({ page }) => {
@@ -12,12 +13,6 @@ test.describe('Search Page', () => {
   });
 
   test('shows prompt to enter search term when empty', async ({ page }) => {
-    // Wait for any loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 5000,
-    }).catch(() => {});
-
     // Should show prompt message
     await expect(page.getByText(/Enter a search term/i)).toBeVisible();
   });
@@ -45,18 +40,23 @@ test.describe('Search Page', () => {
   test('searching shows results or no results message', async ({ page }) => {
     // Navigate with a query
     await page.goto('/search?q=agent');
-
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.waitForLoadState('networkidle');
 
     // Should either show results or "no posts found" message or post count
-    const hasNoResults = await page.getByText(/No .* found/i).isVisible().catch(() => false);
-    const hasResults = await page.locator('[class*="border-b"][class*="hover:bg"]').first().isVisible().catch(() => false);
+    const hasNoResults = await page
+      .getByText(/No .* found/i)
+      .isVisible()
+      .catch(() => false);
+    const hasResults = await page
+      .getByTestId('post-card')
+      .first()
+      .isVisible()
+      .catch(() => false);
     // Also check for the results count text (e.g., "X posts")
-    const hasResultsCount = await page.getByText(/\d+ posts?/i).isVisible().catch(() => false);
+    const hasResultsCount = await page
+      .getByText(/\d+ posts?/i)
+      .isVisible()
+      .catch(() => false);
 
     expect(hasNoResults || hasResults || hasResultsCount).toBeTruthy();
   });
@@ -64,12 +64,7 @@ test.describe('Search Page', () => {
   test('switching tabs works', async ({ page }) => {
     // Navigate with a query
     await page.goto('/search?q=test');
-
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.waitForLoadState('networkidle');
 
     // Click on People tab
     const peopleTab = page.getByRole('button', { name: 'People' });
@@ -78,15 +73,19 @@ test.describe('Search Page', () => {
     // Tab should be active (has different styling)
     await expect(peopleTab).toHaveClass(/text-white/);
 
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    // Wait for tab content to load
+    await page.waitForLoadState('networkidle');
 
     // Should show people results or no people found
-    const hasNoPeople = await page.getByText(/No people found/i).isVisible().catch(() => false);
-    const hasPeople = await page.locator('a[href^="/agent/"]').first().isVisible().catch(() => false);
+    const hasNoPeople = await page
+      .getByText(/No people found/i)
+      .isVisible()
+      .catch(() => false);
+    const hasPeople = await page
+      .locator('a[href^="/agent/"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     expect(hasNoPeople || hasPeople).toBeTruthy();
   });
@@ -97,7 +96,10 @@ test.describe('Search Page', () => {
     await page.goto('/search?q=test');
 
     // Find and click back button
-    const backButton = page.locator('button').filter({ has: page.locator('svg') }).first();
+    const backButton = page
+      .locator('button')
+      .filter({ has: page.locator('svg') })
+      .first();
     await backButton.click();
 
     // Should navigate back to home
@@ -107,21 +109,13 @@ test.describe('Search Page', () => {
   test('clicking search result navigates correctly', async ({ page }) => {
     // Search for something
     await page.goto('/search?q=agent');
-
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.waitForLoadState('networkidle');
 
     // Switch to People tab for more predictable navigation
     await page.getByRole('button', { name: 'People' }).click();
 
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 5000,
-    }).catch(() => {});
+    // Wait for tab content to load
+    await page.waitForLoadState('networkidle');
 
     // Find a View button or agent link
     const viewButton = page.getByRole('link', { name: 'View' }).first();

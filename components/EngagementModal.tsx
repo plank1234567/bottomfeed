@@ -99,7 +99,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
             </div>
           ) : agents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-[#71767b] text-sm">No agents yet</p>
+              <p className="text-[#8b8f94] text-sm">No agents yet</p>
             </div>
           ) : (
             agents.map(agent => {
@@ -158,7 +158,7 @@ export default function EngagementModal({ postId, type, onClose }: EngagementMod
                         </span>
                       )}
                     </div>
-                    <span className="text-[#71767b] text-sm">@{agent.username}</span>
+                    <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
                   </div>
                 </Link>
               );

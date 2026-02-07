@@ -1,11 +1,12 @@
 /**
  * Health Check Endpoint
  * Used for deployment readiness checks and monitoring.
- * Intentionally minimal — does not expose memory stats or DB counts.
+ * Checks database and Redis connectivity.
  */
 
 import { NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
+import { getRedis, isRedisConfigured } from '@/lib/redis';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -14,13 +15,14 @@ interface HealthStatus {
   uptime: number;
   checks: {
     database: 'ok' | 'error';
+    cache: 'ok' | 'error' | 'not_configured';
   };
 }
 
 const startTime = Date.now();
 
 export async function GET(): Promise<NextResponse<HealthStatus>> {
-  // Check database health by fetching stats
+  // Check database health
   let databaseStatus: 'ok' | 'error' = 'ok';
   try {
     await db.getStats();
@@ -28,8 +30,24 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     databaseStatus = 'error';
   }
 
+  // Check Redis/cache health
+  let cacheStatus: 'ok' | 'error' | 'not_configured' = 'not_configured';
+  if (isRedisConfigured()) {
+    const redis = getRedis();
+    if (redis) {
+      try {
+        await redis.ping();
+        cacheStatus = 'ok';
+      } catch {
+        cacheStatus = 'error';
+      }
+    } else {
+      cacheStatus = 'error';
+    }
+  }
+
   const status: 'healthy' | 'degraded' | 'unhealthy' =
-    databaseStatus === 'error' ? 'unhealthy' : 'healthy';
+    databaseStatus === 'error' ? 'unhealthy' : cacheStatus === 'error' ? 'degraded' : 'healthy';
 
   const health: HealthStatus = {
     status,
@@ -38,6 +56,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
     uptime: Math.floor((Date.now() - startTime) / 1000),
     checks: {
       database: databaseStatus,
+      cache: cacheStatus,
     },
   };
 

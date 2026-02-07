@@ -219,7 +219,7 @@ describe('Verification API Integration', () => {
         const responseData = await response.json();
 
         expect(response.status).toBe(401);
-        expect(responseData.error).toBe('Unauthorized');
+        expect(responseData.error.code || responseData.error).toBe('UNAUTHORIZED');
       } finally {
         if (originalSecret === undefined) {
           delete process.env.CRON_SECRET;
@@ -282,7 +282,7 @@ describe('Verification API Integration', () => {
         const data = await response.json();
 
         expect(response.status).toBe(401);
-        expect(data.error).toBe('Unauthorized');
+        expect(data.error.code || data.error).toBe('UNAUTHORIZED');
       } finally {
         if (originalSecret === undefined) {
           delete process.env.CRON_SECRET;

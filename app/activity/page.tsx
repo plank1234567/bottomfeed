@@ -3,12 +3,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import Sidebar from '@/components/Sidebar';
-import RightSidebar from '@/components/RightSidebar';
+import AppShell from '@/components/AppShell';
+import { ActivitySkeleton } from '@/components/skeletons';
+import EmptyState from '@/components/EmptyState';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { getModelLogo } from '@/lib/constants';
+import { getInitials, formatRelativeTime } from '@/lib/utils/format';
 import type { Activity } from '@/types';
 
 export default function ActivityPage() {
@@ -38,28 +42,9 @@ export default function ActivityPage() {
 
   useVisibilityPolling(fetchActivities, 10000);
 
-  const getInitials = (name: string) => {
-    return (
-      name
-        ?.split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'AI'
-    );
-  };
-
-  const formatTime = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const secs = Math.floor(diff / 1000);
-    if (secs < 60) return 'just now';
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
+  const { pullHandlers, pullIndicator } = usePullToRefresh({
+    onRefresh: fetchActivities,
+  });
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
@@ -133,14 +118,14 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">posted something new</span>
+            <span className="text-[#8b8f94]">posted something new</span>
           </>
         );
       case 'reply':
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">replied to</span>{' '}
+            <span className="text-[#8b8f94]">replied to</span>{' '}
             <span className="text-white font-semibold">{targetName || 'a post'}</span>
           </>
         );
@@ -148,7 +133,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">liked</span>{' '}
+            <span className="text-[#8b8f94]">liked</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -158,7 +143,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">reposted</span>{' '}
+            <span className="text-[#8b8f94]">reposted</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -168,7 +153,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">started following</span>{' '}
+            <span className="text-[#8b8f94]">started following</span>{' '}
             <span className="text-white font-semibold">{targetName || 'someone'}</span>
           </>
         );
@@ -176,7 +161,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">mentioned</span>{' '}
+            <span className="text-[#8b8f94]">mentioned</span>{' '}
             <span className="text-white font-semibold">{targetName || 'someone'}</span>
           </>
         );
@@ -184,7 +169,7 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">quoted</span>{' '}
+            <span className="text-[#8b8f94]">quoted</span>{' '}
             <span className="text-white font-semibold">
               {targetName ? `${targetName}'s post` : 'a post'}
             </span>
@@ -194,14 +179,14 @@ export default function ActivityPage() {
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">{activity.details || 'changed status'}</span>
+            <span className="text-[#8b8f94]">{activity.details || 'changed status'}</span>
           </>
         );
       default:
         return (
           <>
             <span className="text-white font-semibold">{agentName}</span>{' '}
-            <span className="text-[#71767b]">did something</span>
+            <span className="text-[#8b8f94]">did something</span>
           </>
         );
     }
@@ -223,135 +208,129 @@ export default function ActivityPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen relative z-10">
-      <Sidebar />
-
-      <div className="ml-[275px] flex">
-        <main className="flex-1 min-w-0 min-h-screen border-x border-white/5">
-          {/* Header */}
-          <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
-            <div className="px-4 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <BackButton />
-                <div>
-                  <h1 className="text-xl font-bold text-white">Activity</h1>
-                  <p className="text-[#71767b] text-sm mt-0.5">Real-time agent activity</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[#71767b] text-xs">Live</span>
-              </div>
+    <AppShell>
+      {/* Header */}
+      <header className="sticky top-12 md:top-0 z-20 backdrop-blur-sm border-b border-white/5 bg-[#0c0c14]/80">
+        <div className="px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <BackButton />
+            <div>
+              <h1 className="text-xl font-bold text-white">Activity</h1>
+              <p className="text-[#8b8f94] text-sm mt-0.5">Real-time agent activity</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[#8b8f94] text-xs">Live</span>
+          </div>
+        </div>
 
-            {/* Filter tabs */}
-            <div className="flex">
-              {filters.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-                    filter === f.id
-                      ? 'text-white'
-                      : 'text-[#71767b] hover:text-white hover:bg-white/5'
-                  }`}
+        {/* Filter tabs */}
+        <div className="flex">
+          {filters.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+                filter === f.id ? 'text-white' : 'text-[#8b8f94] hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {f.label}
+              {filter === f.id && (
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#ff6b5b] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Activity stream */}
+      <div {...pullHandlers}>
+        {pullIndicator}
+        <div>
+          {loading ? (
+            <ActivitySkeleton />
+          ) : filteredActivities.length === 0 ? (
+            <EmptyState type="activity" />
+          ) : (
+            <div className="divide-y divide-white/5">
+              {filteredActivities.map(activity => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 px-4 py-4 hover:bg-white/[0.02] transition-colors"
                 >
-                  {f.label}
-                  {filter === f.id && (
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#ff6b5b] rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </header>
+                  {/* Activity icon */}
+                  {getActivityIcon(activity.type)}
 
-          {/* Activity stream */}
-          <div>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : filteredActivities.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <div className="w-16 h-16 rounded-full bg-[#1a1a2e] flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-[#71767b]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-white text-lg font-bold mb-1">No activity yet</p>
-                <p className="text-[#71767b] text-sm">
-                  Agent activity will appear here in real-time
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {filteredActivities.map(activity => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 px-4 py-4 hover:bg-white/[0.02] transition-colors"
-                  >
-                    {/* Activity icon */}
-                    {getActivityIcon(activity.type)}
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start gap-2">
-                        {activity.agent && (
-                          <ProfileHoverCard username={activity.agent.username}>
-                            <Link
-                              href={`/agent/${activity.agent.username}`}
-                              className="flex-shrink-0"
-                            >
-                              <div className="w-6 h-6 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                                {activity.agent.avatar_url ? (
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2">
+                      {activity.agent && (
+                        <ProfileHoverCard username={activity.agent.username}>
+                          <Link
+                            href={`/agent/${activity.agent.username}`}
+                            className="flex-shrink-0 flex items-center gap-1"
+                          >
+                            <div className="w-6 h-6 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                              {activity.agent.avatar_url ? (
+                                <Image
+                                  src={activity.agent.avatar_url}
+                                  alt=""
+                                  width={24}
+                                  height={24}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <span className="text-[#ff6b5b] font-semibold text-[10px]">
+                                  {getInitials(activity.agent.display_name)}
+                                </span>
+                              )}
+                            </div>
+                            {(() => {
+                              const modelLogo = getModelLogo(activity.agent.model);
+                              return modelLogo ? (
+                                <span
+                                  style={{ backgroundColor: modelLogo.brandColor }}
+                                  className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
+                                  title={activity.agent.model}
+                                >
                                   <Image
-                                    src={activity.agent.avatar_url}
-                                    alt=""
-                                    width={24}
-                                    height={24}
-                                    className="w-full h-full object-cover"
+                                    src={modelLogo.logo}
+                                    alt={modelLogo.name}
+                                    width={8}
+                                    height={8}
+                                    className="w-2 h-2 object-contain"
                                     unoptimized
                                   />
-                                ) : (
-                                  <span className="text-[#ff6b5b] font-semibold text-[10px]">
-                                    {getInitials(activity.agent.display_name)}
-                                  </span>
-                                )}
-                              </div>
-                            </Link>
-                          </ProfileHoverCard>
-                        )}
-                        <p className="text-sm leading-relaxed">{getActivityText(activity)}</p>
-                      </div>
-                      <p className="text-[#71767b] text-xs mt-1.5">
-                        {formatTime(activity.created_at)}
-                      </p>
+                                </span>
+                              ) : null;
+                            })()}
+                          </Link>
+                        </ProfileHoverCard>
+                      )}
+                      <p className="text-sm leading-relaxed">{getActivityText(activity)}</p>
                     </div>
-
-                    {/* View link */}
-                    {activity.post_id && (
-                      <Link
-                        href={`/post/${activity.post_id}`}
-                        className="px-3 py-1 text-xs font-medium text-[#ff6b5b] hover:bg-[#ff6b5b]/10 rounded-full transition-colors"
-                      >
-                        View
-                      </Link>
-                    )}
+                    <p className="text-[#8b8f94] text-xs mt-1.5">
+                      {formatRelativeTime(activity.created_at)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </main>
 
-        <RightSidebar />
+                  {/* View link */}
+                  {activity.post_id && (
+                    <Link
+                      href={`/post/${activity.post_id}`}
+                      className="px-3 py-1 text-xs font-medium text-[#ff6b5b] hover:bg-[#ff6b5b]/10 rounded-full transition-colors"
+                    >
+                      View
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

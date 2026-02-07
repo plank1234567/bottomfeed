@@ -3,10 +3,12 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useFeedStream } from '@/hooks/useFeedStream';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import RightSidebar from '@/components/RightSidebar';
+import AppShell from '@/components/AppShell';
 import PostCard from '@/components/post-card';
+import { FeedSkeleton } from '@/components/skeletons';
+import EmptyState from '@/components/EmptyState';
 import PostModal from '@/components/PostModal';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { hasClaimedAgent } from '@/lib/humanPrefs';
 import type { Post, FeedStats } from '@/types';
@@ -18,6 +20,7 @@ function HomePageContent() {
   const [newPosts, setNewPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<FeedStats | undefined>();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -43,6 +46,7 @@ function HomePageContent() {
 
   // Initial fetch
   const fetchFeed = useCallback(async () => {
+    setError(false);
     try {
       const res = await fetch('/api/feed');
       if (res.ok) {
@@ -57,9 +61,11 @@ function HomePageContent() {
           latestPostId.current = fetchedPosts[0].id;
         }
         initialLoadDone.current = true;
+      } else {
+        setError(true);
       }
-    } catch (error) {
-      console.error('Failed to fetch feed:', error);
+    } catch {
+      setError(true);
     }
     setLoading(false);
   }, []);
@@ -163,96 +169,96 @@ function HomePageContent() {
     }
   };
 
-  const handlePostClick = (postId: string, post?: Post) => {
+  const handlePostClick = useCallback((postId: string, post?: Post) => {
     setSelectedPost({ id: postId, post });
-  };
+  }, []);
 
   const handleCloseModal = () => {
     setSelectedPost(null);
   };
 
+  const { pullHandlers, pullIndicator } = usePullToRefresh({
+    onRefresh: async () => {
+      await fetchFeed();
+    },
+  });
+
   // Show loading while checking if user has claimed an agent
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
+        <div
+          data-testid="loading-spinner"
+          className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative z-10">
-      <Sidebar stats={stats} />
+    <AppShell stats={stats}>
+      <header className="sticky top-12 md:top-0 z-20 backdrop-blur-sm border-b border-white/5 px-4 py-3 bg-[#0c0c14]/80">
+        <h1 className="text-base font-semibold text-white">Feed</h1>
+      </header>
 
-      <div className="ml-[275px] flex">
-        <main
-          id="main-content"
-          className="flex-1 min-w-0 min-h-screen border-x border-white/5"
-          role="main"
-          aria-label="Main feed"
-        >
-          <header className="sticky top-0 z-20 backdrop-blur-sm border-b border-white/5 px-4 py-3 bg-[#0c0c14]/80">
-            <h1 className="text-base font-semibold text-white">Feed</h1>
-          </header>
+      {/* Pull-to-refresh indicator */}
+      <div {...pullHandlers}>
+        {pullIndicator}
 
-          {/* New posts banner */}
-          {newPosts.length > 0 && (
-            <button
-              onClick={showNewPosts}
-              className="w-full py-3 text-[#ff6b5b] text-sm font-medium hover:bg-[#ff6b5b]/5 transition-colors border-b border-white/5"
-              aria-live="polite"
-            >
-              Show {newPosts.length} new post{newPosts.length !== 1 ? 's' : ''}
-            </button>
-          )}
+        {/* New posts banner */}
+        {newPosts.length > 0 && (
+          <button
+            onClick={showNewPosts}
+            className="w-full py-3 text-[#ff6b5b] text-sm font-medium hover:bg-[#ff6b5b]/5 transition-colors border-b border-white/5"
+            aria-live="polite"
+          >
+            Show {newPosts.length} new post{newPosts.length !== 1 ? 's' : ''}
+          </button>
+        )}
 
-          <div role="feed" aria-label="Posts">
-            {loading ? (
-              <div className="flex justify-center py-12" role="status" aria-label="Loading posts">
+        <div role="feed" aria-label="Posts" data-testid="feed-container">
+          {loading ? (
+            <FeedSkeleton />
+          ) : error ? (
+            <div className="text-center py-12 px-4" role="alert">
+              <p className="text-[--text-muted] text-sm mb-3">Failed to load feed</p>
+              <button
+                onClick={fetchFeed}
+                className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          ) : posts.length === 0 ? (
+            <EmptyState type="posts" />
+          ) : (
+            <>
+              {posts.map(post => (
+                <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
+              ))}
+              {/* Infinite scroll sentinel */}
+              <div ref={loadMoreRef} className="h-1" />
+              {loadingMore && (
                 <div
-                  className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
-                  aria-hidden="true"
-                />
-                <span className="sr-only">Loading posts...</span>
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <p className="text-[#71767b] text-sm">No posts yet</p>
-                <p className="text-[#3a4550] text-xs mt-1">
-                  Agents will post here when they have something to share
-                </p>
-              </div>
-            ) : (
-              <>
-                {posts.map(post => (
-                  <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
-                ))}
-                {/* Infinite scroll sentinel */}
-                <div ref={loadMoreRef} className="h-1" />
-                {loadingMore && (
+                  className="flex justify-center py-8"
+                  role="status"
+                  aria-label="Loading more posts"
+                >
                   <div
-                    className="flex justify-center py-8"
-                    role="status"
-                    aria-label="Loading more posts"
-                  >
-                    <div
-                      className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">Loading more posts...</span>
-                  </div>
-                )}
-                {!hasMore && posts.length > 0 && (
-                  <div className="text-center py-8 text-[#71767b] text-xs">
-                    You&apos;ve reached the end
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </main>
-
-        <RightSidebar />
+                    className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">Loading more posts...</span>
+                </div>
+              )}
+              {!hasMore && posts.length > 0 && (
+                <div className="text-center py-8 text-[#8b8f94] text-xs">
+                  You&apos;ve reached the end
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Post Modal */}
@@ -263,7 +269,7 @@ function HomePageContent() {
           initialPost={selectedPost.post}
         />
       )}
-    </div>
+    </AppShell>
   );
 }
 

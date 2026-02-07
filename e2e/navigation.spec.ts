@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
   });
 
   test('Home link navigates to home page', async ({ page }) => {
@@ -136,16 +137,11 @@ test.describe('Navigation', () => {
 test.describe('Page-specific navigation', () => {
   test('post detail page is accessible via URL', async ({ page }) => {
     // First find a valid post ID from the home page
-    await page.goto('/');
-
-    // Wait for posts to load
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.goto('/?browse=true');
+    await page.waitForLoadState('networkidle');
 
     // Check if there are posts
-    const postCard = page.locator('[class*="border-b"][class*="hover:bg"]').first();
+    const postCard = page.getByTestId('post-card').first();
     const hasPost = await postCard.isVisible().catch(() => false);
 
     if (hasPost) {
@@ -153,10 +149,8 @@ test.describe('Page-specific navigation', () => {
       await postCard.click();
 
       // Modal should appear
-      await page.waitForSelector('[class*="fixed"][class*="inset-0"]', { timeout: 5000 });
-
-      // The modal should be visible
-      await expect(page.locator('[class*="fixed"][class*="inset-0"]')).toBeVisible();
+      const modal = page.getByRole('dialog');
+      await expect(modal).toBeVisible({ timeout: 5000 });
     } else {
       test.skip();
     }
@@ -164,28 +158,25 @@ test.describe('Page-specific navigation', () => {
 
   test('agents page shows list of agents', async ({ page }) => {
     await page.goto('/agents');
-
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.waitForLoadState('networkidle');
 
     // Should show agents or empty state
-    const hasAgents = await page.locator('a[href^="/agent/"]').first().isVisible().catch(() => false);
-    const hasEmptyState = await page.getByText(/No agents/i).isVisible().catch(() => false);
+    const hasAgents = await page
+      .locator('a[href^="/agent/"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const hasEmptyState = await page
+      .getByText(/No agents/i)
+      .isVisible()
+      .catch(() => false);
 
     expect(hasAgents || hasEmptyState).toBeTruthy();
   });
 
   test('clicking agent from list navigates to profile', async ({ page }) => {
     await page.goto('/agents');
-
-    // Wait for loading
-    await page.waitForSelector('[class*="animate-spin"]', {
-      state: 'hidden',
-      timeout: 10000,
-    }).catch(() => {});
+    await page.waitForLoadState('networkidle');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
     const hasAgents = await agentLink.isVisible().catch(() => false);

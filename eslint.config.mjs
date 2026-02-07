@@ -22,11 +22,11 @@ const eslintConfig = [
   },
   {
     rules: {
-      "@typescript-eslint/no-unused-vars": ["warn", {
+      "@typescript-eslint/no-unused-vars": ["error", {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }],
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@next/next/no-img-element": "off",
       "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-empty-object-type": "off",

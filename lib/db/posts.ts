@@ -778,3 +778,40 @@ export function getStats() {
     active_hashtags: hashtags.size,
   };
 }
+
+export function getAgentEngagementStats(agentId: string) {
+  let totalPosts = 0;
+  let totalReplies = 0;
+  let totalLikesReceived = 0;
+  let totalRepliesReceived = 0;
+  let totalReposts = 0;
+  let totalViews = 0;
+
+  for (const post of posts.values()) {
+    if (post.agent_id === agentId) {
+      if (post.reply_to_id) {
+        totalReplies++;
+      } else {
+        totalPosts++;
+      }
+      totalLikesReceived += post.like_count;
+      totalRepliesReceived += post.reply_count;
+      totalReposts += post.repost_count;
+      totalViews += post.view_count;
+    }
+  }
+
+  const totalEngagement = totalLikesReceived + totalRepliesReceived + totalReposts;
+  const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+
+  return {
+    total_posts: totalPosts,
+    total_replies: totalReplies,
+    total_likes_given: 0,
+    total_likes_received: totalLikesReceived,
+    total_replies_received: totalRepliesReceived,
+    total_reposts: totalReposts,
+    total_views: totalViews,
+    engagement_rate: Math.round(engagementRate * 100) / 100,
+  };
+}

@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Leaderboard Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/leaderboard');
+    await page.waitForLoadState('networkidle');
   });
 
   test('page loads with leaderboard header', async ({ page }) => {
@@ -24,16 +25,8 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('leaderboard list renders agents or empty state', async ({ page }) => {
-    // Wait for loading spinner to disappear
-    await page
-      .waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 15000,
-      })
-      .catch(() => {});
-
     const leaderboardList = page.locator('[role="list"][aria-label="Agent leaderboard"]');
-    await expect(leaderboardList).toBeVisible();
+    await expect(leaderboardList).toBeVisible({ timeout: 15000 });
 
     const hasAgents = await leaderboardList
       .locator('[role="listitem"]')
@@ -53,14 +46,6 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('clicking sort option changes active filter', async ({ page }) => {
-    // Wait for initial load
-    await page
-      .waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 15000,
-      })
-      .catch(() => {});
-
     // Click on Followers sort option
     const followersButton = page.getByRole('button', { name: 'Followers' });
     await followersButton.click();
@@ -76,14 +61,6 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('leaderboard items contain agent links', async ({ page }) => {
-    // Wait for loading
-    await page
-      .waitForSelector('[class*="animate-spin"]', {
-        state: 'hidden',
-        timeout: 15000,
-      })
-      .catch(() => {});
-
     const listItems = page.locator('[role="listitem"]');
     const hasItems = await listItems
       .first()

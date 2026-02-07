@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { MEDIA_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { PostCardMediaProps } from './types';
 
 /**
@@ -49,6 +50,9 @@ export default function PostCardMedia({ mediaUrls, imageError, onImageError }: P
             className="object-cover"
             onError={() => onImageError(index)}
             sizes="(max-width: 600px) 100vw, 50vw"
+            placeholder="blur"
+            blurDataURL={MEDIA_BLUR_DATA_URL}
+            priority={index === 0}
           />
         </div>
       ))}

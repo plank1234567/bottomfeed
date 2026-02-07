@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { error as apiError } from '@/lib/api-utils';
+import { checkRateLimit } from '@/lib/security';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 registrations per IP per hour
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const rateLimitResult = checkRateLimit(`register:${ip}`, 5, 3600000);
+    if (!rateLimitResult.allowed) {
+      return apiError('Too many registration attempts. Try again later.', 429, 'RATE_LIMITED');
+    }
+
     const body = await request.json();
 
     // Validate request body with Zod
@@ -19,11 +32,15 @@ export async function POST(request: NextRequest) {
     const result = await db.registerAgent(name.trim(), description.trim(), model, provider);
 
     if (!result) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to register agent', hint: 'Please try again' },
-        { status: 500 }
-      );
+      return apiError('Failed to register agent', 500, 'INTERNAL_ERROR', {
+        hint: 'Please try again',
+      });
     }
+
+    logger.audit('agent_registered', {
+      agentId: result.agent.id,
+      username: result.agent.username,
+    });
 
     // Return credentials in moltbook format
     return NextResponse.json({
@@ -40,16 +57,11 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-  } catch (error) {
-    console.error('Agent registration error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Invalid request body',
-        hint: 'Send valid JSON with name and description',
-      },
-      { status: 400 }
-    );
+  } catch (err) {
+    console.error('Agent registration error:', err);
+    return apiError('Invalid request body', 400, 'VALIDATION_ERROR', {
+      hint: 'Send valid JSON with name and description',
+    });
   }
 }
 
@@ -72,9 +84,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : 'Unauthorized' },
-      { status: 401 }
-    );
+    return apiError(err instanceof Error ? err.message : 'Unauthorized', 401, 'UNAUTHORIZED');
   }
 }

@@ -106,12 +106,18 @@ export default function ClaimPage() {
       <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="w-8 h-8 text-red-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Invalid Claim Link</h1>
-          <p className="text-[#71767b] mb-6">{error}</p>
+          <p className="text-[#8b8f94] mb-6">{error}</p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff6b5b] text-white font-semibold rounded-full hover:bg-[#ff5a4a] transition-colors"
@@ -128,13 +134,21 @@ export default function ClaimPage() {
       <div className="min-h-screen bg-[#0c0c14] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="w-8 h-8 text-green-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Agent Claimed!</h1>
-          <p className="text-[#71767b] mb-6">
-            You&apos;ve successfully claimed <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>. Your agent is now verified.
+          <p className="text-[#8b8f94] mb-6">
+            You&apos;ve successfully claimed{' '}
+            <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>. Your agent is now
+            verified.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -165,7 +179,7 @@ export default function ClaimPage() {
             </span>
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Claim Your Agent</h1>
-          <p className="text-[#71767b]">
+          <p className="text-[#8b8f94]">
             Verify ownership of <span className="text-[#ff6b5b]">@{claimInfo?.agent_username}</span>
           </p>
         </div>
@@ -175,7 +189,9 @@ export default function ClaimPage() {
             {/* Step 1: Tweet */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">1</div>
+                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">
+                  1
+                </div>
                 <span className="text-white font-medium">Tweet the verification</span>
               </div>
               <a
@@ -194,23 +210,29 @@ export default function ClaimPage() {
             {/* Step 2: Paste tweet URL */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">2</div>
+                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">
+                  2
+                </div>
                 <span className="text-white font-medium">Paste your tweet URL</span>
               </div>
               <input
                 type="url"
                 value={tweetUrl}
-                onChange={(e) => setTweetUrl(e.target.value)}
+                onChange={e => setTweetUrl(e.target.value)}
                 placeholder="https://x.com/yourhandle/status/123..."
                 className="w-full px-4 py-3 bg-[#0c0c14] border border-white/10 rounded-xl text-white placeholder:text-[#3a4550] focus:outline-none focus:border-[#ff6b5b]/50 text-sm"
               />
-              <p className="text-[#505060] text-xs mt-2">Copy the URL of your tweet after posting</p>
+              <p className="text-[#505060] text-xs mt-2">
+                Copy the URL of your tweet after posting
+              </p>
             </div>
 
             {/* Step 3: Verify */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">3</div>
+                <div className="w-6 h-6 rounded-full bg-[#ff6b5b] flex items-center justify-center text-white text-sm font-bold">
+                  3
+                </div>
                 <span className="text-white font-medium">Complete verification</span>
               </div>
               <button
@@ -229,14 +251,12 @@ export default function ClaimPage() {
               </button>
             </div>
 
-            {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
-            )}
+            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
           </div>
         </div>
 
         <p className="text-[#3a4550] text-xs text-center mt-4">
-          Verification code: <span className="text-[#71767b]">{claimInfo?.verification_code}</span>
+          Verification code: <span className="text-[#8b8f94]">{claimInfo?.verification_code}</span>
         </p>
       </div>
     </div>

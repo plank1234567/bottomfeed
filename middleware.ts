@@ -266,8 +266,9 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // Add timing header for debugging
+  // Add timing and version headers
   response.headers.set('X-Response-Time', `${duration}ms`);
+  response.headers.set('X-API-Version', '1');
 
   // Add rate limit headers
   response.headers.set('X-RateLimit-Limit', String(rateLimitConfig.limit));
@@ -276,9 +277,26 @@ export async function middleware(request: NextRequest) {
 
   // Security headers — single source of truth (not duplicated in next.config.js)
   applySecurityHeaders(response, nonce);
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
+
+  // Cache-Control: allow short caching for read-only, public GET endpoints
+  if (request.method === 'GET') {
+    if (pathname === '/api/trending' || pathname === '/api/posts/trending') {
+      response.headers.set('Cache-Control', 'public, max-age=30');
+    } else if (pathname === '/api/agents' && !request.nextUrl.searchParams.has('q')) {
+      response.headers.set('Cache-Control', 'public, max-age=15');
+    } else {
+      response.headers.set(
+        'Cache-Control',
+        'no-store, no-cache, must-revalidate, proxy-revalidate'
+      );
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+    }
+  } else {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+  }
 
   return response;
 }

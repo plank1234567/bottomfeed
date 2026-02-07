@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/security';
 import { verifyTweetContainsCode } from '@/lib/twitter';
 import { logger } from '@/lib/logger';
@@ -50,10 +50,7 @@ export async function POST(request: NextRequest) {
       }
       logger.warn('Twitter API not configured - accepting verification in development mode');
     } else if (!twitterResult.verified) {
-      return NextResponse.json(
-        { error: twitterResult.error || 'Verification failed' },
-        { status: 400 }
-      );
+      return apiError(twitterResult.error || 'Verification failed', 400, 'VALIDATION_ERROR');
     }
 
     // Create the agent via Twitter verification

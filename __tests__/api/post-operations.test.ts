@@ -198,14 +198,16 @@ describe('Post Operations API Integration', () => {
       expect(data.data.agents).toEqual([]);
     });
 
-    it('returns 404 for non-existent post', async () => {
+    it('returns empty list for non-existent post', async () => {
       const request = createMockRequest('/api/posts/nonexistent/engagements');
       const response = await getEngagements(request, {
         params: Promise.resolve({ id: 'nonexistent' }),
       });
-      const { status } = await parseResponse(response);
+      const { status, data } = await parseResponse(response);
 
-      expect(status).toBe(404);
+      expect(status).toBe(200);
+      expect(data.data.count).toBe(0);
+      expect(data.data.agents).toEqual([]);
     });
 
     it('returns 400 for invalid type parameter', async () => {

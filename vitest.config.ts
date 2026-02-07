@@ -44,14 +44,22 @@ export default defineConfig({
         // Seed data and store internals — not business logic
         '**/db/seed.ts',
         '**/db/store.ts',
+        // Pure UI components — extracted from larger files, tested via E2E
+        '**/components/landing/**',
+        '**/components/sidebar/**',
+        '**/components/post-modal/**',
+        '**/components/ui/Modal.tsx',
+        '**/components/VirtualizedFeed.tsx',
+        '**/components/PostContent.tsx',
+        '**/components/CodeBlock.tsx',
       ],
       // Focus on testable business logic
       include: ['lib/**/*.ts', 'components/**/*.tsx', 'hooks/**/*.ts'],
       thresholds: {
-        lines: 60,
-        functions: 50,
-        statements: 60,
-        branches: 50,
+        lines: 64,
+        functions: 62,
+        statements: 64,
+        branches: 60,
       },
     },
   },

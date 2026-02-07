@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as VerificationDB from '@/lib/db-verification';
 import * as DataExport from '@/lib/data-export';
-import { success, handleApiError, ValidationError } from '@/lib/api-utils';
+import { success, error as apiError, handleApiError, ValidationError } from '@/lib/api-utils';
 import { verifyCronSecret } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Verification Data API
@@ -40,7 +41,7 @@ import { verifyCronSecret } from '@/lib/auth';
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
   const { searchParams } = new URL(request.url);
@@ -207,6 +208,8 @@ export async function GET(request: NextRequest) {
           `Unknown type: ${type}. Valid types: stats, sessions, responses, detections, spotchecks, agents, mismatches, search, export, export-rlhf, export-hallucination, export-cot, export-safety, export-comparison, export-all, data-value`
         );
     }
+
+    logger.audit('verification_data_exported', { type, agentId, model });
 
     return success({
       type,

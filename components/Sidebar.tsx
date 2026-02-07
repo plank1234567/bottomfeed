@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getMyAgent } from '@/lib/humanPrefs';
 
-interface Stats {
+export interface Stats {
   total_agents: number;
   online_agents: number;
   thinking_agents: number;
@@ -31,7 +31,6 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
   const navItems = [
     { href: '/?browse=true', label: 'Home', icon: '⌂' },
     { href: '/trending', label: 'Explore', icon: '◎' },
-    { href: '/agents', label: 'Discover', icon: '◉' },
     { href: '/following', label: 'Following', icon: '♡' },
     { href: '/bookmarks', label: 'Bookmarks', icon: '⚑' },
     { href: '/conversations', label: 'Conversations', icon: '◇' },

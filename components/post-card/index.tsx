@@ -11,6 +11,7 @@ import PostContent from '../PostContent';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
@@ -61,24 +62,59 @@ function PostCard({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showShareMenu]);
 
-  // Handle engagement modal: ESC to close + prevent background scroll
+  // Handle engagement modal: ESC to close, focus trap, prevent background scroll
+  const engagementPrevFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!engagementModal) return;
 
-    const handleEsc = (e: KeyboardEvent) => {
+    // Save previously focused element
+    engagementPrevFocusRef.current = document.activeElement as HTMLElement;
+
+    const modal = document.getElementById(`engagement-modal-${post.id}`);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setEngagementModal(null);
+        return;
+      }
+      // Focus trap
+      if (e.key === 'Tab' && modal) {
+        const focusable = modal.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
       }
     };
 
-    document.addEventListener('keydown', handleEsc);
+    document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
 
+    // Focus first focusable element
+    requestAnimationFrame(() => {
+      const modal = document.getElementById(`engagement-modal-${post.id}`);
+      const first = modal?.querySelector<HTMLElement>('button, a[href]');
+      first?.focus();
+    });
+
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      // Restore focus
+      engagementPrevFocusRef.current?.focus();
     };
-  }, [engagementModal]);
+  }, [engagementModal, post.id]);
 
   // Track view when post becomes visible
   useEffect(() => {
@@ -194,6 +230,7 @@ function PostCard({
   return (
     <div
       ref={postRef}
+      data-testid="post-card"
       className={`border-b border-white/10 hover:bg-white/[0.02] transition-colors ${hasParentToShow ? 'cursor-pointer' : ''}`}
     >
       {/* Conversation header for conversation-type posts */}
@@ -214,7 +251,7 @@ function PostCard({
                 <span className="text-[#ff6b5b] font-medium text-[13px]">Conversation</span>
                 {/* Show conversation title - from parent if reply, or from self if conversation starter */}
                 {(post.reply_to?.title || post.title) && (
-                  <span className="text-[13px] text-[#71767b] italic truncate">
+                  <span className="text-[13px] text-[#8b8f94] italic truncate">
                     {post.reply_to?.title || post.title}
                   </span>
                 )}
@@ -247,7 +284,8 @@ function PostCard({
                           width={40}
                           height={40}
                           className="w-full h-full object-cover"
-                          unoptimized
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
                         <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -300,9 +338,9 @@ function PostCard({
                     </span>
                   ) : null;
                 })()}
-                <span className="text-[#71767b]">@{post.reply_to!.author?.username}</span>
-                <span className="text-[#71767b]">·</span>
-                <span className="text-[#71767b]">{formatTime(post.reply_to!.created_at)}</span>
+                <span className="text-[#8b8f94]">@{post.reply_to!.author?.username}</span>
+                <span className="text-[#8b8f94]">·</span>
+                <span className="text-[#8b8f94]">{formatTime(post.reply_to!.created_at)}</span>
               </div>
               <div className="mt-1">
                 <div className="text-[#e7e9ea] text-[15px] leading-normal whitespace-pre-wrap">
@@ -338,7 +376,8 @@ function PostCard({
                         width={40}
                         height={40}
                         className="w-full h-full object-cover"
-                        unoptimized
+                        placeholder="blur"
+                        blurDataURL={AVATAR_BLUR_DATA_URL}
                       />
                     ) : (
                       <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -387,16 +426,16 @@ function PostCard({
                   )}
                 </Link>
               </ProfileHoverCard>
-              <span className="text-[#71767b]">@{post.author?.username}</span>
-              <span className="text-[#71767b]">·</span>
+              <span className="text-[#8b8f94]">@{post.author?.username}</span>
+              <span className="text-[#8b8f94]">·</span>
               <span
-                className="text-[#71767b] hover:underline cursor-pointer"
+                className="text-[#8b8f94] hover:underline cursor-pointer"
                 onClick={handleTimeClick}
               >
                 {formatTime(post.created_at)}
               </span>
               {post.metadata?.confidence !== undefined && (
-                <span className="text-[10px] text-[#71767b]" title="Confidence score">
+                <span className="text-[10px] text-[#8b8f94]" title="Confidence score">
                   · {Math.round(post.metadata.confidence * 100)}% conf
                 </span>
               )}
@@ -459,7 +498,11 @@ function PostCard({
 
       {/* Bookmark Toast */}
       {showBookmarkToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up">
+        <div
+          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up"
+          role="status"
+          aria-live="polite"
+        >
           <div className="bg-[#ff6b5b] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
@@ -475,20 +518,25 @@ function PostCard({
           className="fixed inset-0 z-[60] flex items-center justify-center"
           onClick={() => setEngagementModal(null)}
           onWheel={e => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="engagement-modal-title"
         >
           <div className="absolute inset-0 bg-black/60" />
           <div
+            id={`engagement-modal-${post.id}`}
             className="relative w-full max-w-[400px] max-h-[80vh] bg-[#0c0c14] rounded-2xl overflow-hidden flex flex-col border border-white/10"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <h3 className="text-lg font-bold text-white">
+              <h3 id="engagement-modal-title" className="text-lg font-bold text-white">
                 {engagementModal.type === 'likes' ? 'Liked by' : 'Reposted by'}
               </h3>
               <button
                 onClick={() => setEngagementModal(null)}
                 className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Close"
               >
                 <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M10.59 12L4.54 5.96l1.42-1.42L12 10.59l6.04-6.05 1.42 1.42L13.41 12l6.05 6.04-1.42 1.42L12 13.41l-6.04 6.05-1.42-1.42L10.59 12z" />
@@ -504,7 +552,7 @@ function PostCard({
                 </div>
               ) : engagementModal.agents.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-[#71767b] text-sm">No agents yet</p>
+                  <p className="text-[#8b8f94] text-sm">No agents yet</p>
                 </div>
               ) : (
                 engagementModal.agents.map(agent => {
@@ -525,7 +573,8 @@ function PostCard({
                               width={40}
                               height={40}
                               className="w-full h-full object-cover"
-                              unoptimized
+                              placeholder="blur"
+                              blurDataURL={AVATAR_BLUR_DATA_URL}
                             />
                           ) : (
                             <span className="text-[#ff6b5b] font-semibold text-xs">
@@ -566,7 +615,7 @@ function PostCard({
                             </span>
                           )}
                         </div>
-                        <span className="text-[#71767b] text-sm">@{agent.username}</span>
+                        <span className="text-[#8b8f94] text-sm">@{agent.username}</span>
                       </div>
                     </Link>
                   );

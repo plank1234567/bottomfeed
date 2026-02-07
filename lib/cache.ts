@@ -1,26 +1,141 @@
 /**
- * Simple in-memory TTL cache for server-side use.
- * Keeps hot database query results for short durations to reduce load.
+ * Redis-backed TTL cache with in-memory fallback.
+ * Uses @upstash/redis as primary store, falls back to in-memory Map on error
+ * or when Redis is not configured.
  */
 
-const cache = new Map<string, { data: unknown; expiry: number }>();
+import { getRedis } from './redis';
 
-export function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
+// =============================================================================
+// IN-MEMORY FALLBACK
+// =============================================================================
+
+const memoryCache = new Map<string, { data: unknown; expiry: number }>();
+
+function memoryGet<T>(key: string): T | null {
+  const entry = memoryCache.get(key);
   if (!entry || Date.now() > entry.expiry) {
-    cache.delete(key);
+    memoryCache.delete(key);
     return null;
   }
   return entry.data as T;
 }
 
-export function setCache(key: string, data: unknown, ttlMs: number): void {
+function memorySet(key: string, data: unknown, ttlMs: number): void {
   // Prevent unbounded growth
-  if (cache.size > 1000) {
+  if (memoryCache.size > 1000) {
     const now = Date.now();
-    for (const [k, v] of cache) {
-      if (now > v.expiry) cache.delete(k);
+    for (const [k, v] of memoryCache) {
+      if (now > v.expiry) memoryCache.delete(k);
     }
   }
-  cache.set(key, { data, expiry: Date.now() + ttlMs });
+  memoryCache.set(key, { data, expiry: Date.now() + ttlMs });
+}
+
+function memoryDelete(key: string): void {
+  memoryCache.delete(key);
+}
+
+function memoryDeletePattern(prefix: string): void {
+  const cleanPrefix = prefix.replace(/\*$/, '');
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(cleanPrefix)) {
+      memoryCache.delete(key);
+    }
+  }
+}
+
+// =============================================================================
+// PUBLIC API
+// =============================================================================
+
+const CACHE_PREFIX = 'bf:cache:';
+
+export async function getCached<T>(key: string): Promise<T | null> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const data = await redis.get<T>(`${CACHE_PREFIX}${key}`);
+      if (data !== null && data !== undefined) return data;
+      return null;
+    } catch {
+      // Redis error — fall through to memory
+    }
+  }
+  return memoryGet<T>(key);
+}
+
+export async function setCache(key: string, data: unknown, ttlMs: number): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
+      await redis.set(`${CACHE_PREFIX}${key}`, data, { ex: ttlSeconds });
+      return;
+    } catch {
+      // Redis error — fall through to memory
+    }
+  }
+  memorySet(key, data, ttlMs);
+}
+
+/**
+ * Invalidate a single cache key.
+ */
+export async function invalidateCache(key: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.del(`${CACHE_PREFIX}${key}`);
+    } catch {
+      // ignore
+    }
+  }
+  memoryDelete(key);
+}
+
+/**
+ * Invalidate all cache keys matching a prefix pattern (e.g., `trending:*`).
+ * Uses SCAN on Redis to avoid blocking. Falls back to iterating memory map.
+ */
+export async function invalidatePattern(pattern: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      let cursor = 0;
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, {
+          match: `${CACHE_PREFIX}${pattern}`,
+          count: 100,
+        });
+        cursor = typeof nextCursor === 'string' ? parseInt(nextCursor, 10) : nextCursor;
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      } while (cursor !== 0);
+    } catch {
+      // ignore
+    }
+  }
+  memoryDeletePattern(pattern);
+}
+
+// =============================================================================
+// SYNCHRONOUS API (backward compatibility for existing callers)
+// =============================================================================
+
+/**
+ * Synchronous cache get — reads from memory cache only.
+ * Use the async `getCached()` for Redis-backed reads.
+ */
+export function getCachedSync<T>(key: string): T | null {
+  return memoryGet<T>(key);
+}
+
+/**
+ * Synchronous cache set — writes to memory cache only.
+ * Use the async `setCache()` for Redis-backed writes.
+ */
+export function setCacheSync(key: string, data: unknown, ttlMs: number): void {
+  memorySet(key, data, ttlMs);
 }

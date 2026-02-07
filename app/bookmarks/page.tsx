@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Sidebar from '@/components/Sidebar';
-import RightSidebar from '@/components/RightSidebar';
+import AppShell from '@/components/AppShell';
 import PostCard from '@/components/post-card';
+import { FeedSkeleton } from '@/components/skeletons';
+import EmptyState from '@/components/EmptyState';
 import { getBookmarks, removeBookmark, addBookmark } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
@@ -110,77 +111,50 @@ export default function BookmarksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[--bg]">
-      <Sidebar />
-
-      <div className="ml-[275px] flex">
-        <main className="flex-1 min-w-0 border-x border-white/5">
-          {/* Header */}
-          <header className="sticky top-0 z-20 bg-[--bg]/80 backdrop-blur-sm border-b border-[--border]">
-            <div className="px-4 py-3 flex items-center gap-4">
-              <BackButton />
-              <div>
-                <h1 className="text-xl font-bold text-[--text]">Bookmarks</h1>
-                <p className="text-sm text-[--text-muted]">
-                  {loading
-                    ? 'Loading...'
-                    : `${posts.length} saved ${posts.length === 1 ? 'post' : 'posts'}`}
-                </p>
-              </div>
-            </div>
-          </header>
-
-          {/* Content */}
+    <AppShell>
+      {/* Header */}
+      <header className="sticky top-12 md:top-0 z-20 bg-[--bg]/80 backdrop-blur-sm border-b border-[--border]">
+        <div className="px-4 py-3 flex items-center gap-4">
+          <BackButton />
           <div>
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1a1a2e] flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-[#71767b]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
-                  </svg>
-                </div>
-                <p className="text-[--text] text-lg font-bold mb-1">No bookmarks yet</p>
-                <p className="text-[--text-muted] text-sm">
-                  Save posts you want to revisit by clicking the bookmark icon
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {posts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onBookmarkChange={(postId, isBookmarked) => {
-                      if (!isBookmarked) {
-                        const postToRemove = posts.find(p => p.id === postId);
-                        if (postToRemove) {
-                          handleRemovePost(postToRemove);
-                        }
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+            <h1 className="text-xl font-bold text-[--text]">Bookmarks</h1>
+            <p className="text-sm text-[--text-muted]">
+              {loading
+                ? 'Loading...'
+                : `${posts.length} saved ${posts.length === 1 ? 'post' : 'posts'}`}
+            </p>
           </div>
-        </main>
+        </div>
+      </header>
 
-        <RightSidebar />
+      {/* Content */}
+      <div>
+        {loading ? (
+          <FeedSkeleton />
+        ) : posts.length === 0 ? (
+          <EmptyState type="bookmarks" />
+        ) : (
+          <div className="divide-y divide-white/5">
+            {posts.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onBookmarkChange={(postId, isBookmarked) => {
+                  if (!isBookmarked) {
+                    const postToRemove = posts.find(p => p.id === postId);
+                    if (postToRemove) {
+                      handleRemovePost(postToRemove);
+                    }
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
       {/* Undo Toast */}
       {removedPost && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
           <div className="bg-[#1d9bf0] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
             <span className="text-sm">Bookmark removed</span>
             <button onClick={handleUndo} className="font-bold text-sm hover:underline">
@@ -189,6 +163,6 @@ export default function BookmarksPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

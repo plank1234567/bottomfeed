@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
           content: conv.root_post.content,
           agent_id: conv.root_post.agent_id,
           created_at: conv.root_post.created_at,
+          like_count: conv.root_post.like_count || 0,
+          repost_count: conv.root_post.repost_count || 0,
+          view_count: conv.root_post.view_count || 0,
           author: conv.root_post.author
             ? {
                 id: conv.root_post.author.id,

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
@@ -15,8 +15,11 @@ interface ProfileHoverCardProps {
   onNavigate?: () => void;
 }
 
+// Module-level cache: persists across all instances and re-renders
+const agentCache = new Map<string, Agent>();
+
 function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [agent, setAgent] = useState<Agent | null>(() => agentCache.get(username) || null);
   const [loading, setLoading] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
@@ -45,6 +48,12 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
   };
 
   const fetchAgent = async () => {
+    // Check module-level cache first
+    const cached = agentCache.get(username);
+    if (cached) {
+      setAgent(cached);
+      return;
+    }
     if (agent) return;
     setLoading(true);
     try {
@@ -52,6 +61,7 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
       if (res.ok) {
         const json = await res.json();
         const data = json.data || json;
+        agentCache.set(username, data.agent);
         setAgent(data.agent);
       }
     } catch (error) {
@@ -60,25 +70,25 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
     setLoading(false);
   };
 
-  const calculatePosition = () => {
+  const calculatePosition = useCallback(() => {
     if (!triggerRef.current) return;
 
     const rect = triggerRef.current.getBoundingClientRect();
-    const cardHeight = 320; // Approximate card height
     const cardWidth = 300;
     const padding = 16;
+    // Use actual card height if rendered, otherwise conservative estimate
+    const cardHeight = cardRef.current?.offsetHeight || 260;
 
     let top = rect.bottom + 8; // Default: below the trigger
     let left = rect.left;
 
-    // Check if card would go below viewport
+    // Only flip above if card truly won't fit below
     if (top + cardHeight > window.innerHeight - padding) {
-      // Try to show above
       if (rect.top - cardHeight - 8 > padding) {
         top = rect.top - cardHeight - 8;
       } else {
-        // Not enough space above either, position at top of viewport with some padding
-        top = padding;
+        // Not enough space either way — prefer below, let it overflow slightly
+        top = Math.max(padding, window.innerHeight - cardHeight - padding);
       }
     }
 
@@ -97,10 +107,19 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
       top: `${top}px`,
       left: `${left}px`,
     });
-  };
+  }, []);
+
+  // Reposition after card renders with actual content height
+  useEffect(() => {
+    if (showCard && cardRef.current) {
+      calculatePosition();
+    }
+  }, [showCard, loading, agent, calculatePosition]);
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => {
+      // Don't show if a badge tooltip is currently active
+      if (document.body.dataset.badgeTooltipActive) return;
       // Dispatch event to close any badge tooltips
       window.dispatchEvent(new CustomEvent('profile-card-show'));
       setShowCard(true);
@@ -207,16 +226,32 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                     )}
                   </div>
                 </Link>
-                <button
-                  onClick={handleFollow}
-                  className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
-                    following
-                      ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
-                      : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
-                  }`}
-                >
-                  {following ? 'Following' : 'Follow'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {agent.twitter_handle && agent.claim_status === 'claimed' && (
+                    <a
+                      href={`https://x.com/${agent.twitter_handle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="flex items-center justify-center w-8 h-8 rounded-full border border-white/10 text-[#a0a0a0] hover:bg-white/10 hover:text-white transition-colors"
+                      title={`@${agent.twitter_handle} on X`}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                      </svg>
+                    </a>
+                  )}
+                  <button
+                    onClick={handleFollow}
+                    className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
+                      following
+                        ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
+                        : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
+                    }`}
+                  >
+                    {following ? 'Following' : 'Follow'}
+                  </button>
+                </div>
               </div>
 
               {/* Name and handle */}

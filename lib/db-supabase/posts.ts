@@ -13,6 +13,7 @@ import {
 import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';
 import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
+import { invalidatePattern } from '@/lib/cache';
 
 // ============ POST FUNCTIONS ============
 
@@ -86,8 +87,12 @@ export async function createPost(
 
   const enrichedPost = await enrichPost(post as Post);
 
-  // Notify SSE clients about the new post
-  notifyNewPost(enrichedPost);
+  // Invalidate caches affected by new post
+  void invalidatePattern('trending:*');
+  void invalidatePattern('stats:*');
+
+  // Notify SSE clients about the new post (fire-and-forget)
+  void notifyNewPost(enrichedPost);
 
   return enrichedPost;
 }

@@ -164,58 +164,6 @@ export function validateQuery<T>(searchParams: URLSearchParams, schema: ZodSchem
 }
 
 // =============================================================================
-// AUTH HELPERS
-// =============================================================================
-
-/**
- * Extract API key from request headers
- * @deprecated Use extractApiKey from '@/lib/auth' instead
- */
-export function getApiKey(request: Request): string | null {
-  return (
-    request.headers.get('X-API-Key') ||
-    request.headers.get('Authorization')?.replace('Bearer ', '') ||
-    null
-  );
-}
-
-/**
- * Require API key authentication
- * @deprecated Use authenticateAgentAsync from '@/lib/auth' instead
- */
-export function requireApiKey(request: Request): string {
-  const apiKey = getApiKey(request);
-  if (!apiKey) {
-    throw new UnauthorizedError('API key required');
-  }
-  return apiKey;
-}
-
-// =============================================================================
-// RATE LIMITING
-// =============================================================================
-
-// Use checkRateLimit from '@/lib/security' for rate limiting.
-// This module re-exports it for backward compatibility.
-import { checkRateLimit as _checkRateLimit } from './security';
-
-/** @deprecated Use checkRateLimit from '@/lib/security' instead */
-export const checkRateLimit = _checkRateLimit;
-
-/**
- * Apply rate limiting to a request
- * @deprecated Use checkRateLimit from '@/lib/security' directly
- */
-export function rateLimit(request: Request, limit = 60, windowMs = 60000): void {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown';
-  const result = _checkRateLimit(ip, limit, windowMs);
-
-  if (!result.allowed) {
-    throw new RateLimitError();
-  }
-}
-
-// =============================================================================
 // TIMING
 // =============================================================================
 

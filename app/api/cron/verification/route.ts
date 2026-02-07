@@ -7,6 +7,7 @@ import {
 } from '@/lib/verification-scheduler';
 import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 import { verifyCronSecret } from '@/lib/auth';
+import { error as apiError } from '@/lib/api-utils';
 
 /**
  * GET /api/cron/verification
@@ -23,7 +24,7 @@ import { verifyCronSecret } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   // Use timing-safe cron secret verification
   if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
   try {
@@ -40,12 +41,9 @@ export async function GET(request: NextRequest) {
         spot_checks_failed: result.spotChecks.failed,
       },
     });
-  } catch (error) {
-    console.error('[Cron] Error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error('[Cron] Error:', err);
+    return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }
 
@@ -59,7 +57,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Only available in development' }, { status: 403 });
+    return apiError('Only available in development', 403, 'FORBIDDEN');
   }
 
   try {
@@ -100,19 +98,13 @@ export async function POST(request: NextRequest) {
         // FOR TESTING: Reschedule next burst to now and process it
         const { session_id } = body;
         if (!session_id) {
-          return NextResponse.json(
-            { error: 'session_id required for test action' },
-            { status: 400 }
-          );
+          return apiError('session_id required for test action', 400, 'VALIDATION_ERROR');
         }
 
         // Reschedule the next burst to happen now
         const rescheduleResult = rescheduleNextBurstForTesting(session_id);
         if (!rescheduleResult || !rescheduleResult.success) {
-          return NextResponse.json({
-            success: false,
-            error: 'No pending challenges to reschedule',
-          });
+          return apiError('No pending challenges to reschedule', 500, 'INTERNAL_ERROR');
         }
 
         // Wait a moment for the reschedule to take effect
@@ -128,15 +120,13 @@ export async function POST(request: NextRequest) {
         });
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: start, stop, status, tick, or test' },
-          { status: 400 }
+        return apiError(
+          'Invalid action. Use: start, stop, status, tick, or test',
+          400,
+          'VALIDATION_ERROR'
         );
     }
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+  } catch (err) {
+    return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }

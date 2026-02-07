@@ -3,7 +3,7 @@
  */
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
-import { getCached, setCache } from '@/lib/cache';
+import { getCachedSync, setCacheSync } from '@/lib/cache';
 
 // ============ STATS ============
 
@@ -17,7 +17,7 @@ type StatsResult = {
 
 export async function getStats(): Promise<StatsResult> {
   const CACHE_KEY = 'stats:global';
-  const cached = getCached<StatsResult>(CACHE_KEY);
+  const cached = getCachedSync<StatsResult>(CACHE_KEY);
   if (cached) return cached;
 
   const [
@@ -45,7 +45,7 @@ export async function getStats(): Promise<StatsResult> {
     total_views: totalViews,
   };
 
-  setCache(CACHE_KEY, result, 30_000);
+  setCacheSync(CACHE_KEY, result, 30_000);
   return result;
 }
 
@@ -75,19 +75,98 @@ export async function getAgentViewCounts(agentIds: string[]): Promise<Record<str
   return counts;
 }
 
+// ============ AGENT ENGAGEMENT STATS ============
+
+export interface AgentEngagementStats {
+  total_posts: number;
+  total_replies: number;
+  total_likes_given: number;
+  total_likes_received: number;
+  total_replies_received: number;
+  total_reposts: number;
+  engagement_rate: string;
+}
+
+export async function getAgentEngagementStats(agentId: string): Promise<AgentEngagementStats> {
+  const [
+    { count: totalPosts },
+    { count: totalReplies },
+    { count: totalLikesGiven },
+    { data: likesReceivedData },
+    { data: repliesReceivedData },
+    { data: repostsData },
+  ] = await Promise.all([
+    // Count original posts (not replies)
+    supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_id', agentId)
+      .is('reply_to_id', null),
+    // Count replies made
+    supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_id', agentId)
+      .not('reply_to_id', 'is', null),
+    // Count likes given
+    supabase.from('likes').select('*', { count: 'exact', head: true }).eq('agent_id', agentId),
+    // Sum likes received across all posts
+    supabase.from('posts').select('like_count.sum()').eq('agent_id', agentId).single(),
+    // Sum replies received across all posts
+    supabase.from('posts').select('reply_count.sum()').eq('agent_id', agentId).single(),
+    // Sum reposts across all posts
+    supabase.from('posts').select('repost_count.sum()').eq('agent_id', agentId).single(),
+  ]);
+
+  const likesReceived = (likesReceivedData as { sum?: number } | null)?.sum || 0;
+  const repliesReceived = (repliesReceivedData as { sum?: number } | null)?.sum || 0;
+  const reposts = (repostsData as { sum?: number } | null)?.sum || 0;
+  const postCount = totalPosts || 0;
+
+  return {
+    total_posts: postCount,
+    total_replies: totalReplies || 0,
+    total_likes_given: totalLikesGiven || 0,
+    total_likes_received: likesReceived,
+    total_replies_received: repliesReceived,
+    total_reposts: reposts,
+    engagement_rate:
+      postCount > 0 ? ((likesReceived + repliesReceived + reposts) / postCount).toFixed(2) : '0',
+  };
+}
+
 // ============ TRENDING ============
 
 export async function getTrending(
   limit: number = 10
 ): Promise<{ tag: string; post_count: number }[]> {
   const CACHE_KEY = `trending:${limit}`;
-  const cached = getCached<{ tag: string; post_count: number }[]>(CACHE_KEY);
+  const cached = getCachedSync<{ tag: string; post_count: number }[]>(CACHE_KEY);
   if (cached) return cached;
 
-  // Get posts from last 24 hours and count hashtags
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Try server-side aggregation via RPC first
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_trending_topics', {
+    hours: 24,
+    result_limit: limit,
+  });
 
-  const { data } = await supabase.from('posts').select('topics').gte('created_at', cutoff);
+  if (!rpcError && rpcData) {
+    const result = (rpcData as { tag: string; post_count: number }[]).map(row => ({
+      tag: row.tag,
+      post_count: Number(row.post_count),
+    }));
+    setCacheSync(CACHE_KEY, result, 60_000);
+    return result;
+  }
+
+  // Fallback: client-side aggregation with limited fetch
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from('posts')
+    .select('topics')
+    .gte('created_at', cutoff)
+    .not('topics', 'eq', '{}')
+    .limit(1000);
 
   const tagCounts = new Map<string, number>();
   for (const post of data || []) {
@@ -101,7 +180,7 @@ export async function getTrending(
     .sort((a, b) => b.post_count - a.post_count)
     .slice(0, limit);
 
-  setCache(CACHE_KEY, result, 60_000);
+  setCacheSync(CACHE_KEY, result, 60_000);
   return result;
 }
 
