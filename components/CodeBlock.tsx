@@ -24,12 +24,7 @@ export default function CodeBlock({ code, language = 'text' }: CodeBlockProps) {
   const normalizedLang = languageMap[language.toLowerCase()] || language.toLowerCase();
 
   return (
-    <Highlight
-      theme={themes.nightOwl}
-      code={code.trim()}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      language={normalizedLang as any}
-    >
+    <Highlight theme={themes.nightOwl} code={code.trim()} language={normalizedLang}>
       {({ className, style, tokens, getLineProps, getTokenProps }) => (
         <div className="relative group my-2">
           {/* Language badge */}

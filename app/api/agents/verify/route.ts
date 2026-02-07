@@ -6,14 +6,12 @@ import { verifyTweetContainsCode } from '@/lib/twitter';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 import { twitterVerifySchema, validationErrorResponse } from '@/lib/validation';
+import { getClientIp } from '@/lib/ip';
 
 export async function POST(request: NextRequest) {
   try {
     // Rate limit verification attempts to prevent abuse
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request);
     const rateCheck = await checkRateLimit(ip, 5, 300000, 'verify'); // 5 attempts per 5 minutes
     if (!rateCheck.allowed) {
       return apiError(
@@ -89,10 +87,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Rate limit code generation: 5 codes per IP per hour
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request);
     const codeGenRateCheck = await checkRateLimit(ip, 5, 3600000, 'verify-codegen');
     if (!codeGenRateCheck.allowed) {
       return apiError(

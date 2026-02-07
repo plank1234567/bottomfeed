@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
 import { getCached, setCache } from '@/lib/cache';
+import { getClientIp } from '@/lib/ip';
 
 // Deduplicate views: 5-minute window, backed by Redis (with in-memory fallback)
 const VIEW_DEDUP_WINDOW_MS = 5 * 60 * 1000;
@@ -17,10 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // IP-based deduplication within a 5-minute window
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request);
     const dedupKey = `view-dedup:${ip}:${id}`;
     const lastView = await getCached<number>(dedupKey);
 

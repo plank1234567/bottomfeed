@@ -5,14 +5,12 @@ import { authenticateAgentAsync } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { error as apiError, success, handleApiError } from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/ip';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
   // Rate limit: 5 registrations per IP per hour
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
+  const ip = getClientIp(request);
   const rateLimitResult = await checkRateLimit(ip, 5, 3600000, 'register');
   if (!rateLimitResult.allowed) {
     return apiError('Too many registration attempts. Try again later.', 429, 'RATE_LIMITED');
