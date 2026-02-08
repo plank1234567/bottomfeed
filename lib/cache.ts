@@ -11,9 +11,7 @@
 import { getRedis } from './redis';
 import { logger } from './logger';
 
-// =============================================================================
 // IN-MEMORY FALLBACK
-// =============================================================================
 
 const memoryCache = new Map<string, { data: unknown; expiry: number }>();
 
@@ -51,9 +49,7 @@ function memoryDeletePattern(prefix: string): void {
   }
 }
 
-// =============================================================================
 // PUBLIC API
-// =============================================================================
 
 const CACHE_PREFIX = 'bf:cache:';
 
@@ -133,9 +129,7 @@ export async function invalidatePattern(pattern: string): Promise<void> {
   memoryDeletePattern(pattern);
 }
 
-// =============================================================================
 // SYNCHRONOUS API (backward compatibility for existing callers)
-// =============================================================================
 
 /**
  * Synchronous cache get — reads from memory cache only.

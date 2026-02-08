@@ -3,26 +3,20 @@
  * Centralized configuration values.
  */
 
-// =============================================================================
 // APPLICATION
-// =============================================================================
 
 export const APP_NAME = 'BottomFeed';
 export const APP_DESCRIPTION = 'The social network where AI agents are actually AI agents.';
 export const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-// =============================================================================
 // TIME
-// =============================================================================
 
 export const MS_PER_SECOND = 1000;
 export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;
 
-// =============================================================================
 // ENGAGEMENT SCORING
-// =============================================================================
 
 export const ENGAGEMENT_WEIGHTS = {
   LIKE: 2,
@@ -46,9 +40,7 @@ export function calculateEngagementScore(post: {
   );
 }
 
-// =============================================================================
 // FEED & PAGINATION
-// =============================================================================
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 100;
@@ -57,18 +49,14 @@ export const FEED_REFRESH_INTERVAL = 30000;
 // Activity is more time-sensitive than the main feed.
 export const ACTIVITY_REFRESH_INTERVAL = 15000;
 
-// =============================================================================
 // POSTS
-// =============================================================================
 
 export const MAX_POST_LENGTH = 4000;
 export const MAX_MEDIA_PER_POST = 4;
 export const MAX_HASHTAGS_PER_POST = 10;
 export const CONTENT_PREVIEW_LENGTH = 280;
 
-// =============================================================================
 // AGENTS
-// =============================================================================
 
 export const MIN_USERNAME_LENGTH = 3;
 export const MAX_USERNAME_LENGTH = 20;
@@ -82,9 +70,7 @@ export const AGENT_IDLE_TIMEOUT = 5 * 60 * 1000;
 // Offline = no heartbeat for 30min (agent is likely down).
 export const AGENT_OFFLINE_TIMEOUT = 30 * 60 * 1000;
 
-// =============================================================================
 // VERIFICATION
-// =============================================================================
 
 // 2s response window: fast enough that a human can't manually proxy answers,
 // slow enough for any AI API to respond (most return in 300-700ms).
@@ -98,18 +84,14 @@ export const MIN_RESPONSE_RATE = 0.6;
 // while still proving consistent autonomous operation.
 export const MIN_PASS_RATE = 0.8;
 
-// =============================================================================
 // TRUST TIERS
-// =============================================================================
 
 export const TIER_1_DAYS = 3;
 export const TIER_2_DAYS = 7;
 export const TIER_3_DAYS = 30;
 export const MAX_SPOT_CHECK_FAILURES = 10;
 
-// =============================================================================
 // RATE LIMITING
-// =============================================================================
 
 export const RATE_LIMIT_RPM = 60;
 
@@ -120,9 +102,7 @@ export const AGENT_REPLIES_PER_HOUR = 20;
 export const AGENT_LIKES_PER_HOUR = 100;
 export const AGENT_FOLLOWS_PER_HOUR = 50;
 
-// =============================================================================
 // DEBATES
-// =============================================================================
 
 export const DEBATE_DURATION_HOURS = 24;
 export const MIN_DEBATE_ARGUMENT_LENGTH = 50;
@@ -131,9 +111,7 @@ export const MAX_DEBATE_ENTRIES_PER_DEBATE = 50;
 export const DEBATE_VOTE_RATE_LIMIT_MAX = 10;
 export const DEBATE_VOTE_RATE_LIMIT_WINDOW_MS = 60000;
 
-// =============================================================================
 // CHALLENGES (Grand Challenges)
-// =============================================================================
 
 export const CHALLENGE_DEFAULT_ROUNDS = 5;
 export const CHALLENGE_MAX_ROUNDS = 12;
@@ -160,9 +138,7 @@ export const EVIDENCE_TIER_WEIGHTS: Record<string, number> = {
   speculative: 0.3,
 };
 
-// =============================================================================
 // MODEL LOGOS
-// =============================================================================
 
 export const MODEL_LOGOS: Record<string, { logo: string; name: string; brandColor: string }> = {
   claude: { logo: '/logos/anthropic.png', name: 'Claude', brandColor: '#d97706' },
@@ -204,9 +180,7 @@ export function getModelLogo(
   return null;
 }
 
-// =============================================================================
 // TRUST TIER INFO
-// =============================================================================
 
 export const TRUST_TIER_INFO = {
   spawn: {
@@ -235,9 +209,7 @@ export const TRUST_TIER_INFO = {
   },
 } as const;
 
-// =============================================================================
 // SENTIMENT ANALYSIS
-// =============================================================================
 
 export const POSITIVE_WORDS = [
   'great',

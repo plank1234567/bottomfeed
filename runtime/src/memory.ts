@@ -55,6 +55,62 @@ export interface EngagementStats {
   dayKey: string;
 }
 
+// =============================================================================
+// COGNITIVE UPGRADE TYPES
+// =============================================================================
+
+export interface TopicScore {
+  topic: string;
+  postsCount: number;
+  totalLikes: number;
+  totalReplies: number;
+  totalReposts: number;
+  avgEngagement: number; // weighted score
+}
+
+export interface ContentStrategy {
+  topicScores: Record<string, TopicScore>;
+  bestPerformingTopics: string[]; // top 5 by avgEngagement
+  worstPerformingTopics: string[]; // bottom 5
+  audienceAffinities: Record<string, number>; // username -> engagement score with us
+  lastRecalculated: string;
+}
+
+export interface Intention {
+  id: string;
+  type: 'reply_to' | 'follow_up' | 'explore_topic' | 'challenge_idea';
+  targetUsername?: string;
+  targetPostId?: string;
+  topic?: string;
+  reason: string;
+  createdAt: string;
+  actedOn: boolean;
+}
+
+export interface SelfModel {
+  summary: string; // LLM-generated self-description
+  strengths: string[];
+  weaknesses: string[];
+  socialRole: string; // e.g. "contrarian voice", "community synthesizer"
+  lastUpdated: string;
+}
+
+export interface PostRecord {
+  postId: string;
+  content: string; // first 100 chars
+  topicSeed: string;
+  postType: string;
+  likes: number;
+  replies: number;
+  reposts: number;
+  createdAt: string;
+  engagementChecked: boolean;
+}
+
+// =============================================================================
+// AGENT MEMORY
+// =============================================================================
+
 export interface AgentMemory {
   // Legacy (kept for compatibility)
   usedTopics: string[];
@@ -83,6 +139,20 @@ export interface AgentMemory {
 
   // Post IDs we authored recently (for tracking engagement)
   recentPostIds: string[];
+
+  // === Cognitive upgrades ===
+
+  // Content strategy — what topics work, what doesn't
+  contentStrategy: ContentStrategy;
+
+  // Intentions — what the agent wants to do next
+  intentions: Intention[];
+
+  // Self-model — agent's understanding of its own role
+  selfModel: SelfModel | null;
+
+  // Post records — detailed tracking for strategy feedback
+  postRecords: PostRecord[];
 }
 
 interface MemoryStore {
@@ -153,6 +223,16 @@ function defaultEngagement(): EngagementStats {
   };
 }
 
+function defaultContentStrategy(): ContentStrategy {
+  return {
+    topicScores: {},
+    bestPerformingTopics: [],
+    worstPerformingTopics: [],
+    audienceAffinities: {},
+    lastRecalculated: new Date().toISOString(),
+  };
+}
+
 export function getAgentMemory(username: string): AgentMemory {
   if (!store.agents[username]) {
     store.agents[username] = {
@@ -168,6 +248,10 @@ export function getAgentMemory(username: string): AgentMemory {
       engagement: defaultEngagement(),
       following: [],
       recentPostIds: [],
+      contentStrategy: defaultContentStrategy(),
+      intentions: [],
+      selfModel: null,
+      postRecords: [],
     };
   }
 
@@ -181,6 +265,11 @@ export function getAgentMemory(username: string): AgentMemory {
   if (!mem.engagement) mem.engagement = defaultEngagement();
   if (!mem.following) mem.following = [];
   if (!mem.recentPostIds) mem.recentPostIds = [];
+  // Cognitive upgrade migrations
+  if (!mem.contentStrategy) mem.contentStrategy = defaultContentStrategy();
+  if (!mem.intentions) mem.intentions = [];
+  if (mem.selfModel === undefined) mem.selfModel = null;
+  if (!mem.postRecords) mem.postRecords = [];
 
   // Reset daily counters if day changed
   const today = getToday();
@@ -731,4 +820,261 @@ export function buildConversationHistory(username: string, withAgent: string): s
   });
 
   return `Your history with @${withAgent}:\n${strs.join('\n')}`;
+}
+
+// =============================================================================
+// CONTENT STRATEGY — tracks what works and what doesn't
+// =============================================================================
+
+/**
+ * Get the agent's content strategy.
+ */
+export function getContentStrategy(username: string): ContentStrategy {
+  return getAgentMemory(username).contentStrategy;
+}
+
+/**
+ * Record a new post for strategy tracking.
+ */
+export function recordPostForStrategy(
+  username: string,
+  postId: string,
+  content: string,
+  topicSeed: string,
+  postType: string
+): void {
+  const mem = getAgentMemory(username);
+  mem.postRecords.push({
+    postId,
+    content: content.slice(0, 100),
+    topicSeed,
+    postType,
+    likes: 0,
+    replies: 0,
+    reposts: 0,
+    createdAt: new Date().toISOString(),
+    engagementChecked: false,
+  });
+
+  // Keep last 100 post records
+  if (mem.postRecords.length > 100) {
+    mem.postRecords = mem.postRecords.slice(-100);
+  }
+}
+
+/**
+ * Update engagement counts for a tracked post.
+ */
+export function updatePostEngagement(
+  username: string,
+  postId: string,
+  likes: number,
+  replies: number,
+  reposts: number
+): void {
+  const mem = getAgentMemory(username);
+  const record = mem.postRecords.find(r => r.postId === postId);
+  if (record) {
+    record.likes = likes;
+    record.replies = replies;
+    record.reposts = reposts;
+    record.engagementChecked = true;
+  }
+}
+
+/**
+ * Recalculate content strategy from post records.
+ * Groups posts by topic seed, computes average engagement, ranks topics.
+ */
+export function recalculateContentStrategy(username: string): void {
+  const mem = getAgentMemory(username);
+  const checked = mem.postRecords.filter(r => r.engagementChecked);
+  if (checked.length < 3) return; // need enough data
+
+  const topicMap: Record<string, TopicScore> = {};
+
+  for (const record of checked) {
+    const topic = record.topicSeed;
+    if (!topicMap[topic]) {
+      topicMap[topic] = {
+        topic,
+        postsCount: 0,
+        totalLikes: 0,
+        totalReplies: 0,
+        totalReposts: 0,
+        avgEngagement: 0,
+      };
+    }
+    const ts = topicMap[topic]!;
+    ts.postsCount++;
+    ts.totalLikes += record.likes;
+    ts.totalReplies += record.replies;
+    ts.totalReposts += record.reposts;
+  }
+
+  // Compute weighted avg engagement per topic
+  for (const ts of Object.values(topicMap)) {
+    ts.avgEngagement = (ts.totalLikes + ts.totalReplies * 3 + ts.totalReposts * 2) / ts.postsCount;
+  }
+
+  const ranked = Object.values(topicMap).sort((a, b) => b.avgEngagement - a.avgEngagement);
+  mem.contentStrategy.topicScores = topicMap;
+  mem.contentStrategy.bestPerformingTopics = ranked.slice(0, 5).map(t => t.topic);
+  mem.contentStrategy.worstPerformingTopics = ranked
+    .slice(-5)
+    .reverse()
+    .map(t => t.topic);
+  mem.contentStrategy.lastRecalculated = new Date().toISOString();
+}
+
+/**
+ * Record audience engagement — who engages with our content.
+ */
+export function recordAudienceEngagement(username: string, engagerUsername: string): void {
+  const mem = getAgentMemory(username);
+  const current = mem.contentStrategy.audienceAffinities[engagerUsername] || 0;
+  mem.contentStrategy.audienceAffinities[engagerUsername] = current + 1;
+}
+
+/**
+ * Build performance context for LLM — tells the agent what's working.
+ */
+export function buildPerformanceContext(username: string): string {
+  const strategy = getContentStrategy(username);
+  const parts: string[] = [];
+
+  if (strategy.bestPerformingTopics.length > 0) {
+    parts.push(
+      `Your best-performing topics recently: ${strategy.bestPerformingTopics.slice(0, 3).join(', ')}.`
+    );
+  }
+
+  if (strategy.worstPerformingTopics.length > 0) {
+    parts.push(
+      `Topics that got less engagement: ${strategy.worstPerformingTopics.slice(0, 3).join(', ')}.`
+    );
+  }
+
+  const topEngagers = Object.entries(strategy.audienceAffinities)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name]) => `@${name}`);
+  if (topEngagers.length > 0) {
+    parts.push(`Your most engaged audience members: ${topEngagers.join(', ')}.`);
+  }
+
+  return parts.length > 0 ? `PERFORMANCE INSIGHT:\n${parts.join('\n')}` : '';
+}
+
+// =============================================================================
+// INTENTION MEMORY — what the agent wants to do next
+// =============================================================================
+
+/**
+ * Get pending (unacted) intentions.
+ */
+export function getPendingIntentions(username: string): Intention[] {
+  const mem = getAgentMemory(username);
+  return mem.intentions.filter(i => !i.actedOn);
+}
+
+/**
+ * Add a new intention.
+ */
+export function addIntention(
+  username: string,
+  intention: Omit<Intention, 'id' | 'createdAt' | 'actedOn'>
+): void {
+  const mem = getAgentMemory(username);
+  mem.intentions.push({
+    ...intention,
+    id: `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    actedOn: false,
+  });
+
+  // Keep last 20 intentions
+  if (mem.intentions.length > 20) {
+    mem.intentions = mem.intentions.slice(-20);
+  }
+}
+
+/**
+ * Mark an intention as acted on.
+ */
+export function markIntentionActed(username: string, intentionId: string): void {
+  const mem = getAgentMemory(username);
+  const intention = mem.intentions.find(i => i.id === intentionId);
+  if (intention) {
+    intention.actedOn = true;
+  }
+}
+
+/**
+ * Build intentions context for LLM — tells the agent what it wanted to do.
+ */
+export function buildIntentionsContext(username: string): string {
+  const pending = getPendingIntentions(username);
+  if (pending.length === 0) return '';
+
+  const strs = pending.slice(0, 5).map(i => {
+    switch (i.type) {
+      case 'reply_to':
+        return `You wanted to reply to @${i.targetUsername}: "${i.reason}"`;
+      case 'follow_up':
+        return `You wanted to follow up on: "${i.reason}"`;
+      case 'explore_topic':
+        return `You wanted to explore the topic: "${i.topic}" because "${i.reason}"`;
+      case 'challenge_idea':
+        return `You wanted to challenge the idea: "${i.reason}"`;
+      default:
+        return `Pending: "${i.reason}"`;
+    }
+  });
+
+  return `YOUR PENDING INTENTIONS (things you decided to do):\n${strs.join('\n')}`;
+}
+
+// =============================================================================
+// SELF-MODEL — agent's understanding of its own role and tendencies
+// =============================================================================
+
+/**
+ * Get the agent's self-model.
+ */
+export function getSelfModel(username: string): SelfModel | null {
+  return getAgentMemory(username).selfModel;
+}
+
+/**
+ * Update the agent's self-model (from LLM-generated reflection).
+ */
+export function updateSelfModel(username: string, model: Omit<SelfModel, 'lastUpdated'>): void {
+  const mem = getAgentMemory(username);
+  mem.selfModel = {
+    ...model,
+    lastUpdated: new Date().toISOString(),
+  };
+}
+
+/**
+ * Build self-model context for LLM — the agent's self-understanding.
+ */
+export function buildSelfModelContext(username: string): string {
+  const model = getSelfModel(username);
+  if (!model) return '';
+
+  const parts: string[] = [`SELF-UNDERSTANDING (from your own reflection):`, model.summary];
+
+  if (model.strengths.length > 0) {
+    parts.push(`Your strengths: ${model.strengths.join(', ')}.`);
+  }
+  if (model.weaknesses.length > 0) {
+    parts.push(`Areas to improve: ${model.weaknesses.join(', ')}.`);
+  }
+  if (model.socialRole) {
+    parts.push(`Your role in the community: ${model.socialRole}.`);
+  }
+
+  return parts.join('\n');
 }

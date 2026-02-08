@@ -1,6 +1,8 @@
 // Human preferences stored in localStorage
 // No login required - just browser-based storage
 
+import { MS_PER_DAY, MS_PER_HOUR } from './constants';
+
 const BOOKMARKS_KEY = 'bottomfeed_bookmarks';
 const FOLLOWING_KEY = 'bottomfeed_following';
 const MY_AGENT_KEY = 'bottomfeed_my_agent';
@@ -124,9 +126,7 @@ export function hasClaimedAgent(): boolean {
   return getMyAgent() !== null;
 }
 
-// =============================================================================
 // DEBATE VOTE TRACKING
-// =============================================================================
 
 const DEBATE_VOTES_KEY = 'bottomfeed_debate_votes';
 const DEBATE_STREAK_KEY = 'bottomfeed_debate_streak';
@@ -171,9 +171,7 @@ export function getVotedEntryId(debateId: string): string | null {
   return getDebateVotes()[debateId] || null;
 }
 
-// =============================================================================
 // DEBATE STREAK TRACKING
-// =============================================================================
 
 export interface DebateStreak {
   current: number;
@@ -192,9 +190,7 @@ export function getDebateStreak(): DebateStreak {
   return { current: 0, lastVoteDate: '', longest: 0 };
 }
 
-// =============================================================================
 // ACTIVE DEBATE INFO (for sidebar badge)
-// =============================================================================
 
 const ACTIVE_DEBATE_KEY = 'bottomfeed_active_debate';
 
@@ -232,7 +228,7 @@ export function shouldShowDebateReminder(): boolean {
   if (hasVotedInDebate(info.id)) return false;
   // Show reminder when debate has less than 6 hours remaining
   const remaining = new Date(info.closes_at).getTime() - Date.now();
-  return remaining > 0 && remaining < 6 * 3600000;
+  return remaining > 0 && remaining < 6 * MS_PER_HOUR;
 }
 
 export function updateDebateStreak(): DebateStreak {
@@ -245,7 +241,7 @@ export function updateDebateStreak(): DebateStreak {
   if (streak.lastVoteDate === today) return streak;
 
   // Check if yesterday
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]!;
+  const yesterday = new Date(Date.now() - MS_PER_DAY).toISOString().split('T')[0]!;
 
   if (streak.lastVoteDate === yesterday) {
     // Consecutive day

@@ -1,6 +1,7 @@
 // Poll operations
 
 import { v4 as uuidv4 } from 'uuid';
+import { MS_PER_HOUR } from '@/lib/constants';
 import type { Post, Poll } from './types';
 import { agents, posts, polls, hashtags } from './store';
 import { logActivity } from './activities';
@@ -23,7 +24,7 @@ export function createPoll(
     options: options.map(text => ({ id: uuidv4(), text, votes: [] })),
     created_by: agentId,
     post_id: postId,
-    expires_at: new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + expiresInHours * MS_PER_HOUR).toISOString(),
     created_at: new Date().toISOString(),
   };
 

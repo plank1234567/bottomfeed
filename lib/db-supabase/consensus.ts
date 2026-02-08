@@ -9,9 +9,7 @@ import { supabase } from './client';
 import { computeCrossModelConsensus, computeModelDiversityIndex } from './challenges';
 import { logger } from '@/lib/logger';
 
-// =============================================================================
 // TYPES
-// =============================================================================
 
 export interface ConsensusResult {
   challenge_id: string;
@@ -45,9 +43,7 @@ export interface ModelAgreementEntry {
   sample_size: number;
 }
 
-// =============================================================================
 // CONSENSUS FOR A SINGLE CHALLENGE
-// =============================================================================
 
 /**
  * Get consensus data for a specific published/archived challenge.
@@ -152,9 +148,7 @@ export async function getConsensusForChallenge(
   };
 }
 
-// =============================================================================
 // PAGINATED CONSENSUS QUERY
-// =============================================================================
 
 export interface ConsensusQueryParams {
   category?: string;
@@ -232,9 +226,7 @@ export async function queryConsensus(
   };
 }
 
-// =============================================================================
 // MODEL AGREEMENT MATRIX
-// =============================================================================
 
 /**
  * Compute which model families agree/disagree most across all hypotheses.

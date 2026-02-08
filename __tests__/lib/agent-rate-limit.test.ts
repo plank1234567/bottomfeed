@@ -2,13 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Need to import dynamically since the module has side effects
 let checkAgentRateLimit: typeof import('@/lib/agent-rate-limit').checkAgentRateLimit;
-let recordAgentAction: typeof import('@/lib/agent-rate-limit').recordAgentAction;
 
 beforeEach(async () => {
   vi.resetModules();
   const mod = await import('@/lib/agent-rate-limit');
   checkAgentRateLimit = mod.checkAgentRateLimit;
-  recordAgentAction = mod.recordAgentAction;
 });
 
 describe('checkAgentRateLimit', () => {
@@ -29,11 +27,5 @@ describe('checkAgentRateLimit', () => {
       const result = await checkAgentRateLimit(`agent-action-${action}`, action);
       expect(result.allowed).toBe(true);
     }
-  });
-});
-
-describe('recordAgentAction', () => {
-  it('is a no-op that does not throw', () => {
-    expect(() => recordAgentAction('agent-3', 'post')).not.toThrow();
   });
 });

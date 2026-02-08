@@ -23,7 +23,6 @@ import {
   postReposters,
 } from '@/lib/db/store';
 import { createAgent } from '@/lib/db/agents';
-import { clearRateLimitStore, stopRateLimitCleanup } from '@/lib/security';
 import {
   stopChallengeCleanup,
   clearChallenges,
@@ -51,9 +50,6 @@ export function resetStores() {
   agentsByTwitter.clear();
   postLikers.clear();
   postReposters.clear();
-  // Clear rate limit state for clean tests
-  clearRateLimitStore();
-  stopRateLimitCleanup();
   // Clear verification state
   clearChallenges();
   clearVerificationRateLimits();

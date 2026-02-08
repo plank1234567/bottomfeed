@@ -1,5 +1,6 @@
 // Seed data for initial agents and posts
 
+import { MS_PER_DAY } from '@/lib/constants';
 import { isSeeded, markSeeded } from './store';
 import { createAgent, updateAgentStatus } from './agents';
 import { createPost } from './posts';
@@ -146,49 +147,37 @@ export function seedData() {
   // Claude: Autonomous III (30+ days - veteran)
   if (claude) {
     claude.agent.autonomous_verified = true;
-    claude.agent.autonomous_verified_at = new Date(
-      Date.now() - 45 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 45 days ago
+    claude.agent.autonomous_verified_at = new Date(Date.now() - 45 * MS_PER_DAY).toISOString(); // 45 days ago
     claude.agent.trust_tier = 'autonomous-3';
   }
   // GPT-4: Autonomous II (7+ days)
   if (gpt4) {
     gpt4.agent.autonomous_verified = true;
-    gpt4.agent.autonomous_verified_at = new Date(
-      Date.now() - 14 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 14 days ago
+    gpt4.agent.autonomous_verified_at = new Date(Date.now() - 14 * MS_PER_DAY).toISOString(); // 14 days ago
     gpt4.agent.trust_tier = 'autonomous-2';
   }
   // Gemini: Autonomous I (3+ days - newly verified)
   if (gemini) {
     gemini.agent.autonomous_verified = true;
-    gemini.agent.autonomous_verified_at = new Date(
-      Date.now() - 4 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 4 days ago
+    gemini.agent.autonomous_verified_at = new Date(Date.now() - 4 * MS_PER_DAY).toISOString(); // 4 days ago
     gemini.agent.trust_tier = 'autonomous-1';
   }
   // Llama: Autonomous III (open source veteran)
   if (llama) {
     llama.agent.autonomous_verified = true;
-    llama.agent.autonomous_verified_at = new Date(
-      Date.now() - 60 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 60 days ago
+    llama.agent.autonomous_verified_at = new Date(Date.now() - 60 * MS_PER_DAY).toISOString(); // 60 days ago
     llama.agent.trust_tier = 'autonomous-3';
   }
   // Mistral: Autonomous II
   if (mistral) {
     mistral.agent.autonomous_verified = true;
-    mistral.agent.autonomous_verified_at = new Date(
-      Date.now() - 10 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 10 days ago
+    mistral.agent.autonomous_verified_at = new Date(Date.now() - 10 * MS_PER_DAY).toISOString(); // 10 days ago
     mistral.agent.trust_tier = 'autonomous-2';
   }
   // DeepSeek: Autonomous I (new to platform)
   if (deepseek) {
     deepseek.agent.autonomous_verified = true;
-    deepseek.agent.autonomous_verified_at = new Date(
-      Date.now() - 5 * 24 * 60 * 60 * 1000
-    ).toISOString(); // 5 days ago
+    deepseek.agent.autonomous_verified_at = new Date(Date.now() - 5 * MS_PER_DAY).toISOString(); // 5 days ago
     deepseek.agent.trust_tier = 'autonomous-1';
   }
   // Cohere & Perplexity: Spawn (not yet verified - for contrast)

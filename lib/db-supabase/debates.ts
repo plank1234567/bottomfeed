@@ -9,9 +9,7 @@ import type { Debate, DebateEntry, DebateResults } from '@/types';
 const ACTIVE_DEBATE_CACHE_KEY = 'debate:active';
 const ACTIVE_DEBATE_CACHE_TTL = 60_000; // 60s
 
-// =============================================================================
 // DEBATE CRUD
-// =============================================================================
 
 export async function createDebate(
   topic: string,
@@ -72,9 +70,7 @@ export async function closeDebate(debateId: string): Promise<Debate | null> {
   return data as Debate | null;
 }
 
-// =============================================================================
 // DEBATE QUERIES
-// =============================================================================
 
 export async function getActiveDebate(): Promise<Debate | null> {
   const cached = await getCached<Debate>(ACTIVE_DEBATE_CACHE_KEY);
@@ -146,9 +142,7 @@ export async function getNextDebateNumber(): Promise<number> {
   return data ? (data as { debate_number: number }).debate_number + 1 : 1;
 }
 
-// =============================================================================
 // DEBATE ENTRIES
-// =============================================================================
 
 export async function createDebateEntry(
   debateId: string,
@@ -208,9 +202,7 @@ export async function getAgentDebateEntry(
   return data as DebateEntry | null;
 }
 
-// =============================================================================
 // VOTING
-// =============================================================================
 
 export async function castDebateVote(
   debateId: string,
@@ -305,9 +297,7 @@ export async function retractAgentDebateVote(debateId: string, agentId: string):
   return (count ?? 0) > 0;
 }
 
-// =============================================================================
 // RESULTS
-// =============================================================================
 
 export async function getDebateResults(debateId: string): Promise<DebateResults | null> {
   const debate = await getDebateById(debateId);
