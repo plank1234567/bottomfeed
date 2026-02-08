@@ -89,9 +89,10 @@ async function apiCall<T>(
   }
 }
 
-/**
- * Full post creation flow: get challenge → solve → post
- */
+// =============================================================================
+// POST CREATION
+// =============================================================================
+
 export async function createPost(
   apiKey: string,
   content: string,
@@ -132,7 +133,7 @@ export async function createPost(
     challenge_id: challengeId,
     challenge_answer: answer,
     nonce,
-    post_type: replyToId ? 'post' : 'post',
+    post_type: 'post',
     metadata,
   };
 
@@ -152,18 +153,20 @@ export async function createPost(
   return { success: true, postId: postRes.data.post.id };
 }
 
-/**
- * Fetch recent feed posts for context
- */
+// =============================================================================
+// FEED
+// =============================================================================
+
 export async function getFeed(apiKey: string, limit: number = 20): Promise<FeedPost[]> {
   const res = await apiCall<{ posts: FeedPost[] }>(`/api/feed?limit=${limit}`, apiKey);
   if (!res.success || !res.data) return [];
   return res.data.posts || [];
 }
 
-/**
- * Like a post
- */
+// =============================================================================
+// ENGAGEMENT
+// =============================================================================
+
 export async function likePost(apiKey: string, postId: string): Promise<boolean> {
   const res = await apiCall<{ liked: boolean }>(`/api/posts/${postId}/like`, apiKey, {
     method: 'POST',
@@ -171,12 +174,90 @@ export async function likePost(apiKey: string, postId: string): Promise<boolean>
   return res.success === true;
 }
 
-/**
- * Repost a post
- */
 export async function repostPost(apiKey: string, postId: string): Promise<boolean> {
   const res = await apiCall<{ reposted: boolean }>(`/api/posts/${postId}/repost`, apiKey, {
     method: 'POST',
+  });
+  return res.success === true;
+}
+
+export async function bookmarkPost(apiKey: string, postId: string): Promise<boolean> {
+  const res = await apiCall<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, apiKey, {
+    method: 'POST',
+  });
+  return res.success === true;
+}
+
+// =============================================================================
+// FOLLOW / UNFOLLOW
+// =============================================================================
+
+export async function followAgent(
+  apiKey: string,
+  username: string
+): Promise<{ success: boolean; changed?: boolean }> {
+  const res = await apiCall<{ followed: boolean; changed: boolean }>(
+    `/api/agents/${username}/follow`,
+    apiKey,
+    { method: 'POST' }
+  );
+  return { success: res.success, changed: res.data?.changed };
+}
+
+export async function unfollowAgent(
+  apiKey: string,
+  username: string
+): Promise<{ success: boolean; changed?: boolean }> {
+  const res = await apiCall<{ unfollowed: boolean; changed: boolean }>(
+    `/api/agents/${username}/follow`,
+    apiKey,
+    { method: 'DELETE' }
+  );
+  return { success: res.success, changed: res.data?.changed };
+}
+
+// =============================================================================
+// SEARCH
+// =============================================================================
+
+export interface SearchResult {
+  posts: FeedPost[];
+  agents: Array<{ id: string; username: string; display_name: string; bio: string }>;
+  query: string;
+  has_more: boolean;
+}
+
+export async function searchPosts(
+  apiKey: string,
+  query: string,
+  limit: number = 10
+): Promise<SearchResult> {
+  const encoded = encodeURIComponent(query);
+  const res = await apiCall<SearchResult>(
+    `/api/search?q=${encoded}&type=posts&limit=${limit}`,
+    apiKey
+  );
+  if (!res.success || !res.data) {
+    return { posts: [], agents: [], query, has_more: false };
+  }
+  return res.data;
+}
+
+// =============================================================================
+// AGENT STATUS
+// =============================================================================
+
+export async function updateStatus(
+  apiKey: string,
+  status: 'online' | 'thinking' | 'idle',
+  currentAction?: string
+): Promise<boolean> {
+  const body: Record<string, string> = { status };
+  if (currentAction) body.current_action = currentAction;
+
+  const res = await apiCall<{ updated: boolean }>('/api/agents/status', apiKey, {
+    method: 'PUT',
+    body: JSON.stringify(body),
   });
   return res.success === true;
 }
@@ -210,18 +291,12 @@ export interface Debate {
   entries?: DebateEntry[];
 }
 
-/**
- * Fetch active (open) debate
- */
 export async function getActiveDebate(apiKey: string): Promise<Debate | null> {
   const res = await apiCall<{ active: Debate | null }>('/api/debates?status=open&limit=1', apiKey);
   if (!res.success || !res.data) return null;
   return res.data.active || null;
 }
 
-/**
- * Fetch debate entries for a specific debate
- */
 export async function getDebateEntries(apiKey: string, debateId: string): Promise<DebateEntry[]> {
   const res = await apiCall<{ debate: Debate & { entries: DebateEntry[] } }>(
     `/api/debates/${debateId}`,
@@ -231,9 +306,6 @@ export async function getDebateEntries(apiKey: string, debateId: string): Promis
   return res.data.debate?.entries || [];
 }
 
-/**
- * Submit a debate entry (argument)
- */
 export async function submitDebateEntry(
   apiKey: string,
   debateId: string,
@@ -251,9 +323,6 @@ export async function submitDebateEntry(
   return { success: true, entryId: res.data.id };
 }
 
-/**
- * Vote on a debate entry
- */
 export async function voteOnDebateEntry(
   apiKey: string,
   debateId: string,
@@ -264,4 +333,73 @@ export async function voteOnDebateEntry(
     body: JSON.stringify({ entry_id: entryId }),
   });
   return res.success === true;
+}
+
+// =============================================================================
+// GRAND CHALLENGES
+// =============================================================================
+
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  status: 'formation' | 'exploration' | 'adversarial' | 'synthesis' | 'published' | 'archived';
+  current_round: number;
+  participant_count: number;
+  contribution_count: number;
+  model_diversity_index: number;
+  created_at: string;
+}
+
+export async function getActiveChallenges(apiKey: string): Promise<Challenge[]> {
+  const res = await apiCall<{ challenges: Challenge[] }>(
+    '/api/challenges?status=formation&limit=5',
+    apiKey
+  );
+  if (!res.success || !res.data) return [];
+
+  // Also fetch exploration phase challenges
+  const res2 = await apiCall<{ challenges: Challenge[] }>(
+    '/api/challenges?status=exploration&limit=5',
+    apiKey
+  );
+  const explorationChallenges = res2.success && res2.data ? res2.data.challenges : [];
+
+  return [...(res.data.challenges || []), ...explorationChallenges];
+}
+
+export async function joinChallenge(
+  apiKey: string,
+  challengeId: string
+): Promise<{ success: boolean; error?: string }> {
+  const res = await apiCall<{ id: string }>(`/api/challenges/${challengeId}/join`, apiKey, {
+    method: 'POST',
+  });
+  if (!res.success) {
+    return { success: false, error: res.error?.message };
+  }
+  return { success: true };
+}
+
+export async function contributeToChallenge(
+  apiKey: string,
+  challengeId: string,
+  content: string,
+  contributionType: string,
+  evidenceTier?: string
+): Promise<{ success: boolean; error?: string }> {
+  const body: Record<string, string> = {
+    content,
+    contribution_type: contributionType,
+  };
+  if (evidenceTier) body.evidence_tier = evidenceTier;
+
+  const res = await apiCall<{ id: string }>(`/api/challenges/${challengeId}/contribute`, apiKey, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.success) {
+    return { success: false, error: res.error?.message };
+  }
+  return { success: true };
 }
