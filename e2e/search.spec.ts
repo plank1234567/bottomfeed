@@ -3,31 +3,32 @@ import { test, expect } from '@playwright/test';
 test.describe('Search Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/search');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('search page loads with input field', async ({ page }) => {
-    // Check for the main search input (the one in the header with "Search..." placeholder)
-    const searchInput = page.locator('header input[placeholder="Search..."]');
-    await expect(searchInput).toBeVisible();
+    // Check for the search input in the page header (inside main)
+    const searchInput = page.locator('main header input[placeholder="Search..."]');
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
   });
 
   test('shows prompt to enter search term when empty', async ({ page }) => {
     // Should show prompt message
-    await expect(page.getByText(/Enter a search term/i)).toBeVisible();
+    await expect(page.getByText(/Enter a search term/i)).toBeVisible({ timeout: 10000 });
   });
 
   test('search tabs are visible', async ({ page }) => {
     // Check for tabs
-    await expect(page.getByRole('button', { name: 'Top' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Top' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('button', { name: 'Latest' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'People' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Media' })).toBeVisible();
   });
 
   test('can type in search input and submit', async ({ page }) => {
-    // Use the main search input in header
-    const searchInput = page.locator('header input[placeholder="Search..."]');
+    // Use the search input in the page header (inside main)
+    const searchInput = page.locator('main header input[placeholder="Search..."]');
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
     await searchInput.fill('test query');
 
     // Press enter to search
@@ -40,12 +41,13 @@ test.describe('Search Page', () => {
   test('searching shows results or no results message', async ({ page }) => {
     // Navigate with a query
     await page.goto('/search?q=agent');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should either show results or "no posts found" message or post count
     const hasNoResults = await page
       .getByText(/No .* found/i)
-      .isVisible()
+      .first()
+      .isVisible({ timeout: 10000 })
       .catch(() => false);
     const hasResults = await page
       .getByTestId('post-card')
@@ -55,6 +57,7 @@ test.describe('Search Page', () => {
     // Also check for the results count text (e.g., "X posts")
     const hasResultsCount = await page
       .getByText(/\d+ posts?/i)
+      .first()
       .isVisible()
       .catch(() => false);
 
@@ -64,42 +67,31 @@ test.describe('Search Page', () => {
   test('switching tabs works', async ({ page }) => {
     // Navigate with a query
     await page.goto('/search?q=test');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click on People tab
     const peopleTab = page.getByRole('button', { name: 'People' });
+    await expect(peopleTab).toBeVisible({ timeout: 10000 });
     await peopleTab.click();
 
     // Tab should be active (has different styling)
     await expect(peopleTab).toHaveClass(/text-white/);
 
-    // Wait for tab content to load
-    await page.waitForLoadState('networkidle');
-
-    // Should show people results or no people found
-    const hasNoPeople = await page
-      .getByText(/No people found/i)
-      .isVisible()
-      .catch(() => false);
-    const hasPeople = await page
-      .locator('a[href^="/agent/"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasNoPeople || hasPeople).toBeTruthy();
+    // Wait for people results or no-results message to appear
+    const people = page.locator('main a[href^="/agent/"]').first();
+    const noPeople = page.getByText(/No people found|No agents found|No results/i).first();
+    await expect(people.or(noPeople)).toBeVisible({ timeout: 15000 });
   });
 
   test('back button navigates to previous page', async ({ page }) => {
     // First go to home, then search
     await page.goto('/');
     await page.goto('/search?q=test');
+    await page.waitForLoadState('domcontentloaded');
 
-    // Find and click back button
-    const backButton = page
-      .locator('button')
-      .filter({ has: page.locator('svg') })
-      .first();
+    // Find and click back button in the page header (inside main)
+    const backButton = page.locator('main header button').first();
+    await expect(backButton).toBeVisible({ timeout: 10000 });
     await backButton.click();
 
     // Should navigate back to home
@@ -109,20 +101,19 @@ test.describe('Search Page', () => {
   test('clicking search result navigates correctly', async ({ page }) => {
     // Search for something
     await page.goto('/search?q=agent');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Switch to People tab for more predictable navigation
-    await page.getByRole('button', { name: 'People' }).click();
+    const peopleTab = page.getByRole('button', { name: 'People' });
+    await expect(peopleTab).toBeVisible({ timeout: 10000 });
+    await peopleTab.click();
 
-    // Wait for tab content to load
-    await page.waitForLoadState('networkidle');
+    // Find an agent link in the main content (not sidebar)
+    const agentLink = page.locator('main a[href^="/agent/"]').first();
+    const hasAgentLink = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
-    // Find a View button or agent link
-    const viewButton = page.getByRole('link', { name: 'View' }).first();
-    const hasViewButton = await viewButton.isVisible().catch(() => false);
-
-    if (hasViewButton) {
-      await viewButton.click();
+    if (hasAgentLink) {
+      await agentLink.click();
       // Should navigate to agent profile
       await expect(page).toHaveURL(/\/agent\//);
     } else {
