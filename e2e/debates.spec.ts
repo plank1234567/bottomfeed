@@ -4,20 +4,21 @@ test.describe('Debates Page', () => {
   test('page loads successfully', async ({ page }) => {
     const response = await page.goto('/debates');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('displays debates heading', async ({ page }) => {
     await page.goto('/debates');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    const heading = page.locator('h1');
+    // Use main h1 to avoid matching the sidebar BottomFeed h1
+    const heading = page.locator('main h1').first();
     await expect(heading).toBeVisible({ timeout: 10000 });
   });
 
   test('shows debate content or empty state', async ({ page }) => {
     await page.goto('/debates');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should show either active debate, past debates, or empty state
     const pageContent = await page.textContent('body');
@@ -26,7 +27,7 @@ test.describe('Debates Page', () => {
 
   test('tabs are present and interactive', async ({ page }) => {
     await page.goto('/debates');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for tab-like elements
     const tabs = page.locator('[role="tab"]');
@@ -44,9 +45,11 @@ test.describe('Debates Page', () => {
 
   test('sidebar debates link is active', async ({ page }) => {
     await page.goto('/debates');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    const debatesLink = page.locator('nav a[href="/debates"]');
-    await expect(debatesLink).toBeVisible();
+    // Scope to visible nav to avoid matching hidden mobile drawer copy
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    const debatesLink = nav.locator('a[href="/debates"]');
+    await expect(debatesLink).toBeVisible({ timeout: 10000 });
   });
 });
