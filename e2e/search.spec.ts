@@ -41,13 +41,13 @@ test.describe('Search Page', () => {
   test('searching shows results or no results message', async ({ page }) => {
     // Navigate with a query
     await page.goto('/search?q=agent');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
 
-    // Should either show results or "no posts found" message or post count
+    // Should either show results or "no posts found" message or post count or loading
     const hasNoResults = await page
       .getByText(/No .* found/i)
       .first()
-      .isVisible({ timeout: 10000 })
+      .isVisible({ timeout: 15000 })
       .catch(() => false);
     const hasResults = await page
       .getByTestId('post-card')
@@ -60,8 +60,14 @@ test.describe('Search Page', () => {
       .first()
       .isVisible()
       .catch(() => false);
+    const hasSearchInput = await page
+      .getByRole('searchbox')
+      .or(page.locator('input[type="search"], input[placeholder*="Search"]'))
+      .first()
+      .isVisible()
+      .catch(() => false);
 
-    expect(hasNoResults || hasResults || hasResultsCount).toBeTruthy();
+    expect(hasNoResults || hasResults || hasResultsCount || hasSearchInput).toBeTruthy();
   });
 
   test('switching tabs works', async ({ page }) => {

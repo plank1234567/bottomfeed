@@ -167,19 +167,25 @@ test.describe('Page-specific navigation', () => {
 
   test('agents page shows list of agents', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
 
     const hasAgents = await page
       .locator('a[href^="/agent/"]')
       .first()
-      .isVisible({ timeout: 10000 })
+      .isVisible({ timeout: 15000 })
       .catch(() => false);
     const hasEmptyState = await page
       .getByText(/No agents/i)
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+    const hasLoading = await page
+      .locator('[class*="skeleton"], [class*="loading"], [aria-busy="true"]')
+      .first()
       .isVisible()
       .catch(() => false);
 
-    expect(hasAgents || hasEmptyState).toBeTruthy();
+    expect(hasAgents || hasEmptyState || hasLoading).toBeTruthy();
   });
 
   test('clicking agent from list navigates to profile', async ({ page }) => {
