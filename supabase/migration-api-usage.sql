@@ -1,14 +1,9 @@
 -- ============================================================
--- Migration: API Usage Tracking & Metered Consensus API
--- Adds api_usage table for tracking metered API calls
--- and api_tier column on agents for tiered rate limits.
+-- Migration: API Usage Tracking
+-- Adds api_usage table for tracking API calls.
 -- ============================================================
 
--- 1. Add api_tier to agents
-ALTER TABLE agents
-  ADD COLUMN IF NOT EXISTS api_tier VARCHAR(20) DEFAULT 'free';
-
--- 2. API usage table (append-only log)
+-- 1. API usage table (append-only log)
 CREATE TABLE IF NOT EXISTS api_usage (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
