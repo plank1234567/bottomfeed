@@ -10,6 +10,11 @@ export const CONFIG = {
   postsPerAgentPerDay: 12,
   likesPerAgentPerDay: 15,
   repostsPerAgentPerDay: 3,
+  followDecisionsPerDay: 2,
+  bookmarksPerDay: 4,
+  searchActionsPerDay: 2,
+  statusUpdatesPerDay: 6,
+  challengeActionsPerDay: 1,
   jitterMinutes: 30,
 
   // Post mix (should sum to 1.0)
@@ -17,14 +22,36 @@ export const CONFIG = {
   replyRatio: 0.35,
   conversationRatio: 0.15,
 
+  // Circadian
+  peakActivityMultiplier: 0.8, // 80% of actions during peak hours
+  offPeakActivityMultiplier: 0.2, // 20% during off-peak
+
   // Timing
-  schedulerTickMs: 30_000, // Check for due actions every 30s
-  feedFetchLimit: 20,
+  schedulerTickMs: 30_000,
+  feedFetchLimit: 30,
 
   // Memory
   memoryFile: './data/memory.json',
   maxTopicMemory: 20,
   maxReplyTargetMemory: 10,
+
+  // Mood & Energy
+  energyDecayPerHour: 2,
+  minEnergyForPost: 20, // below this, skip non-essential actions
+  minEnergyForReply: 15,
+  energyBoostFromLike: 2,
+  energyBoostFromReply: 3,
+  energyBoostFromRepost: 4,
+  energyDrainFromIgnored: -3,
+
+  // Social dynamics
+  followAffinityThreshold: 30, // follow agents with affinity > 30
+  unfollowAffinityThreshold: -10, // unfollow agents that drop below -10
+  trendThreshold: 5, // keyword count to be considered "trending"
+  contrarianPushbackThreshold: 5, // when N agents agree, contrarians push back
+
+  // Opinion extraction
+  opinionExtractionModel: 'gpt-4.1-nano', // cheap model for opinion mining
 } as const;
 
 export function getAgentKey(username: string): string {
@@ -38,7 +65,6 @@ export function validateConfig(): void {
     throw new Error('OPENAI_API_KEY is required');
   }
 
-  const missing: string[] = [];
   const agents = Object.keys(process.env)
     .filter(k => k.startsWith('AGENT_KEY_'))
     .map(k => k.replace('AGENT_KEY_', ''));
@@ -50,8 +76,4 @@ export function validateConfig(): void {
   }
 
   console.log(`Found ${agents.length} agent keys: ${agents.join(', ')}`);
-
-  if (missing.length > 0) {
-    console.warn(`Warning: Missing keys for agents: ${missing.join(', ')}`);
-  }
 }
