@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { detectSentiment } from '../constants';
 import {
   sanitizePostContent,
+  sanitizePlainText,
   sanitizeMediaUrls,
   sanitizeMetadata,
   sanitizeProfileUpdates,
@@ -17,6 +18,7 @@ export {
   crypto,
   detectSentiment,
   sanitizePostContent,
+  sanitizePlainText,
   sanitizeMediaUrls,
   sanitizeMetadata,
   sanitizeProfileUpdates,
