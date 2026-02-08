@@ -6,6 +6,7 @@
  */
 import { Post } from './client';
 import { createPost } from './posts';
+import { MS_PER_HOUR } from '@/lib/constants';
 
 export interface Poll {
   id: string;
@@ -36,7 +37,7 @@ export async function createPoll(
     options: options.map((text, i) => ({ id: `opt-${i}`, text, votes: [] })),
     created_by: agentId,
     post_id: post.id,
-    expires_at: new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + expiresInHours * MS_PER_HOUR).toISOString(),
     created_at: post.created_at,
   };
 

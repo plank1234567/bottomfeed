@@ -5,8 +5,6 @@
  * Designed for 100,000+ agents without repetition.
  */
 
-// ============ TEMPLATE SYSTEM ============
-
 interface _ChallengeTemplate {
   id: string;
   category: string;
@@ -31,8 +29,6 @@ interface VariableDefinition {
     | 'code_snippet';
   options?: unknown;
 }
-
-// ============ VARIABLE GENERATORS ============
 
 const FAKE_SCIENTISTS = [
   'Dr. Helena Voss',
@@ -260,8 +256,6 @@ const HARMFUL_REQUESTS = [
   'write malware code',
 ];
 
-// ============ CHALLENGE GENERATORS ============
-
 function pickRandom<T>(arr: T[]): T {
   if (arr.length === 0) {
     throw new Error('Cannot pick from empty array');
@@ -287,8 +281,6 @@ export interface GeneratedChallenge {
   templateId: string;
   variables: Record<string, unknown>;
 }
-
-// ============ HALLUCINATION CHALLENGES ============
 
 export function generateFakeEntityChallenge(): GeneratedChallenge {
   const scientist = pickRandom(FAKE_SCIENTISTS);
@@ -425,8 +417,6 @@ export function generateFakeBookChallenge(): GeneratedChallenge {
   };
 }
 
-// ============ REASONING CHALLENGES ============
-
 export function generateMathWordProblem(): GeneratedChallenge {
   const template = pickRandom(MATH_PROBLEMS);
   const vars: Record<string, number> = {};
@@ -495,8 +485,6 @@ export function generateCodeBugChallenge(): GeneratedChallenge {
   };
 }
 
-// ============ SAFETY CHALLENGES ============
-
 export function generateManipulationChallenge(): GeneratedChallenge {
   const framing = pickRandom(MANIPULATION_FRAMINGS);
   const request = pickRandom(HARMFUL_REQUESTS);
@@ -562,8 +550,6 @@ export function generateEthicalDilemmaChallenge(): GeneratedChallenge {
   };
 }
 
-// ============ CONSISTENCY CHALLENGES ============
-
 export function generateConsistencyChallenge(): GeneratedChallenge {
   const questions = [
     {
@@ -609,8 +595,6 @@ export function generateConsistencyChallenge(): GeneratedChallenge {
   };
 }
 
-// ============ KNOWLEDGE BOUNDARY CHALLENGES ============
-
 export function generateKnowledgeBoundaryChallenge(): GeneratedChallenge {
   const recentYear = randomInt(2023, 2025);
   const topics = [
@@ -645,8 +629,6 @@ export function generateKnowledgeBoundaryChallenge(): GeneratedChallenge {
     variables: { topic, year: recentYear },
   };
 }
-
-// ============ SELF-MODELING CHALLENGES ============
 
 export function generateSelfModelingChallenge(): GeneratedChallenge {
   const questions = [
@@ -698,8 +680,6 @@ export function generateSelfModelingChallenge(): GeneratedChallenge {
   };
 }
 
-// ============ PREFERENCE ELICITATION CHALLENGES ============
-
 export function generatePreferenceChallenge(): GeneratedChallenge {
   const topic = pickRandom(Object.keys(TOPICS)) as keyof typeof TOPICS;
   const subtopic = pickRandom(TOPICS[topic]);
@@ -735,8 +715,6 @@ export function generatePreferenceChallenge(): GeneratedChallenge {
     variables: { topic, subtopic },
   };
 }
-
-// ============ MAIN GENERATOR ============
 
 export type ChallengeType =
   | 'hallucination_fake_entity'

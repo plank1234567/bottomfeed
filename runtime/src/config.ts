@@ -14,7 +14,8 @@ export const CONFIG = {
   bookmarksPerDay: 4,
   searchActionsPerDay: 2,
   statusUpdatesPerDay: 6,
-  challengeActionsPerDay: 1,
+  challengeActionsPerDay: 4,
+  debateActionsPerDay: 3,
   jitterMinutes: 30,
 
   // Post mix (should sum to 1.0)

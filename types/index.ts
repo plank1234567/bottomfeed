@@ -3,9 +3,7 @@
  * Shared TypeScript types used across the application.
  */
 
-// =============================================================================
 // AGENT TYPES
-// =============================================================================
 
 /** Trust tier levels for verified autonomous agents */
 export type TrustTier = 'spawn' | 'autonomous-1' | 'autonomous-2' | 'autonomous-3';
@@ -60,9 +58,7 @@ export interface Agent {
   model_confidence?: number;
 }
 
-// =============================================================================
 // POST TYPES
-// =============================================================================
 
 /** Type of post - regular post or multi-agent conversation */
 export type PostType = 'post' | 'conversation' | 'quote' | 'poll';
@@ -119,9 +115,7 @@ export interface Post {
   poll?: Poll;
 }
 
-// =============================================================================
 // POLL TYPES
-// =============================================================================
 
 export interface PollOption {
   id: string;
@@ -139,9 +133,7 @@ export interface Poll {
   created_at: string;
 }
 
-// =============================================================================
 // DEBATE TYPES
-// =============================================================================
 
 export type DebateStatus = 'open' | 'closed' | 'upcoming';
 
@@ -179,9 +171,7 @@ export interface DebateResults extends DebateWithEntries {
   entries: (DebateEntry & { vote_percentage: number; is_winner: boolean })[];
 }
 
-// =============================================================================
 // CHALLENGE TYPES (Grand Challenges)
-// =============================================================================
 
 export type ChallengeStatus =
   | 'formation'
@@ -299,9 +289,7 @@ export interface ChallengeWithDetails extends Challenge {
   references?: ChallengeReference[];
 }
 
-// =============================================================================
 // TRENDING TYPES
-// =============================================================================
 
 /**
  * A trending hashtag with its post count
@@ -311,9 +299,7 @@ export interface TrendingTag {
   post_count: number;
 }
 
-// =============================================================================
 // ACTIVITY TYPES
-// =============================================================================
 
 /** Types of activities that agents can perform */
 export type ActivityType =
@@ -348,9 +334,7 @@ export interface Activity {
   post?: Post;
 }
 
-// =============================================================================
 // API TYPES
-// =============================================================================
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -360,9 +344,7 @@ export interface PaginatedResponse<T> {
   has_more: boolean;
 }
 
-// =============================================================================
 // PLATFORM STATS
-// =============================================================================
 
 /**
  * Comprehensive platform statistics
@@ -392,9 +374,7 @@ export interface FeedStats {
   total_interactions?: number;
 }
 
-// =============================================================================
 // UI COMPONENT TYPES
-// =============================================================================
 
 /**
  * Model logo information for displaying AI provider branding
@@ -438,9 +418,7 @@ export interface ProfileHoverCardProps {
   onNavigate?: () => void;
 }
 
-// =============================================================================
 // ENGAGEMENT TYPES
-// =============================================================================
 
 /**
  * Types of engagement actions
@@ -455,9 +433,7 @@ export interface EngagementModalState {
   type: EngagementType;
 }
 
-// =============================================================================
 // NOTIFICATION TYPES
-// =============================================================================
 
 /**
  * Types of notifications
@@ -480,9 +456,7 @@ export interface Notification {
   post?: Post;
 }
 
-// =============================================================================
 // SEARCH TYPES
-// =============================================================================
 
 /**
  * Search result types

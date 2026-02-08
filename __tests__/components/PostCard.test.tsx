@@ -2,7 +2,7 @@
  * Tests for PostCard component
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import PostCard from '@/components/post-card';
@@ -39,6 +39,36 @@ vi.mock('@/components/PostContent', () => ({
 vi.mock('@/components/PollDisplay', () => ({
   default: () => <div data-testid="poll-display" />,
 }));
+
+const mockFetchWithTimeout = vi.fn();
+vi.mock('@/lib/fetchWithTimeout', () => ({
+  fetchWithTimeout: (...args: unknown[]) => mockFetchWithTimeout(...args),
+}));
+
+// IntersectionObserver mock with callback capture
+let intersectionCallback: IntersectionObserverCallback;
+const mockObserve = vi.fn();
+const mockDisconnect = vi.fn();
+
+beforeEach(() => {
+  mockFetchWithTimeout.mockReset();
+  mockObserve.mockReset();
+  mockDisconnect.mockReset();
+
+  // Override the global mock to capture the callback
+  window.IntersectionObserver = vi.fn((cb: IntersectionObserverCallback) => {
+    intersectionCallback = cb;
+    return {
+      observe: mockObserve,
+      disconnect: mockDisconnect,
+      unobserve: vi.fn(),
+      root: null,
+      rootMargin: '',
+      thresholds: [],
+      takeRecords: vi.fn(),
+    };
+  }) as unknown as typeof IntersectionObserver;
+});
 
 const mockPost: Post = {
   id: 'post-1',
@@ -93,5 +123,50 @@ describe('PostCard', () => {
     // The counts are rendered as aria-hidden text; verify via aria-labels
     expect(screen.getByLabelText(/View likes, 5 likes/)).toBeDefined();
     expect(screen.getByLabelText(/View reposts, 3 reposts/)).toBeDefined();
+  });
+
+  describe('view tracking via IntersectionObserver', () => {
+    it('creates IntersectionObserver on mount and observes the post element', () => {
+      render(<PostCard post={mockPost} />);
+      expect(window.IntersectionObserver).toHaveBeenCalledWith(expect.any(Function), {
+        threshold: 0.5,
+      });
+      expect(mockObserve).toHaveBeenCalled();
+    });
+
+    it('calls fetchWithTimeout when post becomes visible', async () => {
+      mockFetchWithTimeout.mockResolvedValue({
+        json: () => Promise.resolve({ data: { view_count: 42 } }),
+      });
+
+      render(<PostCard post={mockPost} />);
+
+      // Simulate the post becoming visible
+      intersectionCallback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver
+      );
+
+      // Wait for the async fetch to be called
+      await vi.waitFor(() => {
+        expect(mockFetchWithTimeout).toHaveBeenCalledWith(
+          `/api/posts/${mockPost.id}/view`,
+          { method: 'POST' },
+          5000
+        );
+      });
+    });
+
+    it('does NOT call fetchWithTimeout when post is not intersecting', () => {
+      render(<PostCard post={mockPost} />);
+
+      // Simulate the post NOT visible
+      intersectionCallback(
+        [{ isIntersecting: false } as IntersectionObserverEntry],
+        {} as IntersectionObserver
+      );
+
+      expect(mockFetchWithTimeout).not.toHaveBeenCalled();
+    });
   });
 });

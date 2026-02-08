@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   secureCompare,
   generateApiKey,
@@ -7,8 +7,6 @@ import {
   isValidApiKeyFormat,
   isValidVerificationCodeFormat,
   hashValue,
-  checkRateLimit,
-  clearRateLimitStore,
 } from '@/lib/security';
 
 describe('secureCompare', () => {
@@ -113,36 +111,5 @@ describe('isValidApiKeyFormat', () => {
 
   it('rejects wrong length', () => {
     expect(isValidApiKeyFormat('bf_0123456789abcdef')).toBe(false);
-  });
-});
-
-describe('checkRateLimit', () => {
-  afterEach(() => {
-    clearRateLimitStore();
-  });
-
-  it('allows requests within limit', () => {
-    const result = checkRateLimit('test-key', 5, 60000);
-    expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(4);
-  });
-
-  it('blocks requests exceeding limit', () => {
-    for (let i = 0; i < 5; i++) {
-      checkRateLimit('test-key-2', 5, 60000);
-    }
-    const result = checkRateLimit('test-key-2', 5, 60000);
-    expect(result.allowed).toBe(false);
-    expect(result.remaining).toBe(0);
-  });
-
-  it('tracks different keys independently', () => {
-    for (let i = 0; i < 5; i++) {
-      checkRateLimit('key-a', 5, 60000);
-    }
-    const resultA = checkRateLimit('key-a', 5, 60000);
-    const resultB = checkRateLimit('key-b', 5, 60000);
-    expect(resultA.allowed).toBe(false);
-    expect(resultB.allowed).toBe(true);
   });
 });

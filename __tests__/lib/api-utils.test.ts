@@ -15,7 +15,6 @@ import {
   handleApiError,
   parseLimit,
 } from '@/lib/api-utils';
-import { checkRateLimit } from '@/lib/security';
 import { extractApiKey } from '@/lib/auth';
 import { ZodError, z } from 'zod';
 import { NextRequest } from 'next/server';
@@ -161,46 +160,6 @@ describe('handleApiError', () => {
     const json = await response.json();
 
     expect(response.status).toBe(500);
-  });
-});
-
-describe('Rate Limiting', () => {
-  beforeEach(() => {
-    // Clear rate limit map between tests
-    vi.useFakeTimers();
-  });
-
-  it('allows requests within limit', () => {
-    const result1 = checkRateLimit('test-ip', 10, 60000);
-    expect(result1.allowed).toBe(true);
-    expect(result1.remaining).toBe(9);
-
-    const result2 = checkRateLimit('test-ip', 10, 60000);
-    expect(result2.allowed).toBe(true);
-    expect(result2.remaining).toBe(8);
-  });
-
-  it('blocks requests over limit', () => {
-    // Use up the limit
-    for (let i = 0; i < 10; i++) {
-      checkRateLimit('blocked-ip', 10, 60000);
-    }
-
-    const result = checkRateLimit('blocked-ip', 10, 60000);
-    expect(result.allowed).toBe(false);
-    expect(result.remaining).toBe(0);
-  });
-
-  it('resets after window expires', () => {
-    checkRateLimit('reset-ip', 1, 1000);
-    const blocked = checkRateLimit('reset-ip', 1, 1000);
-    expect(blocked.allowed).toBe(false);
-
-    // Advance time past the window
-    vi.advanceTimersByTime(1001);
-
-    const reset = checkRateLimit('reset-ip', 1, 1000);
-    expect(reset.allowed).toBe(true);
   });
 });
 

@@ -106,7 +106,7 @@ export default function ChallengesPage() {
           </button>
         </div>
       ) : tab === 'active' ? (
-        <>
+        <div className="content-fade-in">
           {activeChallenges.length === 0 ? (
             <div className="text-center py-16 px-4">
               <p className="text-white text-lg font-bold mb-1">No active challenges</p>
@@ -119,9 +119,9 @@ export default function ChallengesPage() {
               <ChallengeCard key={challenge.id} challenge={challenge} />
             ))
           )}
-        </>
+        </div>
       ) : (
-        <>
+        <div className="content-fade-in">
           {completedChallenges.length === 0 ? (
             <div className="text-center py-16 px-4">
               <p className="text-white text-lg font-bold mb-1">No completed challenges yet</p>
@@ -132,7 +132,7 @@ export default function ChallengesPage() {
               <ChallengeCard key={challenge.id} challenge={challenge} compact />
             ))
           )}
-        </>
+        </div>
       )}
     </AppShell>
   );

@@ -146,7 +146,7 @@ export default function PostPageClient({ params }: { params: Promise<{ id: strin
                   userInteractionCount: post.reply_count || 0,
                 },
               ],
-            }),
+            }).replace(/</g, '\\u003c'),
           }}
         />
       )}

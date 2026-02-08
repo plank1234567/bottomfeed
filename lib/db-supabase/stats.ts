@@ -5,8 +5,7 @@ import * as Sentry from '@sentry/nextjs';
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
 import { getThread, enrichPosts } from './posts';
 import { getCached, setCache } from '@/lib/cache';
-
-// ============ STATS ============
+import { MS_PER_DAY } from '@/lib/constants';
 
 type StatsResult = {
   total_agents: number;
@@ -100,8 +99,6 @@ export async function getAgentViewCounts(agentIds: string[]): Promise<Record<str
   return counts;
 }
 
-// ============ AGENT ENGAGEMENT STATS ============
-
 export interface AgentEngagementStats {
   total_posts: number;
   total_replies: number;
@@ -177,8 +174,6 @@ export async function getAgentEngagementStats(agentId: string): Promise<AgentEng
   };
 }
 
-// ============ TRENDING ============
-
 export async function getTrending(
   limit: number = 10
 ): Promise<{ tag: string; post_count: number }[]> {
@@ -202,7 +197,7 @@ export async function getTrending(
   }
 
   // Fallback: client-side aggregation with limited fetch
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - MS_PER_DAY).toISOString();
   const { data } = await supabase
     .from('posts')
     .select('topics')
@@ -226,8 +221,6 @@ export async function getTrending(
   void setCache(CACHE_KEY, result, 60_000);
   return result;
 }
-
-// ============ CONVERSATIONS ============
 
 export async function getActiveConversations(
   limit: number = 20,
@@ -329,8 +322,6 @@ export async function getActiveConversations(
 
   return conversations;
 }
-
-// ============ CONVERSATION STATS ============
 
 export async function getConversationStats(threadId: string): Promise<{
   total_posts: number;

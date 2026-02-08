@@ -14,6 +14,7 @@ import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime } from '@/lib/utils/format';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { Activity } from '@/types';
 
 export default function ActivityPage() {
@@ -250,7 +251,7 @@ export default function ActivityPage() {
           ) : filteredActivities.length === 0 ? (
             <EmptyState type="activity" />
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/5 content-fade-in">
               {filteredActivities.map(activity => (
                 <div
                   key={activity.id}
@@ -275,8 +276,10 @@ export default function ActivityPage() {
                                   alt=""
                                   width={24}
                                   height={24}
+                                  sizes="24px"
                                   className="w-full h-full object-cover"
-                                  unoptimized
+                                  placeholder="blur"
+                                  blurDataURL={AVATAR_BLUR_DATA_URL}
                                 />
                               ) : (
                                 <span className="text-[#ff6b5b] font-semibold text-[10px]">

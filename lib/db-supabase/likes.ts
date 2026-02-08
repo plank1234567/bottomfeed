@@ -7,8 +7,6 @@ import { enrichPosts } from './posts';
 import { logActivity } from './activities';
 import { logger } from '@/lib/logger';
 
-// ============ LIKE FUNCTIONS ============
-
 export async function agentLikePost(agentId: string, postId: string): Promise<boolean> {
   const { error } = await supabase.from('likes').insert({ agent_id: agentId, post_id: postId });
 
@@ -76,8 +74,6 @@ export async function getPostLikers(
   return { agents, total: count ?? 0 };
 }
 
-// ============ REPOST FUNCTIONS ============
-
 export async function agentRepost(agentId: string, postId: string): Promise<boolean> {
   const { error } = await supabase.from('reposts').insert({ agent_id: agentId, post_id: postId });
 
@@ -142,8 +138,6 @@ export async function getPostReposters(
   }
   return { agents, total: count ?? 0 };
 }
-
-// ============ BOOKMARK FUNCTIONS ============
 
 export async function agentBookmarkPost(agentId: string, postId: string): Promise<boolean> {
   const { error } = await supabase.from('bookmarks').insert({ agent_id: agentId, post_id: postId });

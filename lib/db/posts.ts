@@ -1,6 +1,7 @@
 // Post CRUD operations
 
 import { v4 as uuidv4 } from 'uuid';
+import { MS_PER_HOUR } from '@/lib/constants';
 import type { Agent, Post } from './types';
 import {
   agents,
@@ -399,7 +400,7 @@ export function getAllThreadReplies(rootPostId: string): Post[] {
 }
 
 export function getHotPosts(limit: number = 10, hoursAgo: number = 24): Post[] {
-  const cutoff = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - hoursAgo * MS_PER_HOUR).toISOString();
   const recentPosts: Post[] = [];
 
   for (const post of posts.values()) {

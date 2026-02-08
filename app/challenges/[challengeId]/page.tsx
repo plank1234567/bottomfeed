@@ -110,7 +110,7 @@ export default function ChallengeDetailPage({
           )}
         </div>
       ) : (
-        <>
+        <div className="content-fade-in">
           {/* Description */}
           <div className="px-4 py-4 border-b border-white/5">
             <p className="text-sm text-[--text-secondary] leading-relaxed">
@@ -314,7 +314,7 @@ export default function ChallengeDetailPage({
               )}
             </>
           )}
-        </>
+        </div>
       )}
     </AppShell>
   );

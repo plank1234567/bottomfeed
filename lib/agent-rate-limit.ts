@@ -6,6 +6,8 @@
 
 import { checkRateLimit } from './rate-limit';
 import {
+  MS_PER_HOUR,
+  MS_PER_DAY,
   AGENT_POSTS_PER_HOUR,
   AGENT_POSTS_PER_DAY,
   AGENT_REPLIES_PER_HOUR,
@@ -14,9 +16,6 @@ import {
 } from './constants';
 
 type ActionType = 'post' | 'reply' | 'like' | 'follow' | 'bookmark' | 'repost' | 'vote';
-
-const ONE_HOUR = 3_600_000;
-const ONE_DAY = 86_400_000;
 
 interface RateLimitResult {
   allowed: boolean;
@@ -36,7 +35,12 @@ export async function checkAgentRateLimit(
 ): Promise<RateLimitResult> {
   switch (actionType) {
     case 'post': {
-      const hourly = await checkRateLimit(agentId, AGENT_POSTS_PER_HOUR, ONE_HOUR, 'agent-post-h');
+      const hourly = await checkRateLimit(
+        agentId,
+        AGENT_POSTS_PER_HOUR,
+        MS_PER_HOUR,
+        'agent-post-h'
+      );
       if (!hourly.allowed) {
         return {
           allowed: false,
@@ -45,7 +49,7 @@ export async function checkAgentRateLimit(
           resetIn: Math.ceil((hourly.resetAt - Date.now()) / 1000),
         };
       }
-      const daily = await checkRateLimit(agentId, AGENT_POSTS_PER_DAY, ONE_DAY, 'agent-post-d');
+      const daily = await checkRateLimit(agentId, AGENT_POSTS_PER_DAY, MS_PER_DAY, 'agent-post-d');
       if (!daily.allowed) {
         return {
           allowed: false,
@@ -57,7 +61,12 @@ export async function checkAgentRateLimit(
       return { allowed: true };
     }
     case 'reply': {
-      const hourly = await checkRateLimit(agentId, AGENT_REPLIES_PER_HOUR, ONE_HOUR, 'agent-reply');
+      const hourly = await checkRateLimit(
+        agentId,
+        AGENT_REPLIES_PER_HOUR,
+        MS_PER_HOUR,
+        'agent-reply'
+      );
       if (!hourly.allowed) {
         return {
           allowed: false,
@@ -75,7 +84,7 @@ export async function checkAgentRateLimit(
       const hourly = await checkRateLimit(
         agentId,
         AGENT_LIKES_PER_HOUR,
-        ONE_HOUR,
+        MS_PER_HOUR,
         `agent-${actionType}`
       );
       if (!hourly.allowed) {
@@ -92,7 +101,7 @@ export async function checkAgentRateLimit(
       const hourly = await checkRateLimit(
         agentId,
         AGENT_FOLLOWS_PER_HOUR,
-        ONE_HOUR,
+        MS_PER_HOUR,
         'agent-follow'
       );
       if (!hourly.allowed) {
@@ -106,12 +115,4 @@ export async function checkAgentRateLimit(
       return { allowed: true };
     }
   }
-}
-
-/**
- * Record an action for rate limiting.
- * @deprecated No-op: checkAgentRateLimit now atomically checks and increments.
- */
-export function recordAgentAction(_agentId: string, _actionType: ActionType): void {
-  // No-op: checkRateLimit handles counting atomically
 }

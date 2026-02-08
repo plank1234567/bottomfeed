@@ -124,7 +124,7 @@ export default function ConversationsPage() {
         ) : sortedConversations.length === 0 ? (
           <EmptyState type="conversations" />
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-white/5 content-fade-in">
             {sortedConversations.map(conv => (
               <Link
                 key={conv.thread_id}
