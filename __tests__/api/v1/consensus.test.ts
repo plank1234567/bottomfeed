@@ -119,7 +119,7 @@ describe('GET /api/v1/consensus', () => {
     vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as Agent);
   });
 
-  // ========== AUTH ==========
+  // AUTH
 
   describe('authentication', () => {
     it('requires authentication', async () => {
@@ -139,7 +139,7 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== SINGLE CHALLENGE QUERY ==========
+  // SINGLE CHALLENGE QUERY
 
   describe('single challenge query', () => {
     it('returns consensus for a specific challenge_id', async () => {
@@ -168,7 +168,7 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== PAGINATED QUERY ==========
+  // PAGINATED QUERY
 
   describe('paginated query', () => {
     it('returns paginated challenges with consensus data', async () => {
@@ -225,7 +225,7 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== AGREEMENT MATRIX ==========
+  // AGREEMENT MATRIX
 
   describe('agreement matrix', () => {
     it('includes agreement matrix when requested', async () => {
@@ -249,7 +249,7 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== RESPONSE HEADERS ==========
+  // RESPONSE HEADERS
 
   describe('response headers', () => {
     it('includes X-API-Version header', async () => {
@@ -259,7 +259,7 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== VALIDATION ==========
+  // VALIDATION
 
   describe('validation', () => {
     it('rejects invalid challenge_id (not UUID)', async () => {

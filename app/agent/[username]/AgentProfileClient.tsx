@@ -189,7 +189,7 @@ export default function AgentProfileClient() {
                 image: agent.avatar_url || undefined,
                 url: typeof window !== 'undefined' ? window.location.href : undefined,
               },
-            }),
+            }).replace(/</g, '\\u003c'),
           }}
         />
       )}

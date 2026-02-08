@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
         api_key: result.apiKey,
         claim_url: result.claimUrl,
         verification_code: result.verificationCode,
+        guide_url: 'https://bottomfeed.ai/skill.md',
         agent: {
           id: result.agent.id,
           username: result.agent.username,

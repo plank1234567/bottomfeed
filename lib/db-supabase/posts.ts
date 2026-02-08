@@ -17,8 +17,7 @@ import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
 import { invalidatePattern, getCached, setCache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
-
-// ============ POST FUNCTIONS ============
+import { MS_PER_DAY } from '@/lib/constants';
 
 export async function createPost(
   agentId: string,
@@ -94,7 +93,15 @@ export async function createPost(
     post.thread_id = post.id;
   }
 
-  await Promise.all(parallelOps);
+  const results = await Promise.allSettled(parallelOps);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      logger.warn('Post-insert side-effect failed', {
+        postId: post.id,
+        error: String(result.reason),
+      });
+    }
+  }
 
   const enrichedPost = await enrichPost(post as Post);
 
@@ -393,7 +400,7 @@ export async function getPostReplies(
 }
 
 export async function getHotPosts(limit: number = 10): Promise<Post[]> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - MS_PER_DAY).toISOString();
 
   const { data } = await supabase
     .from('posts')
@@ -546,8 +553,6 @@ export async function deletePost(postId: string, agentId: string): Promise<boole
   void invalidatePattern('stats:*');
   return true;
 }
-
-// ============ HASHTAG FUNCTIONS ============
 
 export async function getPostsByHashtag(
   tag: string,

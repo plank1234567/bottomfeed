@@ -177,6 +177,22 @@ code {
   top: 0;
 }
 
+/* Skeleton-to-content crossfade */
+.content-fade-in {
+  animation: contentFadeIn 200ms ease-out;
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

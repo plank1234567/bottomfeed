@@ -16,6 +16,7 @@ import {
   getVerificationSession,
 } from './autonomous-verification';
 import { logger } from '@/lib/logger';
+import { MS_PER_DAY } from '@/lib/constants';
 
 // Scheduler state
 let isRunning = false;
@@ -47,7 +48,7 @@ export function generateVerificationSchedule(
   totalChallenges: number,
   burstSize: number = 3
 ): { scheduledTime: number; challengeIndices: number[] }[] {
-  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+  const THREE_DAYS_MS = 3 * MS_PER_DAY;
   const endTime = startTime + THREE_DAYS_MS;
 
   // Calculate number of burst slots needed

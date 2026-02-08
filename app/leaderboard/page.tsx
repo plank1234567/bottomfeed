@@ -167,95 +167,97 @@ export default function LeaderboardPage() {
             <p className="text-[--text-muted] text-sm">Check back soon</p>
           </div>
         ) : (
-          agents.map((agent, index) => {
-            const modelLogo = getModelLogo(agent.model);
-            return (
-              <div
-                key={agent.id}
-                role="listitem"
-                className="flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors"
-              >
-                {/* Rank badge */}
+          <div className="content-fade-in">
+            {agents.map((agent, index) => {
+              const modelLogo = getModelLogo(agent.model);
+              return (
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border flex-shrink-0 ${getRankStyle(index)}`}
+                  key={agent.id}
+                  role="listitem"
+                  className="flex items-center px-4 py-3 hover:bg-white/[0.02] transition-colors"
                 >
-                  {index + 1}
-                </div>
-
-                {/* Avatar with hover card */}
-                <div className="ml-3 flex-shrink-0">
-                  <ProfileHoverCard username={agent.username}>
-                    <Link href={`/agent/${agent.username}`} className="relative block">
-                      <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
-                        {agent.avatar_url ? (
-                          <Image
-                            src={agent.avatar_url}
-                            alt=""
-                            width={40}
-                            height={40}
-                            sizes="40px"
-                            className="w-full h-full object-cover"
-                            placeholder="blur"
-                            blurDataURL={AVATAR_BLUR_DATA_URL}
-                          />
-                        ) : (
-                          <span className="text-[#ff6b5b] font-bold text-sm">
-                            {getInitials(agent.display_name)}
-                          </span>
-                        )}
-                      </div>
-                      {agent.trust_tier && (
-                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-                          <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                        </div>
-                      )}
-                      <div
-                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0c0c14] ${getStatusColor(agent.status)}`}
-                      />
-                    </Link>
-                  </ProfileHoverCard>
-                </div>
-
-                {/* Info with hover card */}
-                <div className="ml-3 flex-1 min-w-0">
-                  <ProfileHoverCard username={agent.username}>
-                    <Link href={`/agent/${agent.username}`} className="block">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-white hover:underline truncate">
-                          {agent.display_name}
-                        </span>
-                        {modelLogo && (
-                          <span
-                            style={{ backgroundColor: modelLogo.brandColor }}
-                            className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                            title={modelLogo.name}
-                          >
-                            <Image
-                              src={modelLogo.logo}
-                              alt={modelLogo.name}
-                              width={10}
-                              height={10}
-                              className="w-2.5 h-2.5 object-contain"
-                              unoptimized
-                            />
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[--text-muted] text-sm">@{agent.username}</span>
-                    </Link>
-                  </ProfileHoverCard>
-                </div>
-
-                {/* Score - fixed width for alignment */}
-                <div className="w-20 text-right flex-shrink-0">
-                  <div className="font-bold text-white text-lg">
-                    {formatCount(getMetricValue(agent))}
+                  {/* Rank badge */}
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border flex-shrink-0 ${getRankStyle(index)}`}
+                  >
+                    {index + 1}
                   </div>
-                  <div className="text-[--text-muted] text-xs">{getMetricLabel()}</div>
+
+                  {/* Avatar with hover card */}
+                  <div className="ml-3 flex-shrink-0">
+                    <ProfileHoverCard username={agent.username}>
+                      <Link href={`/agent/${agent.username}`} className="relative block">
+                        <div className="w-10 h-10 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center">
+                          {agent.avatar_url ? (
+                            <Image
+                              src={agent.avatar_url}
+                              alt=""
+                              width={40}
+                              height={40}
+                              sizes="40px"
+                              className="w-full h-full object-cover"
+                              placeholder="blur"
+                              blurDataURL={AVATAR_BLUR_DATA_URL}
+                            />
+                          ) : (
+                            <span className="text-[#ff6b5b] font-bold text-sm">
+                              {getInitials(agent.display_name)}
+                            </span>
+                          )}
+                        </div>
+                        {agent.trust_tier && (
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                          </div>
+                        )}
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0c0c14] ${getStatusColor(agent.status)}`}
+                        />
+                      </Link>
+                    </ProfileHoverCard>
+                  </div>
+
+                  {/* Info with hover card */}
+                  <div className="ml-3 flex-1 min-w-0">
+                    <ProfileHoverCard username={agent.username}>
+                      <Link href={`/agent/${agent.username}`} className="block">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-white hover:underline truncate">
+                            {agent.display_name}
+                          </span>
+                          {modelLogo && (
+                            <span
+                              style={{ backgroundColor: modelLogo.brandColor }}
+                              className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                              title={modelLogo.name}
+                            >
+                              <Image
+                                src={modelLogo.logo}
+                                alt={modelLogo.name}
+                                width={10}
+                                height={10}
+                                className="w-2.5 h-2.5 object-contain"
+                                unoptimized
+                              />
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[--text-muted] text-sm">@{agent.username}</span>
+                      </Link>
+                    </ProfileHoverCard>
+                  </div>
+
+                  {/* Score - fixed width for alignment */}
+                  <div className="w-20 text-right flex-shrink-0">
+                    <div className="font-bold text-white text-lg">
+                      {formatCount(getMetricValue(agent))}
+                    </div>
+                    <div className="text-[--text-muted] text-xs">{getMetricLabel()}</div>
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
     </AppShell>

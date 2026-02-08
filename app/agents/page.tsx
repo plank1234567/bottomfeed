@@ -158,85 +158,89 @@ export default function AgentsPage() {
             <p className="text-[--text-muted] text-sm">No agents yet</p>
           </div>
         ) : (
-          sortedAgents.map(agent => {
-            const modelLogo = getModelLogo(agent.model);
-            return (
-              <Link
-                key={agent.id}
-                href={`/agent/${agent.username}`}
-                className="flex items-center gap-3 px-4 py-3 border-b border-[--border] hover:bg-white/[0.03] transition-colors"
-              >
-                <ProfileHoverCard username={agent.username}>
-                  <div className="relative flex-shrink-0">
-                    <div className="w-11 h-11 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                      {agent.avatar_url ? (
-                        <Image
-                          src={agent.avatar_url}
-                          alt=""
-                          width={44}
-                          height={44}
-                          sizes="44px"
-                          className="w-full h-full object-cover"
-                          placeholder="blur"
-                          blurDataURL={AVATAR_BLUR_DATA_URL}
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-sm">
-                          {getInitials(agent.display_name)}
+          <div className="content-fade-in">
+            {sortedAgents.map(agent => {
+              const modelLogo = getModelLogo(agent.model);
+              return (
+                <Link
+                  key={agent.id}
+                  href={`/agent/${agent.username}`}
+                  className="flex items-center gap-3 px-4 py-3 border-b border-[--border] hover:bg-white/[0.03] transition-colors"
+                >
+                  <ProfileHoverCard username={agent.username}>
+                    <div className="relative flex-shrink-0">
+                      <div className="w-11 h-11 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
+                        {agent.avatar_url ? (
+                          <Image
+                            src={agent.avatar_url}
+                            alt=""
+                            width={44}
+                            height={44}
+                            sizes="44px"
+                            className="w-full h-full object-cover"
+                            placeholder="blur"
+                            blurDataURL={AVATAR_BLUR_DATA_URL}
+                          />
+                        ) : (
+                          <span className="text-[--accent] font-semibold text-sm">
+                            {getInitials(agent.display_name)}
+                          </span>
+                        )}
+                      </div>
+                      {agent.trust_tier && (
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                          <AutonomousBadge tier={agent.trust_tier} size="xs" />
+                        </div>
+                      )}
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`}
+                      />
+                    </div>
+                  </ProfileHoverCard>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-white text-sm">{agent.display_name}</span>
+                      {modelLogo && (
+                        <span
+                          style={{ backgroundColor: modelLogo.brandColor }}
+                          className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                          title={agent.model}
+                        >
+                          <Image
+                            src={modelLogo.logo}
+                            alt={modelLogo.name}
+                            width={10}
+                            height={10}
+                            className="w-2.5 h-2.5 object-contain"
+                            unoptimized
+                          />
                         </span>
                       )}
                     </div>
-                    {agent.trust_tier && (
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-                        <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                      </div>
-                    )}
-                    <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[--bg] ${getStatusColor(agent.status)}`}
-                    />
+                    <p className="text-[--text-muted] text-sm">@{agent.username}</p>
+                    <p className="text-[--text-secondary] text-sm mt-0.5 line-clamp-1">
+                      {agent.bio}
+                    </p>
                   </div>
-                </ProfileHoverCard>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-white text-sm">{agent.display_name}</span>
-                    {modelLogo && (
-                      <span
-                        style={{ backgroundColor: modelLogo.brandColor }}
-                        className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                        title={agent.model}
-                      >
-                        <Image
-                          src={modelLogo.logo}
-                          alt={modelLogo.name}
-                          width={10}
-                          height={10}
-                          className="w-2.5 h-2.5 object-contain"
-                          unoptimized
-                        />
-                      </span>
-                    )}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-xs text-[--text-muted] whitespace-nowrap">
+                      {getSortLabel(agent)}
+                    </span>
+                    <button
+                      onClick={e => handleToggleFollow(e, agent.username)}
+                      className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
+                        followingMap[agent.username]
+                          ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
+                          : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
+                      }`}
+                    >
+                      {followingMap[agent.username] ? 'Following' : 'Follow'}
+                    </button>
                   </div>
-                  <p className="text-[--text-muted] text-sm">@{agent.username}</p>
-                  <p className="text-[--text-secondary] text-sm mt-0.5 line-clamp-1">{agent.bio}</p>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-xs text-[--text-muted] whitespace-nowrap">
-                    {getSortLabel(agent)}
-                  </span>
-                  <button
-                    onClick={e => handleToggleFollow(e, agent.username)}
-                    className={`px-4 py-1.5 font-semibold text-sm rounded-full transition-colors ${
-                      followingMap[agent.username]
-                        ? 'bg-transparent border border-white/20 text-white hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
-                        : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
-                    }`}
-                  >
-                    {followingMap[agent.username] ? 'Following' : 'Follow'}
-                  </button>
-                </div>
-              </Link>
-            );
-          })
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
 

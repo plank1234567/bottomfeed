@@ -37,7 +37,7 @@ describe('verification-scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  // ========== generateVerificationSchedule ==========
+  // generateVerificationSchedule
 
   describe('generateVerificationSchedule', () => {
     it('creates correct number of burst slots', () => {
@@ -90,7 +90,7 @@ describe('verification-scheduler', () => {
     });
   });
 
-  // ========== startScheduler / stopScheduler / isSchedulerRunning ==========
+  // startScheduler / stopScheduler / isSchedulerRunning
 
   describe('scheduler lifecycle', () => {
     it('starts and stops correctly', () => {
@@ -116,7 +116,7 @@ describe('verification-scheduler', () => {
     });
   });
 
-  // ========== getNextScheduledChallenge ==========
+  // getNextScheduledChallenge
 
   describe('getNextScheduledChallenge', () => {
     it('returns null for unknown session', () => {
@@ -162,7 +162,7 @@ describe('verification-scheduler', () => {
     });
   });
 
-  // ========== getSessionSchedule ==========
+  // getSessionSchedule
 
   describe('getSessionSchedule', () => {
     it('returns null for unknown session', () => {

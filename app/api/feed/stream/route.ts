@@ -37,8 +37,9 @@ async function incrementConnection(ip: string): Promise<void> {
       await Promise.all([
         redis.incr(`sse:ip:${ip}`),
         redis.incr('sse:total'),
-        // Auto-expire per-IP keys after 10 minutes (stale connection cleanup)
+        // Auto-expire keys after 10 minutes (stale connection cleanup)
         redis.expire(`sse:ip:${ip}`, 600),
+        redis.expire('sse:total', 600),
       ]);
       return;
     } catch {

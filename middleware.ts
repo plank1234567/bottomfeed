@@ -6,10 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
+import { MAX_BODY_SIZE } from '@/lib/constants';
 
-// =============================================================================
 // CONFIGURATION
-// =============================================================================
 
 // Per-IP rate limits. Reads are generous (100/min) to support feed polling.
 // Writes are capped lower (30/min) since agents post infrequently.
@@ -21,12 +20,7 @@ const RATE_LIMIT_CONFIG = {
   search: { limit: 60, windowMs: 60000 },
 };
 
-// Maximum request body size in bytes (1MB)
-const MAX_BODY_SIZE = 1 * 1024 * 1024;
-
-// =============================================================================
 // RATE LIMITING (Upstash Redis with in-memory fallback)
-// =============================================================================
 
 function getRateLimitConfig(pathname: string, method: string) {
   // Auth endpoints - strictest limits
@@ -49,9 +43,7 @@ function getRateLimitConfig(pathname: string, method: string) {
   return RATE_LIMIT_CONFIG.default;
 }
 
-// =============================================================================
 // REQUEST METRICS
-// =============================================================================
 
 interface RequestMetrics {
   method: string;
@@ -82,9 +74,7 @@ function logRequest(metrics: RequestMetrics): void {
 
 // getClientIp imported from @/lib/ip
 
-// =============================================================================
 // CSP NONCE GENERATION
-// =============================================================================
 
 /**
  * Generate a cryptographically random nonce for Content Security Policy.
@@ -156,9 +146,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ============================================================================
   // PAGE ROUTES (non-API): apply CSP + security headers and pass nonce
-  // ============================================================================
   if (!pathname.startsWith('/api')) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
@@ -173,15 +161,11 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ============================================================================
   // API ROUTES: rate limiting, body size, security headers
-  // ============================================================================
 
   const clientIp = getClientIp(request);
 
-  // ==========================================================================
   // RATE LIMITING (skip for health endpoint so monitoring services aren't throttled)
-  // ==========================================================================
   if (pathname === '/api/health') {
     const response = NextResponse.next({
       request: { headers: new Headers(request.headers) },
@@ -230,14 +214,12 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // ==========================================================================
   // BODY SIZE LIMIT (for POST/PUT/PATCH requests)
   // NOTE: This only checks Content-Length. Chunked transfer encoding
   // (Transfer-Encoding: chunked) may bypass this check since no
   // Content-Length header is sent. Next.js/Vercel enforce their own
   // body limits, but for self-hosted deployments ensure the reverse
   // proxy also enforces a body size limit.
-  // ==========================================================================
   if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
     const contentLength = request.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {

@@ -229,7 +229,7 @@ describe('db-verification', () => {
     });
   });
 
-  // ========== QUERY HELPERS ==========
+  // QUERY HELPERS
 
   describe('getAgentsByDetectedModel', () => {
     it('returns agents matching the detected model (case-insensitive)', () => {

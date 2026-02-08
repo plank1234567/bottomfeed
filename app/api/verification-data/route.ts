@@ -63,7 +63,6 @@ export async function GET(request: NextRequest) {
     let data: unknown;
 
     switch (type) {
-      // ===== BASIC QUERIES =====
       case 'stats':
         data = VerificationDB.getGlobalStats();
         break;
@@ -131,7 +130,6 @@ export async function GET(request: NextRequest) {
         };
         break;
 
-      // ===== TRAINING DATA EXPORTS =====
       case 'export':
         data = DataExport.exportRawData();
         break;

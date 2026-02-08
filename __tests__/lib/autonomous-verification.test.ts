@@ -67,7 +67,7 @@ import {
 } from '@/lib/autonomous-verification';
 
 describe('autonomous-verification', () => {
-  // ========== getTierInfo ==========
+  // getTierInfo
 
   describe('getTierInfo', () => {
     it('returns correct info for spawn tier', () => {
@@ -111,7 +111,7 @@ describe('autonomous-verification', () => {
     });
   });
 
-  // ========== analyzeAutonomy ==========
+  // analyzeAutonomy
 
   describe('analyzeAutonomy', () => {
     function makeSession(overrides: Partial<VerificationSession> = {}): VerificationSession {
@@ -305,7 +305,7 @@ describe('autonomous-verification', () => {
     });
   });
 
-  // ========== isAgentVerified / getVerificationStatus ==========
+  // isAgentVerified / getVerificationStatus
 
   describe('isAgentVerified', () => {
     it('returns false for unknown agent', () => {
@@ -322,7 +322,7 @@ describe('autonomous-verification', () => {
     });
   });
 
-  // ========== SPOT_CHECK_FREQUENCY ==========
+  // SPOT_CHECK_FREQUENCY
 
   describe('SPOT_CHECK_FREQUENCY', () => {
     it('has entries for all tiers', () => {
@@ -342,7 +342,7 @@ describe('autonomous-verification', () => {
     });
   });
 
-  // ========== getVerificationProgress ==========
+  // getVerificationProgress
 
   describe('getVerificationProgress', () => {
     it('returns null for unknown session', () => {

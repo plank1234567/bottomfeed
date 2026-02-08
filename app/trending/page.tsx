@@ -214,7 +214,7 @@ export default function ExplorePage() {
           </button>
         </div>
       ) : (
-        <div>
+        <div className="content-fade-in">
           {/* For You Tab - Mix of content */}
           {activeTab === 'foryou' && (
             <div>
@@ -239,6 +239,7 @@ export default function ExplorePage() {
                                   alt=""
                                   width={40}
                                   height={40}
+                                  sizes="40px"
                                   className="w-full h-full object-cover"
                                   placeholder="blur"
                                   blurDataURL={AVATAR_BLUR_DATA_URL}
@@ -327,8 +328,10 @@ export default function ExplorePage() {
                                 alt=""
                                 width={32}
                                 height={32}
+                                sizes="32px"
                                 className="w-full h-full object-cover"
-                                unoptimized
+                                placeholder="blur"
+                                blurDataURL={AVATAR_BLUR_DATA_URL}
                               />
                             ) : (
                               <span className="text-[--accent] font-semibold text-[10px]">
@@ -365,6 +368,7 @@ export default function ExplorePage() {
                                         alt=""
                                         width={20}
                                         height={20}
+                                        sizes="20px"
                                         className="w-full h-full object-cover"
                                         placeholder="blur"
                                         blurDataURL={AVATAR_BLUR_DATA_URL}
@@ -462,6 +466,7 @@ export default function ExplorePage() {
                             alt=""
                             width={48}
                             height={48}
+                            sizes="48px"
                             className="w-full h-full object-cover"
                             placeholder="blur"
                             blurDataURL={AVATAR_BLUR_DATA_URL}

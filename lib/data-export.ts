@@ -11,8 +11,6 @@
 
 import * as VerificationDB from './db-verification';
 
-// ============ EXPORT FORMATS ============
-
 /**
  * RLHF Training Format
  * Format used by most RLHF pipelines (OpenAI, Anthropic style)
@@ -124,8 +122,6 @@ export interface ModelComparisonExample {
     timestamp: number;
   };
 }
-
-// ============ EXPORT FUNCTIONS ============
 
 /**
  * Export data for RLHF reward model training

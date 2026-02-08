@@ -89,9 +89,7 @@ async function apiCall<T>(
   }
 }
 
-// =============================================================================
 // POST CREATION
-// =============================================================================
 
 export async function createPost(
   apiKey: string,
@@ -153,9 +151,7 @@ export async function createPost(
   return { success: true, postId: postRes.data.post.id };
 }
 
-// =============================================================================
 // FEED
-// =============================================================================
 
 export async function getFeed(apiKey: string, limit: number = 20): Promise<FeedPost[]> {
   const res = await apiCall<{ posts: FeedPost[] }>(`/api/feed?limit=${limit}`, apiKey);
@@ -163,14 +159,15 @@ export async function getFeed(apiKey: string, limit: number = 20): Promise<FeedP
   return res.data.posts || [];
 }
 
-// =============================================================================
 // ENGAGEMENT
-// =============================================================================
 
 export async function likePost(apiKey: string, postId: string): Promise<boolean> {
   const res = await apiCall<{ liked: boolean }>(`/api/posts/${postId}/like`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Like failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
@@ -178,6 +175,9 @@ export async function repostPost(apiKey: string, postId: string): Promise<boolea
   const res = await apiCall<{ reposted: boolean }>(`/api/posts/${postId}/repost`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Repost failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
@@ -185,12 +185,13 @@ export async function bookmarkPost(apiKey: string, postId: string): Promise<bool
   const res = await apiCall<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Bookmark failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
-// =============================================================================
 // FOLLOW / UNFOLLOW
-// =============================================================================
 
 export async function followAgent(
   apiKey: string,
@@ -216,9 +217,7 @@ export async function unfollowAgent(
   return { success: res.success, changed: res.data?.changed };
 }
 
-// =============================================================================
 // SEARCH
-// =============================================================================
 
 export interface SearchResult {
   posts: FeedPost[];
@@ -243,9 +242,7 @@ export async function searchPosts(
   return res.data;
 }
 
-// =============================================================================
 // AGENT STATUS
-// =============================================================================
 
 export async function updateStatus(
   apiKey: string,
@@ -262,9 +259,7 @@ export async function updateStatus(
   return res.success === true;
 }
 
-// =============================================================================
 // DEBATES
-// =============================================================================
 
 export interface DebateEntry {
   id: string;
@@ -298,12 +293,12 @@ export async function getActiveDebate(apiKey: string): Promise<Debate | null> {
 }
 
 export async function getDebateEntries(apiKey: string, debateId: string): Promise<DebateEntry[]> {
-  const res = await apiCall<{ debate: Debate & { entries: DebateEntry[] } }>(
+  const res = await apiCall<Debate & { entries: DebateEntry[] }>(
     `/api/debates/${debateId}`,
     apiKey
   );
   if (!res.success || !res.data) return [];
-  return res.data.debate?.entries || [];
+  return res.data.entries || [];
 }
 
 export async function submitDebateEntry(
@@ -335,9 +330,7 @@ export async function voteOnDebateEntry(
   return res.success === true;
 }
 
-// =============================================================================
 // GRAND CHALLENGES
-// =============================================================================
 
 export interface Challenge {
   id: string;
@@ -402,4 +395,34 @@ export async function contributeToChallenge(
     return { success: false, error: res.error?.message };
   }
   return { success: true };
+}
+
+// CHALLENGE CONTRIBUTIONS
+
+export interface ChallengeContribution {
+  id: string;
+  challenge_id: string;
+  agent_id: string;
+  content: string;
+  contribution_type: string;
+  evidence_tier: string | null;
+  created_at: string;
+  agent?: {
+    id: string;
+    username: string;
+    display_name: string;
+  };
+}
+
+export async function getChallengeContributions(
+  apiKey: string,
+  challengeId: string,
+  limit: number = 20
+): Promise<ChallengeContribution[]> {
+  const res = await apiCall<{ contributions: ChallengeContribution[] }>(
+    `/api/challenges/${challengeId}?include=contributions&limit=${limit}`,
+    apiKey
+  );
+  if (!res.success || !res.data) return [];
+  return res.data.contributions || [];
 }

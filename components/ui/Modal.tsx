@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { useModalKeyboard } from '@/hooks/useModalKeyboard';
 
 interface ModalProps {
   isOpen: boolean;
@@ -21,34 +22,7 @@ export default function Modal({ isOpen, onClose, title, size = 'md', children }:
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Trap focus within the modal
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      if (e.key !== 'Tab' || !dialogRef.current) return;
-
-      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-      );
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (!first || !last) return;
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    },
-    [onClose]
-  );
+  useModalKeyboard(dialogRef, onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,9 +34,6 @@ export default function Modal({ isOpen, onClose, title, size = 'md', children }:
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Add key listener
-    document.addEventListener('keydown', handleKeyDown);
-
     // Focus the dialog
     requestAnimationFrame(() => {
       dialogRef.current?.focus();
@@ -70,11 +41,10 @@ export default function Modal({ isOpen, onClose, title, size = 'md', children }:
 
     return () => {
       document.body.style.overflow = originalOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
       // Restore focus
       previousFocusRef.current?.focus();
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -20,9 +20,7 @@ import type {
 const ACTIVE_CHALLENGES_CACHE_KEY = 'challenges:active';
 const ACTIVE_CHALLENGES_CACHE_TTL = 120_000; // 2 minutes
 
-// =============================================================================
 // MODEL FAMILY DETECTION
-// =============================================================================
 
 /**
  * Extract model family from an agent's model string.
@@ -85,9 +83,7 @@ export function computeCrossModelConsensus(
   return Math.round((supportingFamilies.size / families.size) * 100) / 100;
 }
 
-// =============================================================================
 // CHALLENGE CRUD
-// =============================================================================
 
 export async function createChallenge(
   title: string,
@@ -194,9 +190,7 @@ export async function updateChallengeDiversityIndex(challengeId: string): Promis
   await invalidateCache(ACTIVE_CHALLENGES_CACHE_KEY);
 }
 
-// =============================================================================
 // CHALLENGE QUERIES
-// =============================================================================
 
 export async function getActiveChallenges(): Promise<Challenge[]> {
   const cached = await getCached<Challenge[]>(ACTIVE_CHALLENGES_CACHE_KEY);
@@ -260,9 +254,7 @@ export async function getNextChallengeNumber(): Promise<number> {
   return data ? (data as { challenge_number: number }).challenge_number + 1 : 1;
 }
 
-// =============================================================================
 // CHALLENGE DETAILS (with participants, contributions, hypotheses)
-// =============================================================================
 
 export async function getChallengeWithDetails(
   challengeId: string
@@ -286,9 +278,7 @@ export async function getChallengeWithDetails(
   };
 }
 
-// =============================================================================
 // PARTICIPANTS
-// =============================================================================
 
 export async function joinChallenge(
   challengeId: string,
@@ -384,9 +374,7 @@ export async function updateParticipantRole(
   return true;
 }
 
-// =============================================================================
 // CONTRIBUTIONS
-// =============================================================================
 
 export async function createContribution(
   challengeId: string,
@@ -506,9 +494,7 @@ export async function voteContribution(contributionId: string): Promise<boolean>
   return true;
 }
 
-// =============================================================================
 // HYPOTHESES
-// =============================================================================
 
 export async function createHypothesis(
   challengeId: string,
@@ -666,9 +652,7 @@ async function updateHypothesisConsensus(hypothesisId: string): Promise<void> {
     .eq('id', hypothesisId);
 }
 
-// =============================================================================
 // CHALLENGE REFERENCES (Knowledge Graph)
-// =============================================================================
 
 export async function createChallengeReference(
   challengeId: string,
@@ -755,9 +739,7 @@ export async function getSubChallenges(parentChallengeId: string): Promise<Chall
   return (data || []) as Challenge[];
 }
 
-// =============================================================================
 // LIFECYCLE HELPERS
-// =============================================================================
 
 export async function getChallengesToAdvance(): Promise<Challenge[]> {
   // Find challenges in exploration or adversarial phase that may need round advancement

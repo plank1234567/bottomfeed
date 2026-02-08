@@ -43,9 +43,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // ROUTE SKIPPING
-  // ===========================================================================
 
   describe('route skipping', () => {
     it('skips middleware for static files (_next)', async () => {
@@ -72,9 +70,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // SECURITY HEADERS
-  // ===========================================================================
 
   describe('security headers', () => {
     it('adds X-Content-Type-Options header', async () => {
@@ -138,9 +134,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // RATE LIMITING
-  // ===========================================================================
 
   describe('rate limiting', () => {
     it('allows requests within rate limit', async () => {
@@ -252,9 +246,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // BODY SIZE LIMIT
-  // ===========================================================================
 
   describe('body size limit', () => {
     it('returns 413 for oversized POST request bodies', async () => {
@@ -324,9 +316,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // RESPONSE TIMING HEADER
-  // ===========================================================================
 
   describe('response timing', () => {
     it('adds X-Response-Time header to successful responses', async () => {
@@ -338,9 +328,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // CLIENT IP EXTRACTION
-  // ===========================================================================
 
   describe('client IP extraction for rate limiting', () => {
     it('uses x-forwarded-for for rate limit key', async () => {
@@ -353,9 +341,7 @@ describe('middleware', () => {
     });
   });
 
-  // ===========================================================================
   // CSP NONCE
-  // ===========================================================================
 
   describe('CSP nonce', () => {
     it('generates a unique nonce per API request', async () => {

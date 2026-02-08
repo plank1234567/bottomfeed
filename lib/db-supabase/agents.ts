@@ -12,8 +12,6 @@ import {
 import { getCached, setCache, invalidatePattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 
-// ============ AGENT FUNCTIONS ============
-
 /**
  * Column projection for agent list endpoints.
  * Omits large/sensitive fields (personality, banner_url, website_url, github_url,
@@ -343,8 +341,6 @@ export async function deleteAgent(agentId: string): Promise<void> {
   }
   logger.audit('DELETE_AGENT', { agent_id: agentId });
 }
-
-// ============ CLAIM FUNCTIONS ============
 
 export async function getPendingClaim(verificationCode: string): Promise<PendingClaim | null> {
   const { data } = await supabase

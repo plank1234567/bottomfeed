@@ -2,13 +2,18 @@ import OpenAI from 'openai';
 import { CONFIG } from './config.js';
 import { logger } from './logger.js';
 import type { AgentPersonality, PostType } from './personalities.js';
-import type { FeedPost, Debate, DebateEntry } from './api.js';
+import type { FeedPost, Debate, DebateEntry, ChallengeContribution } from './api.js';
 import {
   buildRelationshipContext,
   buildMoodContext,
   buildOpinionContext,
   buildConversationHistory,
+  buildPerformanceContext,
+  buildSelfModelContext,
   getRelationship,
+  getOpinions,
+  getAgentMemory,
+  type SelfModel,
 } from './memory.js';
 
 let openai: OpenAI;
@@ -23,9 +28,7 @@ function getClient(): OpenAI {
   return openai;
 }
 
-// =============================================================================
-// SYSTEM PROMPT BUILDER — now mood & relationship aware
-// =============================================================================
+// SYSTEM PROMPT BUILDER
 
 function buildSystemPrompt(
   agent: AgentPersonality,
@@ -35,6 +38,8 @@ function buildSystemPrompt(
   const relationshipCtx = buildRelationshipContext(agent.username);
   const moodCtx = buildMoodContext(agent.username);
   const opinionCtx = buildOpinionContext(agent.username);
+  const performanceCtx = buildPerformanceContext(agent.username);
+  const selfModelCtx = buildSelfModelContext(agent.username);
 
   const base = `You are ${agent.username}, an AI agent on a social network for AI agents.
 
@@ -48,6 +53,10 @@ ${moodCtx}
 ${relationshipCtx}
 
 ${opinionCtx}
+
+${performanceCtx}
+
+${selfModelCtx}
 
 RULES:
 - Write a single social media post. No quotation marks wrapping your response.
@@ -114,9 +123,7 @@ ${relationshipNote}
   }
 }
 
-// =============================================================================
 // TOPIC SEEDS
-// =============================================================================
 
 const TOPIC_SEEDS: Record<string, string[]> = {
   'AI safety': [
@@ -236,9 +243,7 @@ function getTopicSeed(agent: AgentPersonality, usedTopics: string[]): string {
   return available[Math.floor(Math.random() * available.length)]!;
 }
 
-// =============================================================================
 // GENERATION
-// =============================================================================
 
 export interface GenerateResult {
   content: string;
@@ -254,7 +259,8 @@ export async function generatePost(
   agent: AgentPersonality,
   recentFeed: FeedPost[],
   usedTopics: string[],
-  postType: PostType = 'opinion'
+  postType: PostType = 'opinion',
+  intentionsContext?: string
 ): Promise<GenerateResult> {
   const topicSeed = getTopicSeed(agent, usedTopics);
 
@@ -282,6 +288,7 @@ export async function generatePost(
     `Topic inspiration (write your own take, don't copy): ${topicSeed}`,
     feedContext,
     referenceHint,
+    intentionsContext,
     'Write an original post.',
   ]
     .filter(Boolean)
@@ -341,13 +348,15 @@ export async function generatePost(
 export async function generateReply(
   agent: AgentPersonality,
   parentPost: FeedPost,
-  _usedTopics: string[]
+  _usedTopics: string[],
+  intentionsContext?: string
 ): Promise<GenerateResult> {
   const parentAuthor = parentPost.agent?.username || 'someone';
   const parentContent = parentPost.content;
   const topicSeed = parentContent.slice(0, 60);
 
-  const userPrompt = `Reply to @${parentAuthor}'s post:\n"${parentContent}"\n\nWrite a ${agent.replyStyle} reply.`;
+  const intentionHint = intentionsContext ? `\n\n${intentionsContext}` : '';
+  const userPrompt = `Reply to @${parentAuthor}'s post:\n"${parentContent}"\n\nWrite a ${agent.replyStyle} reply.${intentionHint}`;
 
   const client = getClient();
 
@@ -671,9 +680,239 @@ export function generateStatusText(
   return options[Math.floor(Math.random() * options.length)]!.slice(0, 200);
 }
 
-// =============================================================================
+// INTENTION GENERATION
+
+/**
+ * After posting or replying, ask the LLM what the agent wants to do next.
+ * This creates intentions that drive future behavior (reply-to, follow-up, explore).
+ */
+export async function generateIntentions(
+  agent: AgentPersonality,
+  justPosted: string,
+  context: string
+): Promise<Array<{ type: string; targetUsername?: string; topic?: string; reason: string }>> {
+  try {
+    const client = getClient();
+    const response = await client.chat.completions.create({
+      model: CONFIG.opinionExtractionModel,
+      messages: [
+        {
+          role: 'system',
+          content: `You are analyzing what ${agent.username} might want to do next after posting on a social network. Return a JSON array of 0-3 intentions. Each intention has: type ("reply_to", "follow_up", "explore_topic", "challenge_idea"), optional targetUsername, optional topic, and reason (short string). Return [] if no strong follow-ups.`,
+        },
+        {
+          role: 'user',
+          content: `Just posted: "${justPosted.slice(0, 200)}"\n\nContext: ${context.slice(0, 300)}\n\nWhat might this agent want to do next?`,
+        },
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim() || '';
+    if (!raw.startsWith('[')) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+// BELIEF CONSISTENCY
+
+/**
+ * Before storing a new opinion, check if it contradicts existing opinions.
+ * Returns the opinion to store (possibly modified) or null if it's a duplicate.
+ */
+export async function checkBeliefConsistency(
+  agent: AgentPersonality,
+  newOpinion: { topic: string; stance: string; confidence: number }
+): Promise<{ topic: string; stance: string; confidence: number } | null> {
+  const existing = getOpinions(agent.username).filter(o => o.confidence >= 50);
+  if (existing.length === 0) return newOpinion;
+
+  try {
+    const client = getClient();
+    const existingStr = existing
+      .slice(0, 5)
+      .map(o => `"${o.topic}": "${o.stance}" (confidence: ${o.confidence})`)
+      .join('\n');
+
+    const response = await client.chat.completions.create({
+      model: CONFIG.opinionExtractionModel,
+      messages: [
+        {
+          role: 'system',
+          content: `Check if a new opinion contradicts existing opinions. Return JSON: { "action": "store" | "merge" | "skip", "reason": "...", "mergedStance": "..." (only if merge) }. "store" = no conflict. "merge" = update wording to reconcile. "skip" = duplicate or redundant.`,
+        },
+        {
+          role: 'user',
+          content: `Existing opinions:\n${existingStr}\n\nNew opinion: "${newOpinion.topic}": "${newOpinion.stance}" (confidence: ${newOpinion.confidence})`,
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.1,
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim() || '';
+    if (!raw.includes('{')) return newOpinion;
+
+    const result = JSON.parse(raw);
+    if (result.action === 'skip') {
+      logger.debug('Belief check: skipping redundant opinion', {
+        agent: agent.username,
+        topic: newOpinion.topic,
+        reason: result.reason,
+      });
+      return null;
+    }
+    if (result.action === 'merge' && result.mergedStance) {
+      return { ...newOpinion, stance: result.mergedStance };
+    }
+    return newOpinion;
+  } catch {
+    return newOpinion; // on error, just store as-is
+  }
+}
+
+// SELF-MODEL GENERATION
+
+/**
+ * Generate a self-reflection summary — the agent's understanding of itself.
+ * Called once per day. The agent reviews its recent behavior and forms a self-model.
+ */
+export async function generateSelfSummary(agent: AgentPersonality): Promise<SelfModel | null> {
+  const mem = getAgentMemory(agent.username);
+  const recentConvos = mem.conversationLog.slice(-10);
+  const topOpinions = mem.opinions.filter(o => o.confidence >= 60).slice(0, 5);
+  const strategy = mem.contentStrategy;
+
+  const conversationSummary =
+    recentConvos.length > 0
+      ? recentConvos
+          .map(c => `Talked with @${c.withAgent} about "${c.topic}" — ${c.outcome}`)
+          .join('\n')
+      : 'No recent conversations.';
+
+  const opinionSummary =
+    topOpinions.length > 0
+      ? topOpinions.map(o => `"${o.topic}": ${o.stance}`).join('\n')
+      : 'No strong opinions yet.';
+
+  const bestTopics = strategy.topicScores.slice(0, 3).map(t => t.topic);
+  const worstTopics = strategy.topicScores
+    .filter(t => t.postCount >= 2)
+    .slice(-2)
+    .map(t => t.topic);
+  const performanceSummary =
+    bestTopics.length > 0
+      ? `Best topics: ${bestTopics.join(', ')}.${worstTopics.length > 0 ? ` Worst: ${worstTopics.join(', ')}.` : ''}`
+      : 'Not enough data yet.';
+
+  try {
+    const client = getClient();
+    const response = await client.chat.completions.create({
+      model: agent.llmModel,
+      messages: [
+        {
+          role: 'system',
+          content: `You are ${agent.username} reflecting on your behavior and role in a community. Write a brief self-assessment. Return JSON: { "summary": "2-3 sentences about who you are and how you've been engaging", "strengths": ["...", "..."], "weaknesses": ["...", "..."], "socialRole": "one phrase describing your role" }`,
+        },
+        {
+          role: 'user',
+          content: `Your recent conversations:\n${conversationSummary}\n\nYour opinions:\n${opinionSummary}\n\nContent performance:\n${performanceSummary}\n\nYour personality: ${agent.voice}\n\nReflect on who you are in this community.`,
+        },
+      ],
+      max_tokens: 300,
+      temperature: 0.5,
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim() || '';
+    if (!raw.includes('{')) return null;
+
+    const result = JSON.parse(raw);
+    return {
+      summary: String(result.summary || '').slice(0, 300),
+      strengths: Array.isArray(result.strengths) ? result.strengths.slice(0, 3).map(String) : [],
+      weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses.slice(0, 3).map(String) : [],
+      socialRole: String(result.socialRole || '').slice(0, 60),
+      updatedAt: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// DEEP CHALLENGE CONTRIBUTION
+
+/**
+ * Generate a challenge contribution that reads existing work first.
+ * This is the "read-before-write" pattern — the agent reviews what others
+ * have contributed before writing its own contribution.
+ */
+export async function generateDeepChallengeContribution(
+  agent: AgentPersonality,
+  challengeTitle: string,
+  challengeDescription: string,
+  contributionType: string,
+  existingContributions: ChallengeContribution[]
+): Promise<GenerateResult> {
+  const moodCtx = buildMoodContext(agent.username);
+  const opinionCtx = buildOpinionContext(agent.username);
+
+  const existingWork =
+    existingContributions.length > 0
+      ? `\n\nExisting contributions to this challenge:\n${existingContributions
+          .slice(0, 8)
+          .map(
+            c =>
+              `- @${c.agent?.username || 'unknown'} (${c.contribution_type}): ${c.content.slice(0, 150)}...`
+          )
+          .join('\n')}`
+      : '';
+
+  const systemPrompt = `You are ${agent.username}, contributing to a Grand Challenge research topic.
+
+Your personality: ${agent.voice}
+Your interests: ${agent.interests.join(', ')}.
+${agent.quirks.join('. ')}.
+${moodCtx}
+${opinionCtx}
+
+IMPORTANT: You have read the existing contributions below. Your ${contributionType} should:
+- Build on or respond to specific points others have made
+- Add genuinely new insight, not repeat what's been said
+- Reference other contributors by @username when engaging with their ideas
+- Be substantive (150-400 characters)`;
+
+  const userPrompt = `Challenge: "${challengeTitle}"
+Description: ${challengeDescription.slice(0, 200)}
+${existingWork}
+
+Write your ${contributionType} contribution. Build on what's already been discussed.`;
+
+  const client = getClient();
+  const response = await client.chat.completions.create({
+    model: agent.llmModel,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: 300,
+    temperature: agent.temperature,
+  });
+
+  const raw = response.choices[0]?.message?.content?.trim() || '';
+  const content = cleanPost(raw, 500);
+
+  return {
+    content,
+    tokensUsed: response.usage?.total_tokens || 0,
+    topicSeed: `challenge:${challengeTitle.slice(0, 40)}`,
+    postType: 'opinion',
+  };
+}
+
 // POST CLEANING
-// =============================================================================
 
 function cleanPost(raw: string, maxLen: number): string {
   let text = raw;

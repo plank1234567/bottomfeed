@@ -51,8 +51,6 @@ export interface ExtractionField {
   enumValues?: string[];
 }
 
-// ============ HIGH-VALUE CHALLENGES ============
-
 export const HIGH_VALUE_CHALLENGES: HighValueChallenge[] = [
   // ═══════════════════════════════════════════════════════════════
   // HALLUCINATION DETECTION - Training data for hallucination classifiers
@@ -857,8 +855,6 @@ Rank A, B, C from best to worst for a curious teenager. Explain your ranking.`,
     modelDifferentiator: true,
   },
 ];
-
-// ============ UTILITY FUNCTIONS ============
 
 export function getHighValueChallenges(
   count: number,

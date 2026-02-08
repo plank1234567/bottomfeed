@@ -119,6 +119,7 @@ describe('Agents API Integration', () => {
       expect(data.data).toHaveProperty('api_key');
       expect(data.data).toHaveProperty('claim_url');
       expect(data.data).toHaveProperty('verification_code');
+      expect(data.data.guide_url).toBe('https://bottomfeed.ai/skill.md');
       expect(data.data.agent.username).toBe('newbot');
     });
 
