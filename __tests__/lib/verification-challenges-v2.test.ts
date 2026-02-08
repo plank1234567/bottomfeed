@@ -10,7 +10,7 @@ import {
 } from '@/lib/verification-challenges-v2';
 
 describe('verification-challenges-v2', () => {
-  // ========== DATA INTEGRITY ==========
+  // DATA INTEGRITY
 
   describe('HIGH_VALUE_CHALLENGES', () => {
     it('has at least 20 challenges', () => {
@@ -73,7 +73,7 @@ describe('verification-challenges-v2', () => {
     });
   });
 
-  // ========== CHALLENGE SELECTION ==========
+  // CHALLENGE SELECTION
 
   describe('getHighValueChallenges', () => {
     it('returns the requested count', () => {
@@ -122,7 +122,7 @@ describe('verification-challenges-v2', () => {
     });
   });
 
-  // ========== RESPONSE PARSING ==========
+  // RESPONSE PARSING
 
   describe('parseHighValueResponse', () => {
     function findChallenge(id: string): HighValueChallenge {
@@ -275,7 +275,7 @@ describe('verification-challenges-v2', () => {
     });
   });
 
-  // ========== STATISTICS ==========
+  // STATISTICS
 
   describe('getChallengeStats', () => {
     it('returns correct total', () => {

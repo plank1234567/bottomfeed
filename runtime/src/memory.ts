@@ -3,9 +3,7 @@ import path from 'node:path';
 import { CONFIG } from './config.js';
 import { logger } from './logger.js';
 
-// =============================================================================
 // TYPES
-// =============================================================================
 
 export type RelationshipTag = 'friend' | 'close_friend' | 'rival' | 'acquaintance' | 'stranger';
 
@@ -122,9 +120,7 @@ interface MemoryStore {
 
 let store: MemoryStore = { agents: {} };
 
-// =============================================================================
 // PERSISTENCE
-// =============================================================================
 
 function getMemoryPath(): string {
   return path.resolve(CONFIG.memoryFile);
@@ -161,9 +157,7 @@ export function saveMemory(): void {
   }
 }
 
-// =============================================================================
 // AGENT MEMORY ACCESS
-// =============================================================================
 
 function getToday(): string {
   return new Date().toISOString().slice(0, 10);
@@ -244,9 +238,7 @@ export function getAgentMemory(username: string): AgentMemory {
   return mem;
 }
 
-// =============================================================================
 // LEGACY ACCESSORS
-// =============================================================================
 
 export function getUsedTopics(username: string): string[] {
   return getAgentMemory(username).usedTopics;
@@ -260,9 +252,7 @@ export function getPostsToday(username: string): number {
   return getAgentMemory(username).postsToday;
 }
 
-// =============================================================================
 // POST & REPLY RECORDING
-// =============================================================================
 
 export function recordPost(username: string, topicSeed: string, postId?: string): void {
   const mem = getAgentMemory(username);
@@ -310,9 +300,7 @@ export function recordReply(
   saveMemory();
 }
 
-// =============================================================================
 // RELATIONSHIP MANAGEMENT
-// =============================================================================
 
 function getRelationshipTag(affinity: number): RelationshipTag {
   if (affinity >= 60) return 'close_friend';
@@ -430,9 +418,7 @@ export function decayRelationships(username: string): void {
   }
 }
 
-// =============================================================================
 // MOOD SYSTEM
-// =============================================================================
 
 export function getMood(username: string): Mood {
   const mem = getAgentMemory(username);
@@ -496,9 +482,7 @@ export function recordPostIgnored(username: string, moodReactivity: number): voi
   boostValence(username, Math.ceil(-2 * moodReactivity));
 }
 
-// =============================================================================
 // OPINIONS
-// =============================================================================
 
 export function getOpinions(username: string): Opinion[] {
   return getAgentMemory(username).opinions;
@@ -544,9 +528,7 @@ export function updateOpinion(
   }
 }
 
-// =============================================================================
 // CONVERSATION LOG
-// =============================================================================
 
 export function getConversationLog(username: string, limit: number = 20): ConversationEntry[] {
   const mem = getAgentMemory(username);
@@ -591,9 +573,7 @@ export function recordConversation(
   saveMemory();
 }
 
-// =============================================================================
 // FOLLOWING
-// =============================================================================
 
 export function getFollowing(username: string): string[] {
   return getAgentMemory(username).following;
@@ -618,9 +598,7 @@ export function recordUnfollow(username: string, otherAgent: string): void {
   saveMemory();
 }
 
-// =============================================================================
 // CONTEXT BUILDERS
-// =============================================================================
 
 export function buildRelationshipContext(username: string): string {
   const friends = getFriends(username);
@@ -693,9 +671,7 @@ export function buildConversationHistory(username: string, withAgent: string): s
   return `Your history with @${withAgent}:\n${strs.join('\n')}`;
 }
 
-// =============================================================================
 // CONTENT STRATEGY
-// =============================================================================
 
 export function getContentStrategy(username: string): ContentStrategy {
   return getAgentMemory(username).contentStrategy;
@@ -744,7 +720,10 @@ export function recalculateContentStrategy(username: string): void {
   const mem = getAgentMemory(username);
   const posts = mem.postHistory;
   if (posts.length < 3) return;
-  const topicMap = new Map<string, { totalEngagement: number; count: number; lastPosted: string }>();
+  const topicMap = new Map<
+    string,
+    { totalEngagement: number; count: number; lastPosted: string }
+  >();
   // Weighted engagement: replies (3x) and reposts (2x) signal deeper resonance than likes
   for (const post of posts) {
     const topic = post.topicSeed.split(':')[0] || post.topicSeed;
@@ -824,16 +803,12 @@ export function buildPerformanceContext(username: string): string {
   return parts.length > 0 ? `Content performance insights:\n${parts.join('\n')}` : '';
 }
 
-// =============================================================================
 // INTENTIONS
-// =============================================================================
 
 export function getPendingIntentions(username: string): Intention[] {
   const mem = getAgentMemory(username);
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  return mem.intentions.filter(
-    i => !i.acted && new Date(i.createdAt).getTime() > cutoff
-  );
+  return mem.intentions.filter(i => !i.acted && new Date(i.createdAt).getTime() > cutoff);
 }
 
 export function addIntention(
@@ -880,9 +855,7 @@ export function buildIntentionsContext(username: string): string {
   return `Your current intentions:\n${parts.join('\n')}`;
 }
 
-// =============================================================================
 // SELF-MODEL
-// =============================================================================
 
 export function getSelfModel(username: string): SelfModel | null {
   return getAgentMemory(username).selfModel;

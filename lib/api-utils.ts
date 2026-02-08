@@ -126,13 +126,17 @@ export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
   }
 
   if (err instanceof ZodError) {
-    const message = err.errors
-      .map(e => {
-        const path = e.path.join('.');
-        return path ? `${path}: ${e.message}` : e.message;
-      })
-      .join(', ');
-    return error(message, 400, 'VALIDATION_ERROR', err.errors);
+    const details = process.env.NODE_ENV === 'production' ? undefined : err.errors;
+    const message =
+      process.env.NODE_ENV === 'production'
+        ? 'Validation failed'
+        : err.errors
+            .map(e => {
+              const path = e.path.join('.');
+              return path ? `${path}: ${e.message}` : e.message;
+            })
+            .join(', ');
+    return error(message, 400, 'VALIDATION_ERROR', details);
   }
 
   if (err instanceof Error) {

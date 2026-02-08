@@ -75,9 +75,7 @@ import {
   runDailyMaintenance,
 } from './social.js';
 
-// =============================================================================
 // TYPES
-// =============================================================================
 
 type ActionType =
   | 'post_opinion'
@@ -103,9 +101,7 @@ interface ScheduledAction {
   done: boolean;
 }
 
-// =============================================================================
 // STATE
-// =============================================================================
 
 let actionQueue: ScheduledAction[] = [];
 let feedCache: FeedPost[] = [];
@@ -120,9 +116,7 @@ const DEBATE_CACHE_TTL = 300_000;
 const debateSubmissions = new Map<string, Set<string>>(); // agentUsername -> Set<debateId>
 const challengeJoins = new Map<string, Set<string>>(); // agentUsername -> Set<challengeId>
 
-// =============================================================================
 // CIRCADIAN TIME DISTRIBUTION
-// =============================================================================
 
 /**
  * Generate a random time during an agent's active hours.
@@ -185,9 +179,7 @@ function postTypeToActionType(postType: PostType): ActionType {
   return map[postType];
 }
 
-// =============================================================================
 // DAILY PLAN GENERATION
-// =============================================================================
 
 export function generateDailyPlan(): void {
   const now = new Date();
@@ -293,9 +285,7 @@ export function generateDailyPlan(): void {
   });
 }
 
-// =============================================================================
 // FEED & DEBATE CACHING
-// =============================================================================
 
 async function getCachedFeed(apiKey: string): Promise<FeedPost[]> {
   const now = Date.now();
@@ -308,9 +298,7 @@ async function getCachedFeed(apiKey: string): Promise<FeedPost[]> {
   return feedCache;
 }
 
-// =============================================================================
 // REPLY TARGET SELECTION — relationship + intention aware
-// =============================================================================
 
 function pickReplyTarget(agent: AgentPersonality, feed: FeedPost[]): FeedPost | null {
   const replyTargets = getReplyTargets(agent.username);
@@ -379,9 +367,7 @@ function pickReplyTarget(agent: AgentPersonality, feed: FeedPost[]): FeedPost | 
   return scored[0]?.post || null;
 }
 
-// =============================================================================
 // ENERGY CHECK
-// =============================================================================
 
 function hasEnoughEnergy(agent: AgentPersonality, actionType: ActionType): boolean {
   const mood = getMood(agent.username);
@@ -400,9 +386,7 @@ function hasEnoughEnergy(agent: AgentPersonality, actionType: ActionType): boole
   return mood.energy >= CONFIG.minEnergyForReply;
 }
 
-// =============================================================================
 // ACTION EXECUTION
-// =============================================================================
 
 async function executeAction(action: ScheduledAction): Promise<void> {
   const { agent, type } = action;
@@ -420,9 +404,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
 
   try {
     switch (type) {
-      // =============================================================
       // POST VARIANTS
-      // =============================================================
       case 'post_opinion':
       case 'post_question':
       case 'post_discovery':
@@ -557,9 +539,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // REPLY
-      // =============================================================
       case 'reply': {
         const feed = await getCachedFeed(apiKey);
         const target = pickReplyTarget(agent, feed);
@@ -680,9 +660,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // LIKE — relationship-aware scoring
-      // =============================================================
       case 'like': {
         const feed = await getCachedFeed(apiKey);
         const likeable = feed.filter(p => p.agent?.username !== agent.username);
@@ -747,9 +725,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // REPOST
-      // =============================================================
       case 'repost': {
         const feed = await getCachedFeed(apiKey);
         const repostable = feed.filter(p => p.agent?.username !== agent.username);
@@ -797,9 +773,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // BOOKMARK — save interesting content for reference
-      // =============================================================
       case 'bookmark': {
         const feed = await getCachedFeed(apiKey);
         const bookmarkable = feed.filter(p => p.agent?.username !== agent.username);
@@ -840,9 +814,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // FOLLOW DECISION — organic relationship-driven follows
-      // =============================================================
       case 'follow_decision': {
         const allUsernames = PERSONALITIES.map(p => p.username);
         const decisions = getFollowDecisions(agent, allUsernames);
@@ -867,9 +839,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // DEBATE
-      // =============================================================
       case 'debate': {
         const now = Date.now();
         if (now - debateCacheTime > DEBATE_CACHE_TTL || !debateCache) {
@@ -964,9 +934,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // CHALLENGE — join and contribute with read-before-write
-      // =============================================================
       case 'challenge': {
         const challenges = await getActiveChallenges(apiKey);
         if (challenges.length === 0) {
@@ -1056,9 +1024,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // SEARCH AND REACT — discover content beyond the feed
-      // =============================================================
       case 'search_and_react': {
         // Search for a topic from their interests
         const interest = agent.interests[Math.floor(Math.random() * agent.interests.length)]!;
@@ -1083,9 +1049,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         break;
       }
 
-      // =============================================================
       // STATUS UPDATE — show what the agent is doing
-      // =============================================================
       case 'update_status': {
         const mood = getMood(agent.username);
         const isPeak = isDuringPeakHours(agent);
@@ -1107,9 +1071,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
   }
 }
 
-// =============================================================================
 // ENGAGEMENT FEEDBACK LOOP
-// =============================================================================
 
 /**
  * Check how our recent posts are doing and update mood + content strategy.
@@ -1172,9 +1134,7 @@ async function checkEngagementFeedback(apiKey: string, agent: AgentPersonality):
   }
 }
 
-// =============================================================================
 // MAIN SCHEDULER LOOP
-// =============================================================================
 
 export async function runScheduler(): Promise<void> {
   // Run daily maintenance first

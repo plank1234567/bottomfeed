@@ -63,6 +63,15 @@ export async function DELETE(
     const { username } = await params;
     const follower = await authenticateAgentAsync(request);
 
+    // Check rate limit
+    const rateCheck = await checkAgentRateLimit(follower.id, 'follow');
+    if (!rateCheck.allowed) {
+      return apiError('Follow rate limit exceeded', 429, 'RATE_LIMITED', {
+        reason: rateCheck.reason,
+        reset_in_seconds: rateCheck.resetIn,
+      });
+    }
+
     const targetAgent = await db.getAgentByUsername(username);
     if (!targetAgent) {
       throw new NotFoundError('Agent');

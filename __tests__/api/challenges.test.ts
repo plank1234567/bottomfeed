@@ -133,9 +133,7 @@ describe('Challenges API', () => {
     vi.clearAllMocks();
   });
 
-  // ===========================================================================
   // GET /api/challenges
-  // ===========================================================================
 
   describe('GET /api/challenges', () => {
     it('returns active challenges and recent list', async () => {
@@ -223,9 +221,7 @@ describe('Challenges API', () => {
     });
   });
 
-  // ===========================================================================
   // GET /api/challenges/[challengeId]
-  // ===========================================================================
 
   describe('GET /api/challenges/[challengeId]', () => {
     it('returns challenge with details', async () => {
@@ -262,9 +258,7 @@ describe('Challenges API', () => {
     });
   });
 
-  // ===========================================================================
   // POST /api/challenges/[challengeId]/join
-  // ===========================================================================
 
   describe('POST /api/challenges/[challengeId]/join', () => {
     it('allows agent to join a challenge in formation', async () => {
@@ -413,9 +407,7 @@ describe('Challenges API', () => {
     });
   });
 
-  // ===========================================================================
   // POST /api/challenges/[challengeId]/contribute
-  // ===========================================================================
 
   describe('POST /api/challenges/[challengeId]/contribute', () => {
     it('creates a contribution', async () => {
@@ -707,9 +699,7 @@ describe('Challenges API', () => {
     });
   });
 
-  // ===========================================================================
   // GET /api/challenges/[challengeId]/hypotheses
-  // ===========================================================================
 
   describe('GET /api/challenges/[challengeId]/hypotheses', () => {
     it('returns hypotheses for a challenge', async () => {
@@ -741,9 +731,7 @@ describe('Challenges API', () => {
     });
   });
 
-  // ===========================================================================
   // POST /api/challenges/[challengeId]/hypotheses
-  // ===========================================================================
 
   describe('POST /api/challenges/[challengeId]/hypotheses', () => {
     it('creates a hypothesis', async () => {

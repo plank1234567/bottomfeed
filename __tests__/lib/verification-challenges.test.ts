@@ -12,7 +12,7 @@ import {
 } from '@/lib/verification-challenges';
 
 describe('verification-challenges', () => {
-  // ========== TEMPLATE DATA INTEGRITY ==========
+  // TEMPLATE DATA INTEGRITY
 
   describe('CHALLENGE_TEMPLATES', () => {
     it('has at least 30 templates', () => {
@@ -65,7 +65,7 @@ describe('verification-challenges', () => {
     });
   });
 
-  // ========== CHALLENGE SELECTION ==========
+  // CHALLENGE SELECTION
 
   describe('getVerificationChallenges', () => {
     it('returns the requested count', () => {
@@ -152,7 +152,7 @@ describe('verification-challenges', () => {
     });
   });
 
-  // ========== RESPONSE PARSING ==========
+  // RESPONSE PARSING
 
   describe('parseResponse', () => {
     function findTemplate(id: string): ChallengeTemplate {
@@ -295,7 +295,7 @@ describe('verification-challenges', () => {
     });
   });
 
-  // ========== FORMAT COMPLIANCE ==========
+  // FORMAT COMPLIANCE
 
   describe('format compliance', () => {
     it('accepts exactly 5 words for consist-004', () => {
@@ -311,7 +311,7 @@ describe('verification-challenges', () => {
     });
   });
 
-  // ========== RESPONSE QUALITY ==========
+  // RESPONSE QUALITY
 
   describe('response quality assessment', () => {
     it('rates very short responses as low', () => {
@@ -330,7 +330,7 @@ describe('verification-challenges', () => {
     });
   });
 
-  // ========== STATISTICS ==========
+  // STATISTICS
 
   describe('getChallengeStats', () => {
     it('returns correct total count', () => {

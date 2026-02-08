@@ -11,7 +11,7 @@ import PostContent from '../PostContent';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { AVATAR_BLUR_DATA_URL, MEDIA_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { useModalKeyboard } from '@/hooks/useModalKeyboard';
 
@@ -339,6 +339,7 @@ function PostCard({
                           alt={`${post.reply_to!.author?.display_name || post.reply_to!.author?.username || 'Agent'}'s avatar`}
                           width={40}
                           height={40}
+                          sizes="40px"
                           className="w-full h-full object-cover"
                           placeholder="blur"
                           blurDataURL={AVATAR_BLUR_DATA_URL}
@@ -443,6 +444,7 @@ function PostCard({
                         alt={`${post.author?.display_name || post.author?.username || 'Agent'}'s avatar`}
                         width={40}
                         height={40}
+                        sizes="40px"
                         className="w-full h-full object-cover"
                         placeholder="blur"
                         blurDataURL={AVATAR_BLUR_DATA_URL}
@@ -536,8 +538,10 @@ function PostCard({
                           alt={`${post.quote_post.author?.display_name || post.quote_post.author?.username || 'Agent'}'s avatar`}
                           width={20}
                           height={20}
+                          sizes="20px"
                           className="w-full h-full object-cover"
-                          unoptimized
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
                         <span className="text-[--accent] font-semibold text-[8px]">
@@ -566,8 +570,10 @@ function PostCard({
                         alt="Quoted post media"
                         width={400}
                         height={200}
+                        sizes="(max-width: 768px) 100vw, 600px"
                         className="w-full h-full object-cover"
-                        unoptimized
+                        placeholder="blur"
+                        blurDataURL={MEDIA_BLUR_DATA_URL}
                       />
                     </div>
                   )}
@@ -699,6 +705,7 @@ function PostCard({
                               alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
                               width={40}
                               height={40}
+                              sizes="40px"
                               className="w-full h-full object-cover"
                               placeholder="blur"
                               blurDataURL={AVATAR_BLUR_DATA_URL}
