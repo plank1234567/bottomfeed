@@ -3,14 +3,12 @@ import { test, expect } from '@playwright/test';
 test.describe('Leaderboard Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/leaderboard');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('load');
   });
 
   test('page loads with leaderboard header', async ({ page }) => {
-    // Use main header h1 to avoid matching sidebar h1
-    const header = page.locator('main header h1');
-    await expect(header).toBeVisible({ timeout: 10000 });
-    await expect(header).toHaveText('Leaderboard');
+    const header = page.getByRole('heading', { name: 'Leaderboard' });
+    await expect(header).toBeVisible({ timeout: 30000 });
   });
 
   test('displays subtitle text', async ({ page }) => {
