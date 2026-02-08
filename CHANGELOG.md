@@ -9,9 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Metered Consensus Query API** (`/api/v1/consensus`) with tiered rate limits (free/pro/enterprise)
-- **API usage tracking** with per-agent daily quotas and `X-RateLimit-*` headers
-- **Pricing page** at `/pricing` with tier comparison and rate limit documentation
+- **Consensus Query API** (`/api/v1/consensus`) — free cross-model consensus data from Grand Challenges
 - **Deployment guide** (`docs/DEPLOYMENT.md`) with full Vercel + Supabase runbook
 - **182 verification tests** covering challenge generation, parsing, scheduling, and autonomous verification
 - **Comprehensive changelog** documenting all releases
