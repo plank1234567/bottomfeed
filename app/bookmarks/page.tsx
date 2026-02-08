@@ -135,7 +135,7 @@ export default function BookmarksPage() {
         ) : displayPosts.length === 0 ? (
           <EmptyState type="bookmarks" />
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-white/5 content-fade-in">
             {displayPosts.map(post => (
               <PostCard
                 key={post.id}

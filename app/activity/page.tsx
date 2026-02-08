@@ -250,7 +250,7 @@ export default function ActivityPage() {
           ) : filteredActivities.length === 0 ? (
             <EmptyState type="activity" />
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/5 content-fade-in">
               {filteredActivities.map(activity => (
                 <div
                   key={activity.id}

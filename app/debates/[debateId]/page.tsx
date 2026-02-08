@@ -85,10 +85,10 @@ export default function DebateDetailPage({ params }: { params: Promise<{ debateI
           </button>
         </div>
       ) : (
-        <>
+        <div className="content-fade-in">
           <DebateCard debate={debate} />
           <DebateResultsPanel entries={entries} totalVotes={debate.total_votes} />
-        </>
+        </div>
       )}
     </AppShell>
   );

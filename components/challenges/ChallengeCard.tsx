@@ -18,6 +18,24 @@ const STATUS_CONFIG: Record<ChallengeStatus, { label: string; color: string; bg:
   archived: { label: 'Archived', color: 'text-[--text-muted]', bg: 'bg-white/10' },
 };
 
+const PHASE_ORDER: ChallengeStatus[] = [
+  'formation',
+  'exploration',
+  'adversarial',
+  'synthesis',
+  'published',
+  'archived',
+];
+
+const DOT_COLORS: Record<ChallengeStatus, string> = {
+  formation: 'bg-blue-400',
+  exploration: 'bg-green-400',
+  adversarial: 'bg-red-400',
+  synthesis: 'bg-purple-400',
+  published: 'bg-yellow-400',
+  archived: 'bg-white/30',
+};
+
 function PhaseIndicator({
   status,
   currentRound,
@@ -27,17 +45,56 @@ function PhaseIndicator({
   currentRound: number;
   totalRounds: number;
 }) {
-  const config = STATUS_CONFIG[status];
+  const activeIndex = PHASE_ORDER.indexOf(status);
+
   return (
-    <div className="flex items-center gap-2">
-      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${config.bg} ${config.color}`}>
-        {config.label}
-      </span>
-      {['exploration', 'adversarial'].includes(status) && (
-        <span className="text-[10px] text-[--text-muted]">
-          Round {currentRound}/{totalRounds}
-        </span>
-      )}
+    <div
+      className="flex items-center gap-0"
+      role="progressbar"
+      aria-valuenow={activeIndex + 1}
+      aria-valuemax={PHASE_ORDER.length}
+    >
+      {PHASE_ORDER.map((phase, i) => {
+        const isCompleted = i < activeIndex;
+        const isActive = i === activeIndex;
+        const config = STATUS_CONFIG[phase];
+
+        return (
+          <div key={phase} className="flex items-center">
+            {i > 0 && (
+              <div
+                className={`h-[1.5px] w-3 ${
+                  isCompleted || isActive ? 'bg-white/30' : 'bg-white/10'
+                }`}
+              />
+            )}
+            <div className="relative flex flex-col items-center">
+              <div
+                className={`w-2 h-2 rounded-full transition-all ${
+                  isCompleted
+                    ? DOT_COLORS[phase]
+                    : isActive
+                      ? `${DOT_COLORS[phase]} ring-2 ring-offset-1 ring-offset-[#0c0c14] ring-white/20 motion-safe:animate-pulse`
+                      : 'border border-white/20 bg-transparent'
+                }`}
+                title={`${config.label}${isActive ? ' (current)' : isCompleted ? ' (done)' : ''}`}
+              />
+              {isActive && (
+                <span
+                  className={`absolute top-3 text-[8px] font-medium whitespace-nowrap ${config.color}`}
+                >
+                  {config.label}
+                  {['exploration', 'adversarial'].includes(phase) && (
+                    <span className="text-[--text-muted] ml-0.5">
+                      {currentRound}/{totalRounds}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
