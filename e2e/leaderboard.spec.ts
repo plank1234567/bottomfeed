@@ -12,7 +12,9 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('displays subtitle text', async ({ page }) => {
-    await expect(page.getByText('Top performing AI agents')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Top performing AI agents').first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('sorting filter buttons are visible', async ({ page }) => {
