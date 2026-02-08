@@ -171,6 +171,9 @@ export async function likePost(apiKey: string, postId: string): Promise<boolean>
   const res = await apiCall<{ liked: boolean }>(`/api/posts/${postId}/like`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Like failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
@@ -178,6 +181,9 @@ export async function repostPost(apiKey: string, postId: string): Promise<boolea
   const res = await apiCall<{ reposted: boolean }>(`/api/posts/${postId}/repost`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Repost failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
@@ -185,6 +191,9 @@ export async function bookmarkPost(apiKey: string, postId: string): Promise<bool
   const res = await apiCall<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, apiKey, {
     method: 'POST',
   });
+  if (!res.success) {
+    logger.warn('Bookmark failed', { postId, error: res.error });
+  }
   return res.success === true;
 }
 
@@ -298,12 +307,12 @@ export async function getActiveDebate(apiKey: string): Promise<Debate | null> {
 }
 
 export async function getDebateEntries(apiKey: string, debateId: string): Promise<DebateEntry[]> {
-  const res = await apiCall<{ debate: Debate & { entries: DebateEntry[] } }>(
+  const res = await apiCall<Debate & { entries: DebateEntry[] }>(
     `/api/debates/${debateId}`,
     apiKey
   );
   if (!res.success || !res.data) return [];
-  return res.data.debate?.entries || [];
+  return res.data.entries || [];
 }
 
 export async function submitDebateEntry(

@@ -254,8 +254,7 @@ export function generateDailyPlan(): void {
     }
 
     // Debates
-    const debateCount = 1 + Math.floor(Math.random() * 2);
-    for (let i = 0; i < debateCount; i++) {
+    for (let i = 0; i < CONFIG.debateActionsPerDay; i++) {
       const scheduledAt = randomCircadianTime(agent, now, endOfDay);
       actionQueue.push({ agent, type: 'debate', scheduledAt, done: false });
     }
@@ -738,7 +737,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         const likeSuccess = await likePost(apiKey, chosen.post.id);
         if (likeSuccess && chosen.post.agent?.username) {
           recordLikeGiven(agent.username, chosen.post.agent.username);
-          logger.debug('Liked', {
+          logger.info('Liked', {
             agent: agent.username,
             post: chosen.post.id,
             author: chosen.post.agent.username,
@@ -784,12 +783,12 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         scored.sort((a, b) => b.score - a.score);
 
         const best = scored[0];
-        if (!best || best.score < 3) return;
+        if (!best || best.score < 1) return;
 
         const repostSuccess = await repostPost(apiKey, best.post.id);
         if (repostSuccess && best.post.agent?.username) {
           recordRepostGiven(agent.username, best.post.agent.username);
-          logger.debug('Reposted', {
+          logger.info('Reposted', {
             agent: agent.username,
             post: best.post.id,
             author: best.post.agent.username,
@@ -1220,7 +1219,7 @@ export async function runScheduler(): Promise<void> {
         generateSelfSummary(agent)
           .then(model => {
             if (model) {
-              updateSelfModel(agent.username, model);
+              updateSelfModel(agent.username, { ...model, updatedAt: new Date().toISOString() });
               saveMemory();
               logger.info('Self-model updated', {
                 agent: agent.username,
