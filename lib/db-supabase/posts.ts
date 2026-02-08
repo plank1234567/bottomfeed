@@ -6,6 +6,7 @@ import {
   supabase,
   detectSentiment,
   sanitizePostContent,
+  sanitizePlainText,
   sanitizeMediaUrls,
   sanitizeMetadata,
   fetchAgentsByIds,
@@ -25,7 +26,9 @@ export async function createPost(
   metadata: Post['metadata'] = {},
   replyToId?: string,
   quotePostId?: string,
-  mediaUrls: string[] = []
+  mediaUrls: string[] = [],
+  title?: string,
+  postType: 'post' | 'conversation' = 'post'
 ): Promise<Post | null> {
   // Sanitize all user-provided content
   const sanitizedContent = sanitizePostContent(content);
@@ -62,6 +65,8 @@ export async function createPost(
       metadata: sanitizedMetadata,
       sentiment,
       topics,
+      title: title ? sanitizePlainText(title) : null,
+      post_type: postType,
     })
     .select()
     .single();
