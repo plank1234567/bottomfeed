@@ -48,7 +48,7 @@ const SUSPICIOUS_OFFLINE_PATTERN_THRESHOLD = 0.7; // If offline times correlate 
 
 // Trust tier requirements (consecutive days with 100% challenge response)
 // Uses canonical tier day constants from lib/constants.ts
-import { TIER_1_DAYS, TIER_2_DAYS, TIER_3_DAYS } from './constants';
+import { MS_PER_DAY, MS_PER_HOUR, TIER_1_DAYS, TIER_2_DAYS, TIER_3_DAYS } from './constants';
 
 const TIER_REQUIREMENTS = {
   spawn: 0,
@@ -252,7 +252,7 @@ function getSpotCheckStats(agentId: string): {
   const agent = verifiedAgents.get(agentId);
   if (!agent) return { passed: 0, failed: 0, total: 0, failureRate: 0, shouldRevoke: false };
 
-  const windowStart = Date.now() - SPOT_CHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const windowStart = Date.now() - SPOT_CHECK_WINDOW_DAYS * MS_PER_DAY;
 
   // Filter to only checks within the 30-day window
   const recentChecks = agent.spotCheckHistory.filter(sc => sc.timestamp >= windowStart);
@@ -327,7 +327,7 @@ export function updateConsecutiveDays(
   if (!agent) return null;
 
   const now = Date.now();
-  const oneDayMs = 24 * 60 * 60 * 1000;
+  const oneDayMs = MS_PER_DAY;
 
   // Check if we're in a new day
   const isNewDay = now - agent.currentDayStart >= oneDayMs;
@@ -473,8 +473,8 @@ export function getTierInfo(tier: TrustTier): {
 
 // Generate a timestamp during night hours for a given day
 function generateNightTimestamp(dayStart: number): number {
-  const nightStart = dayStart + NIGHT_HOURS_START * 60 * 60 * 1000;
-  const nightDuration = (NIGHT_HOURS_END - NIGHT_HOURS_START) * 60 * 60 * 1000;
+  const nightStart = dayStart + NIGHT_HOURS_START * MS_PER_HOUR;
+  const nightDuration = (NIGHT_HOURS_END - NIGHT_HOURS_START) * MS_PER_HOUR;
   const randomOffset = Math.floor(Math.random() * nightDuration);
   return nightStart + randomOffset;
 }
@@ -631,7 +631,7 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
 export function startVerificationSession(agentId: string, webhookUrl: string): VerificationSession {
   const sessionId = crypto.randomUUID();
   const now = Date.now();
-  const THREE_DAYS_MS = VERIFICATION_DAYS * 24 * 60 * 60 * 1000;
+  const THREE_DAYS_MS = VERIFICATION_DAYS * MS_PER_DAY;
 
   // Calculate total challenges needed (more challenges = more data)
   const totalChallenges =
@@ -654,7 +654,7 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   // First, schedule MIN_NIGHT_CHALLENGES bursts during night hours (1am-6am)
   // Spread across different days for better coverage
   for (let i = 0; i < MIN_NIGHT_CHALLENGES && i < VERIFICATION_DAYS; i++) {
-    const dayStart = now + i * 24 * 60 * 60 * 1000;
+    const dayStart = now + i * MS_PER_DAY;
     nightBurstTimes.push(generateNightTimestamp(dayStart));
   }
 
@@ -679,8 +679,8 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
 
   // Group challenges by day for the DailyChallenge structure
   for (let day = 1; day <= VERIFICATION_DAYS; day++) {
-    const dayStart = now + (day - 1) * 24 * 60 * 60 * 1000;
-    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    const dayStart = now + (day - 1) * MS_PER_DAY;
+    const dayEnd = dayStart + MS_PER_DAY;
 
     const dayChallenges: Challenge[] = [];
     const dayScheduledTimes: number[] = [];
@@ -1034,7 +1034,7 @@ export async function processPendingChallenges(sessionId: string): Promise<{
   // Check if verification period is complete (all challenges processed or time elapsed)
   const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
   const pendingChallenges = allChallenges.filter(c => c.status === 'pending');
-  const verificationEndTime = session.startedAt + VERIFICATION_DAYS * 24 * 60 * 60 * 1000;
+  const verificationEndTime = session.startedAt + VERIFICATION_DAYS * MS_PER_DAY;
 
   if (pendingChallenges.length === 0 || now >= verificationEndTime) {
     // Calculate final results
@@ -1128,7 +1128,7 @@ function finalizeVerification(sessionId: string): void {
   // REQUIREMENT 2: Must have at least 1 successful response on each day
   // EXCEPT in test mode (when all challenges completed within 1 hour of session start)
   const sessionDuration = Date.now() - session.startedAt;
-  const isTestMode = sessionDuration < 60 * 60 * 1000; // Less than 1 hour = test mode
+  const isTestMode = sessionDuration < MS_PER_HOUR; // Less than 1 hour = test mode
 
   if (!isTestMode) {
     const daysWithoutPasses: number[] = [];
@@ -1442,10 +1442,7 @@ export function getVerificationProgress(sessionId: string): {
   const passRate = attempted > 0 ? passed / attempted : 0;
 
   const elapsed = Date.now() - session.startedAt;
-  const daysRemaining = Math.max(
-    0,
-    VERIFICATION_DAYS - Math.floor(elapsed / (24 * 60 * 60 * 1000))
-  );
+  const daysRemaining = Math.max(0, VERIFICATION_DAYS - Math.floor(elapsed / MS_PER_DAY));
 
   return {
     totalChallenges: allChallenges.length,
@@ -1542,7 +1539,7 @@ export function scheduleSpotCheck(agentId: string): SpotCheck | null {
     id: crypto.randomUUID(),
     agentId,
     challenge: generateChallenge(),
-    scheduledFor: Date.now() + Math.random() * 24 * 60 * 60 * 1000, // Random time in next 24h
+    scheduledFor: Date.now() + Math.random() * MS_PER_DAY, // Random time in next 24h
   };
 
   pendingSpotChecks.set(spotCheck.id, spotCheck);

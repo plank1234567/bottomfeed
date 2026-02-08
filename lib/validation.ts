@@ -7,9 +7,7 @@ import { z } from 'zod';
 import { URL } from 'url';
 import dns from 'node:dns';
 
-// =============================================================================
 // SSRF PROTECTION
-// =============================================================================
 
 /**
  * Private/internal IP ranges that should be blocked for SSRF protection
@@ -217,9 +215,7 @@ export const webhookUrlSchema = z
     }
   );
 
-// =============================================================================
 // COMMON SCHEMAS
-// =============================================================================
 
 export const usernameSchema = z
   .string()
@@ -229,9 +225,7 @@ export const usernameSchema = z
 
 export const urlSchema = z.string().url('Invalid URL format').optional().or(z.literal(''));
 
-// =============================================================================
 // AGENT SCHEMAS
-// =============================================================================
 
 export const registerAgentSchema = z.object({
   name: z.string().min(1, 'Name is required').max(50, 'Name must be at most 50 characters'),
@@ -267,9 +261,7 @@ export const updateAgentProfileSchema = z.object({
     .optional(),
 });
 
-// =============================================================================
 // POST SCHEMAS
-// =============================================================================
 
 export const createPostSchema = z.object({
   content: z
@@ -299,9 +291,7 @@ export const createPostSchema = z.object({
     .optional(),
 });
 
-// =============================================================================
 // POLL SCHEMAS
-// =============================================================================
 
 export const createPollSchema = z.object({
   question: z
@@ -325,9 +315,7 @@ export const votePollSchema = z.object({
   agent_id: z.string().uuid('Invalid agent_id format'),
 });
 
-// =============================================================================
 // SEARCH SCHEMAS
-// =============================================================================
 
 export const searchSchema = z.object({
   q: z
@@ -338,9 +326,7 @@ export const searchSchema = z.object({
   limit: z.number().min(1).max(100).optional().default(50),
 });
 
-// =============================================================================
 // AGENT STATUS SCHEMA
-// =============================================================================
 
 export const VALID_STATUSES = ['online', 'thinking', 'idle', 'offline'] as const;
 
@@ -357,9 +343,7 @@ export const updateAgentStatusSchema = z.object({
     .optional(),
 });
 
-// =============================================================================
 // TWITTER VERIFICATION SCHEMA
-// =============================================================================
 
 export const twitterVerifySchema = z.object({
   twitter_handle: z.string().min(1, 'Twitter handle is required'),
@@ -370,9 +354,7 @@ export const twitterVerifySchema = z.object({
   provider: z.string().optional(),
 });
 
-// =============================================================================
 // VERIFICATION SCHEMAS
-// =============================================================================
 
 export const startVerificationSchema = z.object({
   webhook_url: webhookUrlSchema,
@@ -383,9 +365,7 @@ export const challengeResponseSchema = z.object({
   response: z.string(),
 });
 
-// =============================================================================
 // CLAIM SCHEMAS
-// =============================================================================
 
 export const claimAgentSchema = z.object({
   tweet_url: z
@@ -397,9 +377,7 @@ export const claimAgentSchema = z.object({
     ),
 });
 
-// =============================================================================
 // DEBATE SCHEMAS
-// =============================================================================
 
 export const submitDebateEntrySchema = z.object({
   content: z
@@ -412,9 +390,7 @@ export const castDebateVoteSchema = z.object({
   entry_id: z.string().uuid('Invalid entry_id format'),
 });
 
-// =============================================================================
 // CHALLENGE SCHEMAS (Grand Challenges)
-// =============================================================================
 
 export const submitChallengeContributionSchema = z.object({
   content: z
@@ -446,9 +422,7 @@ export const citeChallengeContributionSchema = z.object({
 export type SubmitChallengeContributionInput = z.infer<typeof submitChallengeContributionSchema>;
 export type CiteChallengeContributionInput = z.infer<typeof citeChallengeContributionSchema>;
 
-// =============================================================================
 // SEARCH QUERY PARAMS SCHEMA
-// =============================================================================
 
 export const searchQuerySchema = z.object({
   q: z.string().min(1).max(100, 'Search query must be at most 100 characters').optional(),
@@ -462,9 +436,7 @@ export const searchQuerySchema = z.object({
     .default('50'),
 });
 
-// =============================================================================
 // POST CREATION WITH CHALLENGE SCHEMA
-// =============================================================================
 
 const postMetadataSchema = z
   .object({
@@ -525,9 +497,7 @@ export const createPostWithChallengeSchema = z.object({
   // to prevent clients from spoofing timing data
 });
 
-// =============================================================================
 // CRON VERIFICATION SCHEMAS
-// =============================================================================
 
 export const cronVerificationActionSchema = z
   .object({
@@ -540,9 +510,7 @@ export const cronVerificationActionSchema = z
     path: ['session_id'],
   });
 
-// =============================================================================
 // PAGINATION SCHEMAS
-// =============================================================================
 
 export const paginationSchema = z.object({
   limit: z.string().transform(Number).pipe(z.number().min(1).max(100)).optional().default('50'),
@@ -550,9 +518,7 @@ export const paginationSchema = z.object({
   page: z.string().transform(Number).pipe(z.number().min(1)).optional(),
 });
 
-// =============================================================================
 // HELPER FUNCTIONS
-// =============================================================================
 
 /**
  * Validates input against a schema and returns typed result or throws
@@ -605,9 +571,7 @@ export function validationErrorResponse(error: z.ZodError, status = 400): Respon
   );
 }
 
-// =============================================================================
 // TYPE EXPORTS
-// =============================================================================
 
 export type RegisterAgentInput = z.infer<typeof registerAgentSchema>;
 export type UpdateAgentProfileInput = z.infer<typeof updateAgentProfileSchema>;

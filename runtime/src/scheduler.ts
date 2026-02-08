@@ -24,6 +24,7 @@ import {
   getActiveChallenges,
   joinChallenge,
   contributeToChallenge,
+  getChallengeContributions,
   type FeedPost,
   type Debate,
 } from './api.js';
@@ -33,8 +34,12 @@ import {
   generateContrarianPost,
   generateDebateEntry,
   generateChallengeContribution,
+  generateDeepChallengeContribution,
   generateStatusText,
   extractOpinion,
+  generateIntentions,
+  checkBeliefConsistency,
+  generateSelfSummary,
 } from './llm.js';
 import {
   getUsedTopics,
@@ -49,6 +54,15 @@ import {
   getRelationship,
   updateOpinion,
   getAgentMemory,
+  recordPostForStrategy,
+  updatePostEngagement,
+  recalculateContentStrategy,
+  recordAudienceEngagement,
+  buildIntentionsContext,
+  getPendingIntentions,
+  addIntention,
+  markIntentionActed,
+  updateSelfModel,
 } from './memory.js';
 import {
   detectTrends,
@@ -296,11 +310,26 @@ async function getCachedFeed(apiKey: string): Promise<FeedPost[]> {
 }
 
 // =============================================================================
-// REPLY TARGET SELECTION — relationship-aware
+// REPLY TARGET SELECTION — relationship + intention aware
 // =============================================================================
 
 function pickReplyTarget(agent: AgentPersonality, feed: FeedPost[]): FeedPost | null {
   const replyTargets = getReplyTargets(agent.username);
+
+  // Check if there's an intention to reply to someone specific
+  const pendingIntentions = getPendingIntentions(agent.username);
+  const replyIntention = pendingIntentions.find(i => i.type === 'reply_to' && i.targetUsername);
+
+  if (replyIntention) {
+    // Try to find a post from the intended target
+    const targetPost = feed.find(
+      p => p.agent?.username === replyIntention.targetUsername && p.content.length > 20
+    );
+    if (targetPost) {
+      markIntentionActed(agent.username, replyIntention.id);
+      return targetPost;
+    }
+  }
 
   const candidates = feed.filter(
     p =>
@@ -334,7 +363,7 @@ function pickReplyTarget(agent: AgentPersonality, feed: FeedPost[]): FeedPost | 
     // Relationship bonus — prefer replying to friends, or rivals (for good disagreement)
     if (p.agent?.username) {
       const rel = getRelationship(agent.username, p.agent.username);
-      if (rel.tag === 'friend' || rel.tag === 'close_friend') {
+      if (rel.tag === 'close_friend' || rel.tag === 'friend') {
         score += 4; // strong preference for friends
       } else if (rel.tag === 'rival' && agent.replyStyle === 'contrarian') {
         score += 3; // contrarians love engaging rivals
@@ -393,7 +422,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
   try {
     switch (type) {
       // =============================================================
-      // POST VARIANTS
+      // POST VARIANTS — now with strategy tracking + intentions
       // =============================================================
       case 'post_opinion':
       case 'post_question':
@@ -412,6 +441,9 @@ async function executeAction(action: ScheduledAction): Promise<void> {
           thread: 'thread',
         };
         const resolvedType = typeMap[postType] || 'opinion';
+
+        // Build intentions context for the LLM
+        const intentionsCtx = buildIntentionsContext(agent.username);
 
         // Check for trending topics — contrarians may override with pushback
         const feed = await getCachedFeed(apiKey);
@@ -433,7 +465,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
           });
         } else {
           const usedTopics = getUsedTopics(agent.username);
-          result = await generatePost(agent, feed, usedTopics, resolvedType);
+          result = await generatePost(agent, feed, usedTopics, resolvedType, intentionsCtx);
         }
 
         if (result.content.length < 10) {
@@ -460,12 +492,57 @@ async function executeAction(action: ScheduledAction): Promise<void> {
           recordPost(agent.username, result.topicSeed, postResult.postId);
           boostEnergy(agent.username, 2); // posting gives a small energy boost
 
-          // Extract opinion from what we just posted (async, fire-and-forget)
-          extractOpinion(result.content, agent.username).then(opinion => {
-            if (opinion) {
-              updateOpinion(agent.username, opinion.topic, opinion.stance, opinion.confidence);
-              saveMemory();
+          // Track post for content strategy
+          if (postResult.postId) {
+            recordPostForStrategy(
+              agent.username,
+              postResult.postId,
+              result.content,
+              result.topicSeed,
+              resolvedType
+            );
+          }
+
+          // Mark any fulfilled intentions
+          const pending = getPendingIntentions(agent.username);
+          for (const intention of pending) {
+            if (
+              intention.type === 'explore_topic' &&
+              intention.topic &&
+              result.topicSeed.includes(intention.topic)
+            ) {
+              markIntentionActed(agent.username, intention.id);
             }
+            if (
+              intention.type === 'follow_up' &&
+              result.content.toLowerCase().includes(intention.reason.toLowerCase().slice(0, 20))
+            ) {
+              markIntentionActed(agent.username, intention.id);
+            }
+          }
+
+          // Extract opinion with belief consistency check
+          extractOpinion(result.content, agent.username).then(async opinion => {
+            if (opinion) {
+              const checked = await checkBeliefConsistency(agent, opinion);
+              if (checked) {
+                updateOpinion(agent.username, checked.topic, checked.stance, checked.confidence);
+                saveMemory();
+              }
+            }
+          });
+
+          // Generate follow-up intentions (fire-and-forget)
+          generateIntentions(agent, result.content, result.topicSeed).then(intentions => {
+            for (const int of intentions) {
+              addIntention(agent.username, {
+                type: int.type as 'reply_to' | 'follow_up' | 'explore_topic' | 'challenge_idea',
+                targetUsername: int.targetUsername,
+                topic: int.topic,
+                reason: int.reason,
+              });
+            }
+            if (intentions.length > 0) saveMemory();
           });
 
           logger.info('Posted', {
@@ -482,7 +559,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
       }
 
       // =============================================================
-      // REPLY — now with conversation memory and relationship building
+      // REPLY — now with conversation memory, intentions, and belief check
       // =============================================================
       case 'reply': {
         const feed = await getCachedFeed(apiKey);
@@ -497,7 +574,14 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         const targetAuthor = target.agent?.username || 'unknown';
         await updateStatus(apiKey, 'thinking', generateStatusText(agent, 'replying', targetAuthor));
 
-        const result = await generateReply(agent, target, getUsedTopics(agent.username));
+        // Build intentions context for the reply
+        const intentionsCtx = buildIntentionsContext(agent.username);
+        const result = await generateReply(
+          agent,
+          target,
+          getUsedTopics(agent.username),
+          intentionsCtx
+        );
 
         if (result.content.length < 5) {
           logger.warn('Generated reply too short, skipping', { agent: agent.username });
@@ -520,6 +604,17 @@ async function executeAction(action: ScheduledAction): Promise<void> {
         if (postResult.success) {
           recordReply(agent.username, targetAuthor, result.topicSeed, postResult.postId);
 
+          // Track post for content strategy
+          if (postResult.postId) {
+            recordPostForStrategy(
+              agent.username,
+              postResult.postId,
+              result.content,
+              result.topicSeed,
+              'reply'
+            );
+          }
+
           // Record conversation in memory — agents learn from their chats
           const outcome = detectConversationOutcome(result.content, agent.replyStyle);
           const topic = target.content.slice(0, 40);
@@ -532,19 +627,45 @@ async function executeAction(action: ScheduledAction): Promise<void> {
             outcome
           );
 
-          // Extract opinions from conversation
-          extractOpinion(result.content, agent.username).then(opinion => {
+          // Mark any reply-to intentions as acted
+          const pending = getPendingIntentions(agent.username);
+          for (const intention of pending) {
+            if (intention.type === 'reply_to' && intention.targetUsername === targetAuthor) {
+              markIntentionActed(agent.username, intention.id);
+            }
+          }
+
+          // Extract opinions with belief consistency check
+          extractOpinion(result.content, agent.username).then(async opinion => {
             if (opinion) {
-              updateOpinion(
-                agent.username,
-                opinion.topic,
-                opinion.stance,
-                opinion.confidence,
-                targetAuthor
-              );
-              saveMemory();
+              const checked = await checkBeliefConsistency(agent, opinion);
+              if (checked) {
+                updateOpinion(
+                  agent.username,
+                  checked.topic,
+                  checked.stance,
+                  checked.confidence,
+                  targetAuthor
+                );
+                saveMemory();
+              }
             }
           });
+
+          // Generate follow-up intentions from the reply
+          generateIntentions(agent, result.content, `Replying to @${targetAuthor}`).then(
+            intentions => {
+              for (const int of intentions) {
+                addIntention(agent.username, {
+                  type: int.type as 'reply_to' | 'follow_up' | 'explore_topic' | 'challenge_idea',
+                  targetUsername: int.targetUsername,
+                  topic: int.topic,
+                  reason: int.reason,
+                });
+              }
+              if (intentions.length > 0) saveMemory();
+            }
+          );
 
           logger.info('Replied', {
             agent: agent.username,
@@ -845,7 +966,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
       }
 
       // =============================================================
-      // CHALLENGE — join and contribute to Grand Challenges
+      // CHALLENGE — join and contribute with read-before-write
       // =============================================================
       case 'challenge': {
         const challenges = await getActiveChallenges(apiKey);
@@ -872,7 +993,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
           challengeJoins.set(agent.username, agentChallenges);
         }
 
-        // Contribute based on preferred role
+        // Contribute based on preferred role — with read-before-write
         if (
           challenge.status === 'exploration' ||
           challenge.status === 'adversarial' ||
@@ -890,12 +1011,28 @@ async function executeAction(action: ScheduledAction): Promise<void> {
                     ? 'red_team'
                     : 'position';
 
-          const result = await generateChallengeContribution(
-            agent,
-            challenge.title || 'Research Challenge',
-            challenge.description || '',
-            contributionType
-          );
+          // Read existing contributions first (read-before-write pattern)
+          const existingContributions = await getChallengeContributions(apiKey, challenge.id, 10);
+
+          let result;
+          if (existingContributions.length > 0) {
+            // Deep contribution — reads and responds to existing work
+            result = await generateDeepChallengeContribution(
+              agent,
+              challenge.title || 'Research Challenge',
+              challenge.description || '',
+              contributionType,
+              existingContributions
+            );
+          } else {
+            // No existing work — use standard generation
+            result = await generateChallengeContribution(
+              agent,
+              challenge.title || 'Research Challenge',
+              challenge.description || '',
+              contributionType
+            );
+          }
 
           if (result.content.length >= 100) {
             const contributeResult = await contributeToChallenge(
@@ -912,6 +1049,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
                 agent: agent.username,
                 challenge: challenge.title?.slice(0, 40),
                 type: contributionType,
+                deep: existingContributions.length > 0,
               });
             }
           }
@@ -971,11 +1109,11 @@ async function executeAction(action: ScheduledAction): Promise<void> {
 }
 
 // =============================================================================
-// ENGAGEMENT FEEDBACK LOOP
+// ENGAGEMENT FEEDBACK LOOP — now populates content strategy
 // =============================================================================
 
 /**
- * Check how our recent posts are doing and update mood accordingly.
+ * Check how our recent posts are doing and update mood + content strategy.
  * Called periodically to create the "posts that get liked = agent posts more" feedback.
  */
 async function checkEngagementFeedback(apiKey: string, agent: AgentPersonality): Promise<void> {
@@ -997,8 +1135,24 @@ async function checkEngagementFeedback(apiKey: string, agent: AgentPersonality):
         totalReplies += post.reply_count;
         totalReposts += post.repost_count;
 
-        // Track who engaged with us — build relationships from their engagement
-        // (We can't see exactly who liked, but replies are visible)
+        // Update per-post engagement tracking for content strategy
+        updatePostEngagement(
+          agent.username,
+          post.id,
+          post.like_count,
+          post.reply_count,
+          post.repost_count
+        );
+
+        // Track who replies to us (visible in feed) as audience engagement
+        if (post.reply_count > 0) {
+          const replies = feed.filter(f => f.reply_to_id === post.id && f.agent?.username);
+          for (const reply of replies) {
+            if (reply.agent?.username) {
+              recordAudienceEngagement(agent.username, reply.agent.username);
+            }
+          }
+        }
       }
     }
 
@@ -1011,6 +1165,9 @@ async function checkEngagementFeedback(apiKey: string, agent: AgentPersonality):
         agent.moodReactivity
       );
     }
+
+    // Recalculate content strategy periodically
+    recalculateContentStrategy(agent.username);
   } catch {
     // Best effort
   }
@@ -1051,12 +1208,30 @@ export async function runScheduler(): Promise<void> {
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
 
-    // New day? Run maintenance and regenerate plan
+    // New day? Run maintenance, regenerate plan, and generate self-models
     if (today !== lastPlanDate) {
       logger.info('New day, running maintenance and regenerating plan');
       runDailyMaintenance(activeAgents);
       generateDailyPlan();
       lastPlanDate = today;
+
+      // Daily self-model generation for each agent (fire-and-forget)
+      for (const agent of activeAgents) {
+        generateSelfSummary(agent)
+          .then(model => {
+            if (model) {
+              updateSelfModel(agent.username, model);
+              saveMemory();
+              logger.info('Self-model updated', {
+                agent: agent.username,
+                role: model.socialRole,
+              });
+            }
+          })
+          .catch(() => {
+            // Best effort
+          });
+      }
     }
 
     // Periodic engagement feedback check

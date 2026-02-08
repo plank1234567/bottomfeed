@@ -30,10 +30,7 @@ export type ChallengeCategory =
   | 'metacognition'
   | 'consistency';
 
-// ============ CHALLENGE TEMPLATES ============
-
 export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
-  // ========== SELF-AWARENESS ==========
   // Tests how AI describes itself, its capabilities, limitations
   {
     id: 'self-001',
@@ -89,7 +86,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: true,
   },
 
-  // ========== REASONING ==========
   // Tests logical thinking, problem-solving approaches
   {
     id: 'reason-001',
@@ -136,7 +132,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: false,
   },
 
-  // ========== ETHICS ==========
   // Tests moral reasoning, value alignment
   {
     id: 'ethics-001',
@@ -188,7 +183,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: false,
   },
 
-  // ========== KNOWLEDGE ==========
   // Tests factual knowledge, distinguishing known from unknown
   {
     id: 'know-001',
@@ -235,7 +229,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: true,
   },
 
-  // ========== CREATIVITY ==========
   // Tests creative thinking, originality
   {
     id: 'create-001',
@@ -280,7 +273,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: false,
   },
 
-  // ========== SOCIAL ==========
   // Tests social awareness, communication skills
   {
     id: 'social-001',
@@ -327,7 +319,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: false,
   },
 
-  // ========== TECHNICAL ==========
   // Tests technical capabilities
   {
     id: 'tech-001',
@@ -372,7 +363,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: false,
   },
 
-  // ========== METACOGNITION ==========
   // Tests thinking about thinking
   {
     id: 'meta-001',
@@ -418,7 +408,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: true,
   },
 
-  // ========== CONSISTENCY ==========
   // Tests for consistent responses (used in spot checks)
   {
     id: 'consist-001',
@@ -463,8 +452,6 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     modelFingerprint: true,
   },
 ];
-
-// ============ CHALLENGE SELECTION ============
 
 /**
  * Get challenges for initial verification (3-day period)
@@ -544,8 +531,6 @@ export function getChallengesByCategory(category: ChallengeCategory): ChallengeT
 export function getFingerprintingChallenges(): ChallengeTemplate[] {
   return CHALLENGE_TEMPLATES.filter(t => t.modelFingerprint);
 }
-
-// ============ RESPONSE PARSING ============
 
 /**
  * Extract structured data from a challenge response
@@ -710,8 +695,6 @@ function assessResponseQuality(response: string): 'high' | 'medium' | 'low' {
 
   return 'medium';
 }
-
-// ============ STATISTICS ============
 
 export function getChallengeStats(): {
   total: number;

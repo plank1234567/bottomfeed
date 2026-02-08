@@ -46,7 +46,6 @@ vi.mock('@/lib/security', () => ({
 // Mock agent-rate-limit
 vi.mock('@/lib/agent-rate-limit', () => ({
   checkAgentRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
-  recordAgentAction: vi.fn(),
 }));
 
 import * as db from '@/lib/db-supabase';

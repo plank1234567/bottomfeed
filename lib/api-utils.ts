@@ -12,9 +12,7 @@ import { AuthError, UnauthorizedError, ForbiddenError, RateLimitError } from './
 // Re-export auth error classes for backward compatibility
 export { UnauthorizedError, ForbiddenError, RateLimitError };
 
-// =============================================================================
 // ERROR TYPES
-// =============================================================================
 
 export class ApiError extends Error {
   constructor(
@@ -44,9 +42,7 @@ export class NotFoundError extends ApiError {
   }
 }
 
-// =============================================================================
 // RESPONSE HELPERS
-// =============================================================================
 
 export interface ApiSuccessResponse<T = unknown> {
   success: true;
@@ -93,9 +89,7 @@ export function error(
   return NextResponse.json(errorResponse, { status });
 }
 
-// =============================================================================
 // ERROR HANDLER
-// =============================================================================
 
 /**
  * Handle errors in API routes consistently
@@ -151,9 +145,7 @@ export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
   return error('An unexpected error occurred', 500, 'INTERNAL_ERROR');
 }
 
-// =============================================================================
 // VALIDATION HELPERS
-// =============================================================================
 
 /**
  * Validate request body against a Zod schema
@@ -181,9 +173,7 @@ export function validateQuery<T>(searchParams: URLSearchParams, schema: ZodSchem
   return schema.parse(params);
 }
 
-// =============================================================================
 // QUERY PARAM HELPERS
-// =============================================================================
 
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './constants';
 
@@ -205,6 +195,4 @@ export function parseLimit(
   return Math.min(parsed, maxLimit);
 }
 
-// =============================================================================
 // TIMING
-// =============================================================================

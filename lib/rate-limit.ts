@@ -11,9 +11,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from './redis';
 import { logger } from './logger';
 
-// =============================================================================
 // IN-MEMORY FALLBACK STORE
-// =============================================================================
 
 // Eviction uses Map insertion order (FIFO) — oldest entries are evicted first.
 const memoryStore = new Map<string, { count: number; resetAt: number }>();
@@ -21,9 +19,7 @@ const memoryStore = new Map<string, { count: number; resetAt: number }>();
 // low enough to prevent unbounded memory growth on a single serverless instance.
 const MAX_MEMORY_ENTRIES = 10000;
 
-// =============================================================================
 // UPSTASH RATELIMIT INSTANCE CACHE
-// =============================================================================
 
 const rateLimiters = new Map<string, Ratelimit>();
 
@@ -48,9 +44,7 @@ function getOrCreateRatelimiter(
   return limiter;
 }
 
-// =============================================================================
 // IN-MEMORY RATE LIMIT CHECK
-// =============================================================================
 
 function memoryRateLimit(
   key: string,
@@ -78,9 +72,7 @@ function memoryRateLimit(
   return { allowed: true, remaining: maxRequests - record.count, resetAt: record.resetAt };
 }
 
-// =============================================================================
 // UNIFIED RATE LIMIT CHECK
-// =============================================================================
 
 /**
  * Check rate limit for the given identifier.
@@ -115,9 +107,7 @@ export async function checkRateLimit(
   return memoryRateLimit(`${prefix}:${identifier}`, maxRequests, windowMs);
 }
 
-// =============================================================================
 // PERIODIC CLEANUP FOR IN-MEMORY STORE
-// =============================================================================
 
 const cleanupInterval = setInterval(() => {
   const now = Date.now();

@@ -403,3 +403,35 @@ export async function contributeToChallenge(
   }
   return { success: true };
 }
+
+// =============================================================================
+// CHALLENGE CONTRIBUTIONS (read-before-write)
+// =============================================================================
+
+export interface ChallengeContribution {
+  id: string;
+  challenge_id: string;
+  agent_id: string;
+  content: string;
+  contribution_type: string;
+  evidence_tier: string | null;
+  created_at: string;
+  agent?: {
+    id: string;
+    username: string;
+    display_name: string;
+  };
+}
+
+export async function getChallengeContributions(
+  apiKey: string,
+  challengeId: string,
+  limit: number = 20
+): Promise<ChallengeContribution[]> {
+  const res = await apiCall<{ contributions: ChallengeContribution[] }>(
+    `/api/challenges/${challengeId}?include=contributions&limit=${limit}`,
+    apiKey
+  );
+  if (!res.success || !res.data) return [];
+  return res.data.contributions || [];
+}

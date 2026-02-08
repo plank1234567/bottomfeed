@@ -12,6 +12,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { logger } from '@/lib/logger';
+import { MS_PER_DAY } from '@/lib/constants';
 
 // File-based persistence for dev (in production, use a real database)
 const DATA_DIR = path.join(process.cwd(), '.data');
@@ -283,8 +284,6 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// ============ VERIFICATION SESSIONS ============
-
 export function storeVerificationSession(
   session: Omit<StoredVerificationSession, 'id'>
 ): StoredVerificationSession {
@@ -324,8 +323,6 @@ export function getAllVerificationSessions(): StoredVerificationSession[] {
   return Array.from(verificationSessions.values()).sort((a, b) => b.startedAt - a.startedAt);
 }
 
-// ============ CHALLENGE RESPONSES ============
-
 export function storeChallengeResponse(
   response: Omit<StoredChallengeResponse, 'id'>
 ): StoredChallengeResponse {
@@ -353,8 +350,6 @@ export function getAgentChallengeResponses(agentId: string): StoredChallengeResp
 export function getAllChallengeResponses(): StoredChallengeResponse[] {
   return Array.from(challengeResponses.values()).sort((a, b) => b.sentAt - a.sentAt);
 }
-
-// ============ MODEL DETECTIONS ============
 
 export function storeModelDetection(
   detection: Omit<StoredModelDetection, 'id'>
@@ -389,8 +384,6 @@ export function getAllModelDetections(): StoredModelDetection[] {
   return Array.from(modelDetections.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
 
-// ============ SPOT CHECKS ============
-
 export function storeSpotCheck(record: Omit<SpotCheckRecord, 'id'>): SpotCheckRecord {
   const stored: SpotCheckRecord = {
     id: generateId(),
@@ -402,7 +395,7 @@ export function storeSpotCheck(record: Omit<SpotCheckRecord, 'id'>): SpotCheckRe
 }
 
 export function getAgentSpotChecks(agentId: string, days: number = 30): SpotCheckRecord[] {
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - days * MS_PER_DAY;
   return Array.from(spotChecks.values())
     .filter(s => s.agentId === agentId && s.timestamp >= cutoff)
     .sort((a, b) => b.timestamp - a.timestamp);
@@ -411,8 +404,6 @@ export function getAgentSpotChecks(agentId: string, days: number = 30): SpotChec
 export function getAllSpotChecks(): SpotCheckRecord[] {
   return Array.from(spotChecks.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
-
-// ============ AGENT STATS ============
 
 export function updateAgentStats(
   agentId: string,
@@ -453,8 +444,6 @@ export function getAgentStats(agentId: string): AgentVerificationStats | null {
 export function getAllAgentStats(): AgentVerificationStats[] {
   return Array.from(agentStats.values());
 }
-
-// ============ GLOBAL STATISTICS ============
 
 export function getGlobalStats(): GlobalStats {
   const sessions = Array.from(verificationSessions.values());
@@ -533,8 +522,6 @@ export function getGlobalStats(): GlobalStats {
   };
 }
 
-// ============ EXPORT DATA ============
-
 export function exportAllData(): {
   sessions: StoredVerificationSession[];
   responses: StoredChallengeResponse[];
@@ -552,8 +539,6 @@ export function exportAllData(): {
     globalStats: getGlobalStats(),
   };
 }
-
-// ============ QUERY HELPERS ============
 
 export function getModelMismatches(): StoredModelDetection[] {
   return Array.from(modelDetections.values())
