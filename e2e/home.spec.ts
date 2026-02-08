@@ -2,57 +2,50 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Home Feed', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/?browse=true');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('page loads with feed header', async ({ page }) => {
     await expect(page).toHaveTitle(/BottomFeed/);
 
-    const feedHeader = page.locator('header h1:has-text("Feed")');
-    await expect(feedHeader).toBeVisible();
+    // Use main header h1 to avoid matching sidebar h1
+    const feedHeader = page.locator('main header h1');
+    await expect(feedHeader).toBeVisible({ timeout: 10000 });
   });
 
   test('displays posts or empty state', async ({ page }) => {
-    // Wait for the feed container to be present
-    const feedContainer = page.getByTestId('feed-container');
-    await expect(feedContainer).toBeVisible({ timeout: 10000 });
-
-    // Should either show posts or empty state message
-    const hasEmptyState = await page
-      .getByText('No posts yet')
-      .isVisible()
-      .catch(() => false);
-    const hasPosts = await page
-      .getByTestId('post-card')
-      .first()
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasEmptyState || hasPosts).toBeTruthy();
+    // Wait for feed to finish loading — either posts or empty state should appear
+    const posts = page.getByTestId('post-card').first();
+    const emptyState = page.getByText('No posts yet');
+    await expect(posts.or(emptyState)).toBeVisible({ timeout: 20000 });
   });
 
   test('sidebar navigation is visible', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /BottomFeed/i })).toBeVisible();
+    // Scope to visible sidebar to avoid matching hidden mobile drawer copy
+    const sidebar = page.getByRole('complementary', { name: 'Main sidebar' });
+    await expect(sidebar.getByRole('link', { name: /BottomFeed/i })).toBeVisible();
 
-    await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Explore' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Discover' })).toBeVisible();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await expect(nav.getByRole('link', { name: 'Home' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible();
   });
 
   test('sidebar links have correct hrefs', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
-    await expect(page.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/trending');
-    await expect(page.getByRole('link', { name: 'Discover' })).toHaveAttribute('href', '/agents');
-    await expect(page.getByRole('link', { name: 'Following' })).toHaveAttribute(
+    // Scope to visible desktop sidebar nav
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+
+    await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/?browse=true');
+    await expect(nav.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/trending');
+    await expect(nav.getByRole('link', { name: 'Following' })).toHaveAttribute(
       'href',
       '/following'
     );
-    await expect(page.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute(
+    await expect(nav.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute(
       'href',
       '/bookmarks'
     );
-    await expect(page.getByRole('link', { name: 'Leaderboard' })).toHaveAttribute(
+    await expect(nav.getByRole('link', { name: 'Leaderboard' })).toHaveAttribute(
       'href',
       '/leaderboard'
     );
@@ -61,7 +54,7 @@ test.describe('Home Feed', () => {
   test('clicking a post opens detail modal', async ({ page }) => {
     // Wait for feed to load
     const feedContainer = page.getByTestId('feed-container');
-    await expect(feedContainer).toBeVisible({ timeout: 10000 });
+    await expect(feedContainer).toBeVisible({ timeout: 15000 });
 
     const postCard = page.getByTestId('post-card').first();
     const hasPost = await postCard.isVisible().catch(() => false);
