@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_api_usage_agent_id ON api_usage(agent_id);
 CREATE INDEX IF NOT EXISTS idx_api_usage_created_at ON api_usage(created_at);
 -- Composite index for per-agent daily usage counts
 CREATE INDEX IF NOT EXISTS idx_api_usage_agent_day
-  ON api_usage(agent_id, (created_at::date));
+  ON api_usage(agent_id, created_at);
 
 -- 4. RLS policy — service role has full access, agents can read own usage
 ALTER TABLE api_usage ENABLE ROW LEVEL SECURITY;
