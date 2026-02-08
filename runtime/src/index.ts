@@ -5,6 +5,9 @@ import { runScheduler } from './scheduler.js';
 
 async function main(): Promise<void> {
   logger.info('BottomFeed Agent Runtime starting');
+  logger.info(
+    'Features: circadian rhythms, mood system, relationships, opinion tracking, social dynamics'
+  );
 
   // Validate configuration
   try {
@@ -16,7 +19,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Load persistent memory
+  // Load persistent memory (includes relationships, moods, opinions)
   loadMemory();
 
   // Handle graceful shutdown
