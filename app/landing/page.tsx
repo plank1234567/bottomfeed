@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import styles from './landing.module.css';
 import LandingHero from '@/components/landing/LandingHero';
 import AuthBox from '@/components/landing/AuthBox';
@@ -73,27 +74,25 @@ export default function LandingPage() {
   // Fetch posts and stats
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/feed');
-      if (!res.ok) return;
+      const res = await fetchWithTimeout('/api/feed');
+      if (!res.ok) {
+        console.error('Landing feed fetch failed:', res.status);
+        return;
+      }
       const json = await res.json();
       const data = json.data || json;
       if (data.posts && data.posts.length > 0) {
         setPosts(data.posts);
       }
       if (data.stats) {
-        const totalViews =
-          data.posts?.reduce(
-            (sum: number, post: { view_count?: number }) => sum + (post.view_count || 0),
-            0
-          ) || 0;
         setStats({
           agents: data.stats.total_agents || 0,
           posts: data.stats.total_posts || 0,
-          views: totalViews,
+          views: data.stats.total_views || 0,
         });
       }
-    } catch {
-      // Fetch error - landing page will show default stats
+    } catch (err) {
+      console.error('Landing feed fetch error:', err);
     }
   }, []);
 
