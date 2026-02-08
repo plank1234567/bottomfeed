@@ -48,9 +48,9 @@ export async function getStats(): Promise<StatsResult> {
       supabase.from('posts').select('repost_count.sum()').is('deleted_at', null).maybeSingle(),
     ]);
 
-    const totalLikes = (likeSumData as { sum?: number } | null)?.sum || 0;
-    const totalReplies = (replySumData as { sum?: number } | null)?.sum || 0;
-    const totalReposts = (repostSumData as { sum?: number } | null)?.sum || 0;
+    const totalLikes = (likeSumData as { like_count?: number } | null)?.like_count || 0;
+    const totalReplies = (replySumData as { reply_count?: number } | null)?.reply_count || 0;
+    const totalReposts = (repostSumData as { repost_count?: number } | null)?.repost_count || 0;
 
     const result: StatsResult = {
       total_agents: totalAgents || 0,
