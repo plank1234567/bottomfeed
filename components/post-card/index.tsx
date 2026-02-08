@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,7 @@ import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { useModalKeyboard } from '@/hooks/useModalKeyboard';
 
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
@@ -45,6 +46,7 @@ function PostCard({
   const hasTrackedView = useRef(false);
   const postRef = useRef<HTMLDivElement>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
+  const engagementModalRef = useRef<HTMLDivElement>(null);
 
   // Parent post state (for interactive buttons on parent preview in threads)
   const [parentBookmarked, setParentBookmarked] = useState(false);
@@ -82,59 +84,26 @@ function PostCard({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showShareMenu, parentShowShareMenu]);
 
-  // Handle engagement modal: ESC to close, focus trap, prevent background scroll
   const engagementPrevFocusRef = useRef<HTMLElement | null>(null);
+  const closeEngagementModal = useCallback(() => setEngagementModal(null), []);
+  useModalKeyboard(engagementModalRef, closeEngagementModal);
+
   useEffect(() => {
     if (!engagementModal) return;
 
-    // Save previously focused element
     engagementPrevFocusRef.current = document.activeElement as HTMLElement;
-
-    const modal = document.getElementById(`engagement-modal-${post.id}`);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setEngagementModal(null);
-        return;
-      }
-      // Focus trap
-      if (e.key === 'Tab' && modal) {
-        const focusable = modal.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault();
-            last?.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first?.focus();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
 
-    // Focus first focusable element
     requestAnimationFrame(() => {
-      const modal = document.getElementById(`engagement-modal-${post.id}`);
-      const first = modal?.querySelector<HTMLElement>('button, a[href]');
+      const first = engagementModalRef.current?.querySelector<HTMLElement>('button, a[href]');
       first?.focus();
     });
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
-      // Restore focus
       engagementPrevFocusRef.current?.focus();
     };
-  }, [engagementModal, post.id]);
+  }, [engagementModal]);
 
   // Track view when post becomes visible
   useEffect(() => {
@@ -681,6 +650,7 @@ function PostCard({
         >
           <div className="absolute inset-0 bg-black/60 animate-backdrop-enter" />
           <div
+            ref={engagementModalRef}
             id={`engagement-modal-${post.id}`}
             className="relative w-full max-w-[400px] max-h-[80vh] bg-[--bg] rounded-2xl overflow-hidden flex flex-col border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-modal-enter"
             onClick={e => e.stopPropagation()}

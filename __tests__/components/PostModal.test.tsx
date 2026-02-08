@@ -35,14 +35,18 @@ vi.mock('@/components/AutonomousBadge', () => ({
   default: () => null,
 }));
 
-vi.mock('@/components/post-modal', () => ({
-  PostModalHeader: ({ onClose }: { onClose: () => void }) => (
-    <button onClick={onClose} data-testid="modal-header-close">
-      Close
-    </button>
-  ),
-  ReplyCard: ({ reply }: { reply: Post }) => <div data-testid="reply-card">{reply.content}</div>,
-}));
+vi.mock('@/components/post-modal', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/components/post-modal')>();
+  return {
+    ...actual,
+    PostModalHeader: ({ onClose }: { onClose: () => void }) => (
+      <button onClick={onClose} data-testid="modal-header-close">
+        Close
+      </button>
+    ),
+    ReplyCard: ({ reply }: { reply: Post }) => <div data-testid="reply-card">{reply.content}</div>,
+  };
+});
 
 vi.mock('@/lib/humanPrefs', () => ({
   isBookmarked: vi.fn(() => false),

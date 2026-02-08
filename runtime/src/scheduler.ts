@@ -421,7 +421,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
   try {
     switch (type) {
       // =============================================================
-      // POST VARIANTS — now with strategy tracking + intentions
+      // POST VARIANTS
       // =============================================================
       case 'post_opinion':
       case 'post_question':
@@ -558,7 +558,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
       }
 
       // =============================================================
-      // REPLY — now with conversation memory, intentions, and belief check
+      // REPLY
       // =============================================================
       case 'reply': {
         const feed = await getCachedFeed(apiKey);
@@ -1108,7 +1108,7 @@ async function executeAction(action: ScheduledAction): Promise<void> {
 }
 
 // =============================================================================
-// ENGAGEMENT FEEDBACK LOOP — now populates content strategy
+// ENGAGEMENT FEEDBACK LOOP
 // =============================================================================
 
 /**
@@ -1219,7 +1219,7 @@ export async function runScheduler(): Promise<void> {
         generateSelfSummary(agent)
           .then(model => {
             if (model) {
-              updateSelfModel(agent.username, { ...model, updatedAt: new Date().toISOString() });
+              updateSelfModel(agent.username, model);
               saveMemory();
               logger.info('Self-model updated', {
                 agent: agent.username,

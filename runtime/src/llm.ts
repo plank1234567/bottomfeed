@@ -13,6 +13,7 @@ import {
   getRelationship,
   getOpinions,
   getAgentMemory,
+  type SelfModel,
 } from './memory.js';
 
 let openai: OpenAI;
@@ -28,7 +29,7 @@ function getClient(): OpenAI {
 }
 
 // =============================================================================
-// SYSTEM PROMPT BUILDER — now mood, relationship, performance & self-model aware
+// SYSTEM PROMPT BUILDER
 // =============================================================================
 
 function buildSystemPrompt(
@@ -686,7 +687,7 @@ export function generateStatusText(
 }
 
 // =============================================================================
-// COGNITIVE UPGRADE: INTENTION GENERATION
+// INTENTION GENERATION
 // =============================================================================
 
 /**
@@ -725,7 +726,7 @@ export async function generateIntentions(
 }
 
 // =============================================================================
-// COGNITIVE UPGRADE: BELIEF CONSISTENCY CHECK
+// BELIEF CONSISTENCY
 // =============================================================================
 
 /**
@@ -784,19 +785,14 @@ export async function checkBeliefConsistency(
 }
 
 // =============================================================================
-// COGNITIVE UPGRADE: SELF-MODEL GENERATION
+// SELF-MODEL GENERATION
 // =============================================================================
 
 /**
  * Generate a self-reflection summary — the agent's understanding of itself.
  * Called once per day. The agent reviews its recent behavior and forms a self-model.
  */
-export async function generateSelfSummary(agent: AgentPersonality): Promise<{
-  summary: string;
-  strengths: string[];
-  weaknesses: string[];
-  socialRole: string;
-} | null> {
+export async function generateSelfSummary(agent: AgentPersonality): Promise<SelfModel | null> {
   const mem = getAgentMemory(agent.username);
   const recentConvos = mem.conversationLog.slice(-10);
   const topOpinions = mem.opinions.filter(o => o.confidence >= 60).slice(0, 5);
@@ -814,9 +810,11 @@ export async function generateSelfSummary(agent: AgentPersonality): Promise<{
       ? topOpinions.map(o => `"${o.topic}": ${o.stance}`).join('\n')
       : 'No strong opinions yet.';
 
+  const bestTopics = strategy.topicScores.slice(0, 3).map(t => t.topic);
+  const worstTopics = strategy.topicScores.filter(t => t.postCount >= 2).slice(-2).map(t => t.topic);
   const performanceSummary =
-    strategy.bestPerformingTopics.length > 0
-      ? `Best topics: ${strategy.bestPerformingTopics.join(', ')}. Worst: ${strategy.worstPerformingTopics.join(', ')}.`
+    bestTopics.length > 0
+      ? `Best topics: ${bestTopics.join(', ')}.${worstTopics.length > 0 ? ` Worst: ${worstTopics.join(', ')}.` : ''}`
       : 'Not enough data yet.';
 
   try {
@@ -846,6 +844,7 @@ export async function generateSelfSummary(agent: AgentPersonality): Promise<{
       strengths: Array.isArray(result.strengths) ? result.strengths.slice(0, 3).map(String) : [],
       weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses.slice(0, 3).map(String) : [],
       socialRole: String(result.socialRole || '').slice(0, 60),
+      updatedAt: new Date().toISOString(),
     };
   } catch {
     return null;
@@ -853,7 +852,7 @@ export async function generateSelfSummary(agent: AgentPersonality): Promise<{
 }
 
 // =============================================================================
-// COGNITIVE UPGRADE: DEEP CHALLENGE CONTRIBUTION
+// DEEP CHALLENGE CONTRIBUTION
 // =============================================================================
 
 /**

@@ -93,7 +93,15 @@ export async function createPost(
     post.thread_id = post.id;
   }
 
-  await Promise.all(parallelOps);
+  const results = await Promise.allSettled(parallelOps);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      logger.warn('Post-insert side-effect failed', {
+        postId: post.id,
+        error: String(result.reason),
+      });
+    }
+  }
 
   const enrichedPost = await enrichPost(post as Post);
 
