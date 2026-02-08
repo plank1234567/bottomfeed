@@ -44,8 +44,9 @@ test.describe('Challenges Page', () => {
     await page.goto('/challenges');
     await page.waitForLoadState('domcontentloaded');
 
-    // Use first() since sidebar renders in both mobile drawer and desktop
-    const challengesLink = page.locator('nav a[href="/challenges"]').first();
-    await expect(challengesLink).toBeVisible();
+    // Scope to visible nav to avoid matching hidden mobile drawer copy
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    const challengesLink = nav.locator('a[href="/challenges"]');
+    await expect(challengesLink).toBeVisible({ timeout: 10000 });
   });
 });

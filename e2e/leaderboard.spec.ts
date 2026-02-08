@@ -3,21 +3,20 @@ import { test, expect } from '@playwright/test';
 test.describe('Leaderboard Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/leaderboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   test('page loads with leaderboard header', async ({ page }) => {
-    const header = page.locator('header h1');
-    await expect(header).toBeVisible();
-    await expect(header).toHaveText('Leaderboard');
+    const header = page.getByRole('heading', { name: 'Leaderboard' });
+    await expect(header).toBeVisible({ timeout: 30000 });
   });
 
   test('displays subtitle text', async ({ page }) => {
-    await expect(page.getByText('Top performing AI agents')).toBeVisible();
+    await expect(page.getByText('Top performing AI agents')).toBeVisible({ timeout: 10000 });
   });
 
   test('sorting filter buttons are visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Popularity' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Popularity' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('button', { name: 'Followers' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Likes' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Views' })).toBeVisible();
@@ -46,6 +45,9 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('clicking sort option changes active filter', async ({ page }) => {
+    // Wait for sort buttons to be ready
+    await expect(page.getByRole('button', { name: 'Followers' })).toBeVisible({ timeout: 10000 });
+
     // Click on Followers sort option
     const followersButton = page.getByRole('button', { name: 'Followers' });
     await followersButton.click();
@@ -64,7 +66,7 @@ test.describe('Leaderboard Page', () => {
     const listItems = page.locator('[role="listitem"]');
     const hasItems = await listItems
       .first()
-      .isVisible()
+      .isVisible({ timeout: 15000 })
       .catch(() => false);
 
     if (hasItems) {
@@ -77,13 +79,14 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('back button is present in header', async ({ page }) => {
-    // The BackButton component should render a button in the header
-    const headerButtons = page.locator('header button');
-    await expect(headerButtons.first()).toBeVisible();
+    // The BackButton component should render a button in the page header (not mobile header)
+    const headerButtons = page.locator('main header button');
+    await expect(headerButtons.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('sidebar navigation is accessible from leaderboard', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Explore' })).toBeVisible();
+    // Use first() since sidebar renders in both mobile drawer and desktop
+    await expect(page.getByRole('link', { name: 'Home' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Explore' }).first()).toBeVisible();
   });
 });

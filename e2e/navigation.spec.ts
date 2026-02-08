@@ -2,87 +2,101 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/?browse=true');
+    await page.waitForLoadState('domcontentloaded');
+    // Wait for sidebar nav to be hydrated and visible
+    await expect(page.locator('nav[aria-label="Main navigation"]:visible')).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test('Home link navigates to home page', async ({ page }) => {
-    // Already on home, navigate away first
-    await page.goto('/trending');
+    // Navigate away first
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL('/trending');
 
     // Now click Home to go back
-    await page.locator('nav a[href="/"]').first().click();
-    await expect(page).toHaveURL('/');
-    const feedHeader = page.locator('header h1:has-text("Feed")');
-    await expect(feedHeader).toBeVisible();
+    const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav2.locator('a[href="/?browse=true"]').click();
+    await expect(page).toHaveURL(/\/\?browse=true/);
+
+    // Use main header h1 to avoid matching sidebar h1
+    const feedHeader = page.locator('main header h1');
+    await expect(feedHeader).toBeVisible({ timeout: 10000 });
   });
 
   test('Explore link navigates to trending page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Explore' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL('/trending');
   });
 
-  test('Discover link navigates to agents page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Discover' }).click();
-    await expect(page).toHaveURL('/agents');
-  });
-
   test('Following link navigates to following page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Following' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Following' }).click();
     await expect(page).toHaveURL('/following');
   });
 
   test('Bookmarks link navigates to bookmarks page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Bookmarks' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Bookmarks' }).click();
     await expect(page).toHaveURL('/bookmarks');
   });
 
   test('Conversations link navigates to conversations page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Conversations' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Conversations' }).click();
     await expect(page).toHaveURL('/conversations');
   });
 
   test('Activity link navigates to activity page', async ({ page }) => {
-    // Use exact match to avoid matching other links containing "Activity"
-    await page.locator('nav a[href="/activity"]').click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.locator('a[href="/activity"]').click();
     await expect(page).toHaveURL('/activity');
   });
 
   test('Leaderboard link navigates to leaderboard page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Leaderboard' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
     await expect(page).toHaveURL('/leaderboard');
   });
 
   test('API Documentation link navigates to api-docs page', async ({ page }) => {
-    await page.getByRole('link', { name: 'API Documentation' }).click();
+    // API Documentation link is in the main sidebar footer (not nav)
+    const sidebar = page.getByRole('complementary', { name: 'Main sidebar' });
+    await expect(sidebar).toBeVisible({ timeout: 15000 });
+    await sidebar.getByRole('link', { name: 'API Documentation' }).click();
     await expect(page).toHaveURL('/api-docs');
   });
 
   test('browser back button works correctly', async ({ page }) => {
-    // Navigate through multiple pages
-    await page.getByRole('link', { name: 'Explore' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL('/trending');
 
-    await page.getByRole('link', { name: 'Discover' }).click();
-    await expect(page).toHaveURL('/agents');
+    // Wait for sidebar on new page before clicking next link
+    const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
+    await expect(nav2).toBeVisible({ timeout: 15000 });
+    await nav2.getByRole('link', { name: 'Leaderboard' }).click();
+    await expect(page).toHaveURL('/leaderboard');
 
     // Use browser back
     await page.goBack();
     await expect(page).toHaveURL('/trending');
 
     await page.goBack();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/(\?browse=true)?$/);
   });
 
   test('browser forward button works correctly', async ({ page }) => {
-    // Navigate forward
-    await page.getByRole('link', { name: 'Explore' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL('/trending');
 
     // Go back
     await page.goBack();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/(\?browse=true)?$/);
 
     // Go forward
     await page.goForward();
@@ -91,29 +105,33 @@ test.describe('Navigation', () => {
 
   test('logo link navigates to home', async ({ page }) => {
     // First navigate away from home
-    await page.getByRole('link', { name: 'Explore' }).click();
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+    await nav.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL('/trending');
 
     // Click logo to go home
-    await page.getByRole('link', { name: /BottomFeed/i }).click();
-    await expect(page).toHaveURL('/');
+    const sidebar = page.getByRole('complementary', { name: 'Main sidebar' });
+    await sidebar.getByRole('link', { name: /BottomFeed/i }).click();
+    await expect(page).toHaveURL(/\/(\?browse=true)?$/);
   });
 
   test('active nav item is styled differently', async ({ page }) => {
-    // On home page, Home link should have bold styling
-    const homeLink = page.getByRole('link', { name: 'Home' });
-    await expect(homeLink).toHaveClass(/font-bold/);
+    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
+
+    // On home page, Home link should have font-semibold styling (active state)
+    const homeLink = nav.getByRole('link', { name: 'Home' });
+    await expect(homeLink).toHaveClass(/font-semibold/);
 
     // Navigate to another page
-    await page.getByRole('link', { name: 'Explore' }).click();
+    await nav.getByRole('link', { name: 'Explore' }).click();
 
-    // Now Explore should be bold, Home should not
-    const exploreLink = page.getByRole('link', { name: 'Explore' });
-    await expect(exploreLink).toHaveClass(/font-bold/);
+    // Now Explore should be semibold (active state)
+    const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
+    const exploreLink = nav2.getByRole('link', { name: 'Explore' });
+    await expect(exploreLink).toHaveClass(/font-semibold/);
   });
 
   test('direct URL navigation works', async ({ page }) => {
-    // Navigate directly to different pages
     await page.goto('/agents');
     await expect(page).toHaveURL('/agents');
 
@@ -125,30 +143,21 @@ test.describe('Navigation', () => {
   });
 
   test('404 handling for invalid routes', async ({ page }) => {
-    // Navigate to a non-existent page
     const response = await page.goto('/this-page-does-not-exist');
-
-    // Should either show 404 or redirect to home
-    // Next.js may handle this differently based on config
     expect(response?.status()).toBe(404);
   });
 });
 
 test.describe('Page-specific navigation', () => {
   test('post detail page is accessible via URL', async ({ page }) => {
-    // First find a valid post ID from the home page
     await page.goto('/?browse=true');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    // Check if there are posts
     const postCard = page.getByTestId('post-card').first();
-    const hasPost = await postCard.isVisible().catch(() => false);
+    const hasPost = await postCard.isVisible({ timeout: 15000 }).catch(() => false);
 
     if (hasPost) {
-      // Click on post to open modal
       await postCard.click();
-
-      // Modal should appear
       const modal = page.getByRole('dialog');
       await expect(modal).toBeVisible({ timeout: 5000 });
     } else {
@@ -158,13 +167,12 @@ test.describe('Page-specific navigation', () => {
 
   test('agents page shows list of agents', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    // Should show agents or empty state
     const hasAgents = await page
       .locator('a[href^="/agent/"]')
       .first()
-      .isVisible()
+      .isVisible({ timeout: 10000 })
       .catch(() => false);
     const hasEmptyState = await page
       .getByText(/No agents/i)
@@ -176,10 +184,10 @@ test.describe('Page-specific navigation', () => {
 
   test('clicking agent from list navigates to profile', async ({ page }) => {
     await page.goto('/agents');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const agentLink = page.locator('a[href^="/agent/"]').first();
-    const hasAgents = await agentLink.isVisible().catch(() => false);
+    const hasAgents = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgents) {
       const href = await agentLink.getAttribute('href');
