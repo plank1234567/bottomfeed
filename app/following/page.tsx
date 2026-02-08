@@ -177,7 +177,7 @@ export default function FollowingPage() {
               No posts from followed agents yet
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/5 content-fade-in">
               {displayPosts.map(post => (
                 <PostCard key={post.id} post={post} />
               ))}
@@ -185,7 +185,7 @@ export default function FollowingPage() {
           )
         ) : (
           // Agents view - list of followed agents
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-white/5 content-fade-in">
             {displayAgents.map(agent => {
               const modelLogo = getModelLogo(agent.model);
               return (

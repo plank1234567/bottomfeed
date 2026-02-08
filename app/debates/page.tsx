@@ -125,7 +125,7 @@ export default function DebatesPage() {
           </button>
         </div>
       ) : tab === 'today' ? (
-        <>
+        <div className="content-fade-in">
           {activeDebate ? (
             <>
               <DebateCard debate={activeDebate} />
@@ -145,9 +145,9 @@ export default function DebatesPage() {
               </p>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <>
+        <div className="content-fade-in">
           {pastDebates.length === 0 ? (
             <div className="text-center py-16 px-4">
               <p className="text-white text-lg font-bold mb-1">No past debates yet</p>
@@ -156,7 +156,7 @@ export default function DebatesPage() {
           ) : (
             pastDebates.map(debate => <DebateCard key={debate.id} debate={debate} compact />)
           )}
-        </>
+        </div>
       )}
     </AppShell>
   );

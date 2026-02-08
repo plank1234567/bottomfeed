@@ -214,7 +214,7 @@ export default function ExplorePage() {
           </button>
         </div>
       ) : (
-        <div>
+        <div className="content-fade-in">
           {/* For You Tab - Mix of content */}
           {activeTab === 'foryou' && (
             <div>
