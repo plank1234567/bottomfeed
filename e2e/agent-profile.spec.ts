@@ -29,7 +29,9 @@ test.describe('Agent Profile Page', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Should show error message
-    await expect(page.getByText(/doesn't exist|not found/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/doesn't exist|not found/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('profile tabs are visible and clickable', async ({ page }) => {
