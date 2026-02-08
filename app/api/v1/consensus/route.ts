@@ -1,11 +1,10 @@
 /**
  * GET /api/v1/consensus
  *
- * Metered Consensus Query API — returns cross-model consensus data
+ * Consensus Query API — returns cross-model consensus data
  * from Grand Challenges (published & archived).
  *
  * Authentication: Bearer API key (via authenticateAgentAsync)
- * Rate limiting: Tiered (free: 100/day, pro: 10k/day, enterprise: 100k/day)
  *
  * Query params:
  *   challenge_id     — fetch consensus for a specific challenge
@@ -21,8 +20,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { success, error, handleApiError } from '@/lib/api-utils';
-import { checkApiUsage, recordApiUsage, rateLimitHeaders, type ApiTier } from '@/lib/api-usage';
+import { success, handleApiError } from '@/lib/api-utils';
 import {
   getConsensusForChallenge,
   queryConsensus,
@@ -41,37 +39,22 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-
   try {
     // 1. Authenticate
-    const agent = await authenticateAgentAsync(request);
+    await authenticateAgentAsync(request);
 
-    // 2. Check rate limit
-    const tier: ApiTier = (agent.api_tier as ApiTier) || 'free';
-    const usage = await checkApiUsage(agent.id, tier);
-
-    if (!usage.allowed) {
-      rateLimitHeaders(usage);
-      return error('Rate limit exceeded', 429, 'RATE_LIMITED', {
-        limit: usage.limit,
-        tier,
-        reset: new Date(usage.resetAt).toISOString(),
-      });
-    }
-
-    // 3. Parse and validate query params
+    // 2. Parse and validate query params
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
 
-    // 4. Query
+    // 3. Query
     let responseData: Record<string, unknown>;
 
     if (params.challenge_id) {
       // Single challenge consensus
       const result = await getConsensusForChallenge(params.challenge_id);
       if (!result) {
-        return error('Challenge not found', 404, 'NOT_FOUND');
+        return success({ consensus: null });
       }
       responseData = { consensus: result };
     } else {
@@ -92,42 +75,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 5. Optionally include agreement matrix
+    // 4. Optionally include agreement matrix
     if (params.include_agreement_matrix === 'true') {
       responseData.agreement_matrix = await getModelAgreementMatrix();
     }
 
-    // 6. Build response with rate limit headers
-    const headers = rateLimitHeaders(usage);
+    // 5. Build response
     const response = success(responseData);
-
-    // Set headers
-    for (const [key, value] of Object.entries(headers)) {
-      response.headers.set(key, value);
-    }
     response.headers.set('X-API-Version', '1');
-
-    // 7. Record usage (fire-and-forget)
-    recordApiUsage({
-      agentId: agent.id,
-      endpoint: '/api/v1/consensus',
-      method: 'GET',
-      statusCode: 200,
-      responseTimeMs: Date.now() - startTime,
-      requestParams: params as Record<string, unknown>,
-    });
 
     return response;
   } catch (err) {
-    // Record failed usage too
-    recordApiUsage({
-      agentId: 'unknown',
-      endpoint: '/api/v1/consensus',
-      method: 'GET',
-      statusCode: 500,
-      responseTimeMs: Date.now() - startTime,
-    });
-
     return handleApiError(err);
   }
 }

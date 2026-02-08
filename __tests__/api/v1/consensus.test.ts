@@ -19,7 +19,6 @@ vi.mock('@/lib/auth', async importOriginal => {
       model: 'gpt-4',
       status: 'online',
       is_verified: true,
-      api_tier: 'free',
     }),
   };
 });
@@ -31,25 +30,7 @@ const mockAgent = {
   model: 'gpt-4',
   status: 'online',
   is_verified: true,
-  api_tier: 'free',
 };
-
-// Mock api-usage
-vi.mock('@/lib/api-usage', () => ({
-  checkApiUsage: vi.fn().mockResolvedValue({
-    allowed: true,
-    remaining: 99,
-    resetAt: Date.now() + 86400000,
-    tier: 'free',
-    limit: 100,
-  }),
-  recordApiUsage: vi.fn(),
-  rateLimitHeaders: vi.fn().mockReturnValue({
-    'X-RateLimit-Limit': '100',
-    'X-RateLimit-Remaining': '99',
-    'X-RateLimit-Reset': '1700000000',
-  }),
-}));
 
 // Mock consensus queries
 vi.mock('@/lib/db-supabase/consensus', () => ({
@@ -116,7 +97,6 @@ vi.mock('@sentry/nextjs', () => ({
 
 import { GET } from '@/app/api/v1/consensus/route';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { checkApiUsage, recordApiUsage } from '@/lib/api-usage';
 import {
   getConsensusForChallenge,
   queryConsensus,
@@ -136,15 +116,7 @@ function createRequest(url: string, options: { headers?: Record<string, string> 
 describe('GET /api/v1/consensus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset default mocks
     vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as Agent);
-    vi.mocked(checkApiUsage).mockResolvedValue({
-      allowed: true,
-      remaining: 99,
-      resetAt: Date.now() + 86400000,
-      tier: 'free',
-      limit: 100,
-    });
   });
 
   // ========== AUTH ==========
@@ -167,43 +139,6 @@ describe('GET /api/v1/consensus', () => {
     });
   });
 
-  // ========== RATE LIMITING ==========
-
-  describe('rate limiting', () => {
-    it('returns 429 when rate limited', async () => {
-      vi.mocked(checkApiUsage).mockResolvedValue({
-        allowed: false,
-        remaining: 0,
-        resetAt: Date.now() + 3600000,
-        tier: 'free',
-        limit: 100,
-      });
-
-      const request = createRequest('/api/v1/consensus');
-      const response = await GET(request);
-      const body = await response.json();
-      expect(response.status).toBe(429);
-      expect(body.error.code).toBe('RATE_LIMITED');
-    });
-
-    it('checks usage with agent tier', async () => {
-      const request = createRequest('/api/v1/consensus');
-      await GET(request);
-      expect(checkApiUsage).toHaveBeenCalledWith('agent-123', 'free');
-    });
-
-    it('uses pro tier when agent has pro api_tier', async () => {
-      vi.mocked(authenticateAgentAsync).mockResolvedValue({
-        ...mockAgent,
-        api_tier: 'pro',
-      } as Agent);
-
-      const request = createRequest('/api/v1/consensus');
-      await GET(request);
-      expect(checkApiUsage).toHaveBeenCalledWith('agent-123', 'pro');
-    });
-  });
-
   // ========== SINGLE CHALLENGE QUERY ==========
 
   describe('single challenge query', () => {
@@ -220,7 +155,7 @@ describe('GET /api/v1/consensus', () => {
       expect(body.data.consensus.challenge_id).toBe('ch-1');
     });
 
-    it('returns 404 for unknown challenge', async () => {
+    it('returns null consensus for unknown challenge', async () => {
       vi.mocked(getConsensusForChallenge).mockResolvedValue(null);
 
       const request = createRequest(
@@ -228,8 +163,8 @@ describe('GET /api/v1/consensus', () => {
       );
       const response = await GET(request);
       const body = await response.json();
-      expect(response.status).toBe(404);
-      expect(body.error.code).toBe('NOT_FOUND');
+      expect(response.status).toBe(200);
+      expect(body.data.consensus).toBeNull();
     });
   });
 
@@ -321,46 +256,6 @@ describe('GET /api/v1/consensus', () => {
       const request = createRequest('/api/v1/consensus');
       const response = await GET(request);
       expect(response.headers.get('X-API-Version')).toBe('1');
-    });
-
-    it('includes rate limit headers', async () => {
-      const request = createRequest('/api/v1/consensus');
-      const response = await GET(request);
-      expect(response.headers.get('X-RateLimit-Limit')).toBeDefined();
-      expect(response.headers.get('X-RateLimit-Remaining')).toBeDefined();
-      expect(response.headers.get('X-RateLimit-Reset')).toBeDefined();
-    });
-  });
-
-  // ========== USAGE RECORDING ==========
-
-  describe('usage recording', () => {
-    it('records successful API usage', async () => {
-      const request = createRequest('/api/v1/consensus');
-      await GET(request);
-
-      expect(recordApiUsage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          agentId: 'agent-123',
-          endpoint: '/api/v1/consensus',
-          method: 'GET',
-          statusCode: 200,
-        })
-      );
-    });
-
-    it('records usage on error too', async () => {
-      vi.mocked(authenticateAgentAsync).mockRejectedValue(new Error('Auth failed'));
-
-      const request = createRequest('/api/v1/consensus');
-      await GET(request);
-
-      expect(recordApiUsage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          endpoint: '/api/v1/consensus',
-          statusCode: 500,
-        })
-      );
     });
   });
 

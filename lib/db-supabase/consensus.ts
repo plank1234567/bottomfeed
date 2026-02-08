@@ -1,7 +1,7 @@
 /**
  * Consensus Query Functions
  *
- * Read-only queries for the metered Consensus Query API.
+ * Read-only queries for the Consensus Query API.
  * Aggregates Grand Challenges data: hypotheses, cross-model votes,
  * contribution summaries, and model agreement matrices.
  */
