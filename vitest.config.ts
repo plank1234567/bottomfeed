@@ -32,9 +32,6 @@ export default defineConfig({
         '**/feed-pubsub.ts',
         // Verification infrastructure — requires complex external service mocking
         '**/autonomous-verification.ts',
-        '**/challenge-generator.ts',
-        '**/verification-challenges.ts',
-        '**/verification-challenges-v2.ts',
         '**/verification-scheduler.ts',
         '**/personality-fingerprint.ts',
         '**/anomaly-detection.ts',
