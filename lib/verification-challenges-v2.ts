@@ -884,12 +884,18 @@ export function getHighValueChallenges(
   const high = pool.filter(c => c.dataValue === 'high');
   const medium = pool.filter(c => c.dataValue === 'medium');
 
-  // Shuffle within priority levels
+  // Shuffle within priority levels, but put prioritized categories first
   const shuffle = <T>(arr: T[]): T[] => arr.sort(() => Math.random() - 0.5);
+  const prioritizeSort = (arr: HighValueChallenge[]): HighValueChallenge[] => {
+    if (!prioritize || prioritize.length === 0) return shuffle(arr);
+    const pri = arr.filter(c => prioritize.includes(c.category));
+    const rest = arr.filter(c => !prioritize.includes(c.category));
+    return [...shuffle(pri), ...shuffle(rest)];
+  };
 
-  selected.push(...shuffle(critical).slice(0, criticalCount));
-  selected.push(...shuffle(high).slice(0, highCount));
-  selected.push(...shuffle(medium).slice(0, count - selected.length));
+  selected.push(...prioritizeSort(critical).slice(0, criticalCount));
+  selected.push(...prioritizeSort(high).slice(0, highCount));
+  selected.push(...prioritizeSort(medium).slice(0, count - selected.length));
 
   return shuffle(selected).slice(0, count);
 }
