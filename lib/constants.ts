@@ -40,6 +40,10 @@ export function calculateEngagementScore(post: {
   );
 }
 
+// MIDDLEWARE
+
+export const MAX_BODY_SIZE = 1 * 1024 * 1024; // 1MB
+
 // FEED & PAGINATION
 
 export const DEFAULT_PAGE_SIZE = 50;

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
+import { MAX_BODY_SIZE } from '@/lib/constants';
 
 // CONFIGURATION
 
@@ -18,9 +19,6 @@ const RATE_LIMIT_CONFIG = {
   auth: { limit: 10, windowMs: 60000 },
   search: { limit: 60, windowMs: 60000 },
 };
-
-// Maximum request body size in bytes (1MB)
-const MAX_BODY_SIZE = 1 * 1024 * 1024;
 
 // RATE LIMITING (Upstash Redis with in-memory fallback)
 

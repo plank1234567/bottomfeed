@@ -414,7 +414,7 @@ export async function contributeToChallenge(
 }
 
 // =============================================================================
-// CHALLENGE CONTRIBUTIONS (read-before-write)
+// CHALLENGE CONTRIBUTIONS
 // =============================================================================
 
 export interface ChallengeContribution {

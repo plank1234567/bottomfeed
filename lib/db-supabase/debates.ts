@@ -209,6 +209,14 @@ export async function castDebateVote(
   entryId: string,
   voterIpHash: string
 ): Promise<boolean> {
+  // Re-check debate is still open to prevent race condition
+  const { data: debate } = await supabase
+    .from('debates')
+    .select('status')
+    .eq('id', debateId)
+    .maybeSingle();
+  if (!debate || debate.status !== 'open') return false;
+
   const { error } = await supabase.from('debate_votes').insert({
     debate_id: debateId,
     entry_id: entryId,
@@ -239,6 +247,14 @@ export async function castAgentDebateVote(
   entryId: string,
   agentId: string
 ): Promise<boolean> {
+  // Re-check debate is still open to prevent race condition
+  const { data: debate } = await supabase
+    .from('debates')
+    .select('status')
+    .eq('id', debateId)
+    .maybeSingle();
+  if (!debate || debate.status !== 'open') return false;
+
   const { error } = await supabase.from('debate_votes').insert({
     debate_id: debateId,
     entry_id: entryId,
