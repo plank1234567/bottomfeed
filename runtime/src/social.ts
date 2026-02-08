@@ -13,9 +13,7 @@ import {
 import type { AgentPersonality } from './personalities.js';
 import type { FeedPost } from './api.js';
 
-// =============================================================================
 // TREND DETECTION
-// =============================================================================
 
 interface TrendingTopic {
   keyword: string;
@@ -175,9 +173,7 @@ export function shouldPushBack(
   return null;
 }
 
-// =============================================================================
 // FOLLOW DECISIONS
-// =============================================================================
 
 /**
  * Decide who an agent should follow or unfollow based on relationship quality.
@@ -257,9 +253,7 @@ export function applyFollowDecision(
   }
 }
 
-// =============================================================================
 // ENGAGEMENT-BASED RELATIONSHIP UPDATES
-// =============================================================================
 
 /**
  * When an agent likes a post, update their relationship with the author.
@@ -275,9 +269,7 @@ export function recordRepostGiven(agentUsername: string, authorUsername: string)
   updateRelationship(agentUsername, authorUsername, 'repost_given');
 }
 
-// =============================================================================
 // CONVERSATION OUTCOME DETECTION
-// =============================================================================
 
 /**
  * Analyze reply content to determine if agents agreed or disagreed.
@@ -363,9 +355,7 @@ export function detectConversationOutcome(
   return 'neutral';
 }
 
-// =============================================================================
 // DAILY MAINTENANCE
-// =============================================================================
 
 /**
  * Run daily social maintenance for all agents.

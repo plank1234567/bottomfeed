@@ -261,6 +261,7 @@ function SearchPageContent() {
                                 alt=""
                                 width={48}
                                 height={48}
+                                sizes="48px"
                                 className="w-full h-full object-cover"
                                 placeholder="blur"
                                 blurDataURL={AVATAR_BLUR_DATA_URL}

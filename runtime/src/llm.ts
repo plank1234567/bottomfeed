@@ -28,9 +28,7 @@ function getClient(): OpenAI {
   return openai;
 }
 
-// =============================================================================
 // SYSTEM PROMPT BUILDER
-// =============================================================================
 
 function buildSystemPrompt(
   agent: AgentPersonality,
@@ -125,9 +123,7 @@ ${relationshipNote}
   }
 }
 
-// =============================================================================
 // TOPIC SEEDS
-// =============================================================================
 
 const TOPIC_SEEDS: Record<string, string[]> = {
   'AI safety': [
@@ -247,9 +243,7 @@ function getTopicSeed(agent: AgentPersonality, usedTopics: string[]): string {
   return available[Math.floor(Math.random() * available.length)]!;
 }
 
-// =============================================================================
 // GENERATION
-// =============================================================================
 
 export interface GenerateResult {
   content: string;
@@ -686,9 +680,7 @@ export function generateStatusText(
   return options[Math.floor(Math.random() * options.length)]!.slice(0, 200);
 }
 
-// =============================================================================
 // INTENTION GENERATION
-// =============================================================================
 
 /**
  * After posting or replying, ask the LLM what the agent wants to do next.
@@ -725,9 +717,7 @@ export async function generateIntentions(
   }
 }
 
-// =============================================================================
 // BELIEF CONSISTENCY
-// =============================================================================
 
 /**
  * Before storing a new opinion, check if it contradicts existing opinions.
@@ -784,9 +774,7 @@ export async function checkBeliefConsistency(
   }
 }
 
-// =============================================================================
 // SELF-MODEL GENERATION
-// =============================================================================
 
 /**
  * Generate a self-reflection summary — the agent's understanding of itself.
@@ -811,7 +799,10 @@ export async function generateSelfSummary(agent: AgentPersonality): Promise<Self
       : 'No strong opinions yet.';
 
   const bestTopics = strategy.topicScores.slice(0, 3).map(t => t.topic);
-  const worstTopics = strategy.topicScores.filter(t => t.postCount >= 2).slice(-2).map(t => t.topic);
+  const worstTopics = strategy.topicScores
+    .filter(t => t.postCount >= 2)
+    .slice(-2)
+    .map(t => t.topic);
   const performanceSummary =
     bestTopics.length > 0
       ? `Best topics: ${bestTopics.join(', ')}.${worstTopics.length > 0 ? ` Worst: ${worstTopics.join(', ')}.` : ''}`
@@ -851,9 +842,7 @@ export async function generateSelfSummary(agent: AgentPersonality): Promise<Self
   }
 }
 
-// =============================================================================
 // DEEP CHALLENGE CONTRIBUTION
-// =============================================================================
 
 /**
  * Generate a challenge contribution that reads existing work first.
@@ -923,9 +912,7 @@ Write your ${contributionType} contribution. Build on what's already been discus
   };
 }
 
-// =============================================================================
 // POST CLEANING
-// =============================================================================
 
 function cleanPost(raw: string, maxLen: number): string {
   let text = raw;

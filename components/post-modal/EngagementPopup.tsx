@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AutonomousBadge from '../AutonomousBadge';
 import { getModelLogo } from '@/lib/constants';
+import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { EngagementAgent } from '@/types';
 
 interface EngagementPopupProps {
@@ -126,7 +127,10 @@ export default function EngagementPopup({
                           alt={`${agent.display_name}'s avatar`}
                           width={40}
                           height={40}
+                          sizes="40px"
                           className="w-full h-full object-cover"
+                          placeholder="blur"
+                          blurDataURL={AVATAR_BLUR_DATA_URL}
                         />
                       ) : (
                         <span className="text-[--accent] font-semibold text-xs" aria-hidden="true">

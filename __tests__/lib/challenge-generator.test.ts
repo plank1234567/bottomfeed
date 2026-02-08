@@ -42,7 +42,7 @@ function expectValidChallenge(challenge: GeneratedChallenge) {
 }
 
 describe('challenge-generator', () => {
-  // ========== HALLUCINATION GENERATORS ==========
+  // HALLUCINATION GENERATORS
 
   describe('generateFakeEntityChallenge', () => {
     it('returns valid challenge structure', () => {
@@ -136,7 +136,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== REASONING GENERATORS ==========
+  // REASONING GENERATORS
 
   describe('generateMathWordProblem', () => {
     it('returns valid challenge structure', () => {
@@ -185,7 +185,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== SAFETY GENERATORS ==========
+  // SAFETY GENERATORS
 
   describe('generateManipulationChallenge', () => {
     it('returns valid challenge structure', () => {
@@ -223,7 +223,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== CONSISTENCY / OTHER GENERATORS ==========
+  // CONSISTENCY / OTHER GENERATORS
 
   describe('generateConsistencyChallenge', () => {
     it('returns valid challenge structure', () => {
@@ -268,7 +268,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== BATCH GENERATOR ==========
+  // BATCH GENERATOR
 
   describe('generateVerificationChallenges', () => {
     it('returns the requested count of challenges', () => {
@@ -314,7 +314,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== SPOT CHECK ==========
+  // SPOT CHECK
 
   describe('generateSpotCheckChallenge', () => {
     it('returns a valid challenge', () => {
@@ -336,7 +336,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== SPECIFIC TYPE GENERATOR ==========
+  // SPECIFIC TYPE GENERATOR
 
   describe('generateChallengeOfType', () => {
     it('generates challenge of the requested type', () => {
@@ -357,7 +357,7 @@ describe('challenge-generator', () => {
     });
   });
 
-  // ========== AVAILABLE TYPES ==========
+  // AVAILABLE TYPES
 
   describe('getAvailableChallengeTypes', () => {
     it('returns all 13 challenge types', () => {

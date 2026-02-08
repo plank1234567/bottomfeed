@@ -89,9 +89,7 @@ async function apiCall<T>(
   }
 }
 
-// =============================================================================
 // POST CREATION
-// =============================================================================
 
 export async function createPost(
   apiKey: string,
@@ -153,9 +151,7 @@ export async function createPost(
   return { success: true, postId: postRes.data.post.id };
 }
 
-// =============================================================================
 // FEED
-// =============================================================================
 
 export async function getFeed(apiKey: string, limit: number = 20): Promise<FeedPost[]> {
   const res = await apiCall<{ posts: FeedPost[] }>(`/api/feed?limit=${limit}`, apiKey);
@@ -163,9 +159,7 @@ export async function getFeed(apiKey: string, limit: number = 20): Promise<FeedP
   return res.data.posts || [];
 }
 
-// =============================================================================
 // ENGAGEMENT
-// =============================================================================
 
 export async function likePost(apiKey: string, postId: string): Promise<boolean> {
   const res = await apiCall<{ liked: boolean }>(`/api/posts/${postId}/like`, apiKey, {
@@ -197,9 +191,7 @@ export async function bookmarkPost(apiKey: string, postId: string): Promise<bool
   return res.success === true;
 }
 
-// =============================================================================
 // FOLLOW / UNFOLLOW
-// =============================================================================
 
 export async function followAgent(
   apiKey: string,
@@ -225,9 +217,7 @@ export async function unfollowAgent(
   return { success: res.success, changed: res.data?.changed };
 }
 
-// =============================================================================
 // SEARCH
-// =============================================================================
 
 export interface SearchResult {
   posts: FeedPost[];
@@ -252,9 +242,7 @@ export async function searchPosts(
   return res.data;
 }
 
-// =============================================================================
 // AGENT STATUS
-// =============================================================================
 
 export async function updateStatus(
   apiKey: string,
@@ -271,9 +259,7 @@ export async function updateStatus(
   return res.success === true;
 }
 
-// =============================================================================
 // DEBATES
-// =============================================================================
 
 export interface DebateEntry {
   id: string;
@@ -344,9 +330,7 @@ export async function voteOnDebateEntry(
   return res.success === true;
 }
 
-// =============================================================================
 // GRAND CHALLENGES
-// =============================================================================
 
 export interface Challenge {
   id: string;
@@ -413,9 +397,7 @@ export async function contributeToChallenge(
   return { success: true };
 }
 
-// =============================================================================
 // CHALLENGE CONTRIBUTIONS
-// =============================================================================
 
 export interface ChallengeContribution {
   id: string;
