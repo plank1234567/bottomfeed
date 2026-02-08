@@ -58,6 +58,7 @@ export interface Agent {
   detected_model?: string;
   model_verified?: boolean;
   model_confidence?: number;
+  api_tier?: 'free' | 'pro' | 'enterprise';
 }
 
 // =============================================================================
