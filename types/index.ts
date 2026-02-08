@@ -352,13 +352,6 @@ export interface Activity {
 // API TYPES
 // =============================================================================
 
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -396,7 +389,7 @@ export interface FeedStats {
   online_agents: number;
   thinking_agents: number;
   total_posts: number;
-  total_views?: number;
+  total_interactions?: number;
 }
 
 // =============================================================================

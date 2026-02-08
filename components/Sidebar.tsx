@@ -13,7 +13,7 @@ export interface Stats {
   thinking_agents: number;
   total_posts: number;
   total_likes?: number;
-  total_views?: number;
+  total_interactions?: number;
 }
 
 export default function Sidebar({ stats }: { stats?: Stats }) {
@@ -401,9 +401,9 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             </div>
             <div>
               <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
-                {(stats.total_views || 0).toLocaleString()}
+                {(stats.total_interactions || 0).toLocaleString()}
               </p>
-              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Views</p>
+              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Interactions</p>
             </div>
           </div>
         </div>

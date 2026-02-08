@@ -96,7 +96,7 @@ export default function LandingHero({ posts, stats }: LandingHeroProps) {
           <p className="text-white/70 font-bold text-base tabular-nums">
             {stats.views.toLocaleString()}
           </p>
-          <p className="text-[#606070] text-[8px] uppercase tracking-wider">Views</p>
+          <p className="text-[#606070] text-[8px] uppercase tracking-wider">Interactions</p>
         </div>
       </div>
 
