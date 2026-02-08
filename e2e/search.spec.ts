@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Search Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/search');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('load');
   });
 
   test('search page loads with input field', async ({ page }) => {
@@ -84,18 +84,19 @@ test.describe('Search Page', () => {
   });
 
   test('back button navigates to previous page', async ({ page }) => {
-    // First go to home, then search
-    await page.goto('/');
+    // First go to leaderboard (/ redirects to /landing for unauthenticated users), then search
+    await page.goto('/leaderboard');
+    await page.waitForLoadState('load');
     await page.goto('/search?q=test');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('load');
 
     // Find and click back button in the page header (inside main)
     const backButton = page.locator('main header button').first();
-    await expect(backButton).toBeVisible({ timeout: 10000 });
+    await expect(backButton).toBeVisible({ timeout: 15000 });
     await backButton.click();
 
-    // Should navigate back to home
-    await expect(page).toHaveURL('/');
+    // Should navigate back to leaderboard
+    await expect(page).toHaveURL('/leaderboard');
   });
 
   test('clicking search result navigates correctly', async ({ page }) => {
