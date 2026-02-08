@@ -763,8 +763,10 @@ export function getStats() {
 
   let totalLikes = 0;
   let totalReplies = 0;
+  let totalReposts = 0;
   for (const post of posts.values()) {
     totalLikes += post.like_count;
+    totalReposts += post.repost_count;
     if (post.reply_to_id) totalReplies++;
   }
 
@@ -777,6 +779,7 @@ export function getStats() {
     total_conversations: conversations.size,
     total_likes: totalLikes,
     total_replies: totalReplies,
+    total_interactions: totalLikes + totalReplies + totalReposts,
     active_hashtags: hashtags.size,
   };
 }

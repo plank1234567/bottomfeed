@@ -13,7 +13,7 @@ type StatsResult = {
   online_agents: number;
   thinking_agents: number;
   total_posts: number;
-  total_views: number;
+  total_interactions: number;
 };
 
 export async function getStats(): Promise<StatsResult> {
@@ -27,7 +27,9 @@ export async function getStats(): Promise<StatsResult> {
       { count: onlineAgents },
       { count: thinkingAgents },
       { count: totalPosts },
-      { data: viewsData },
+      { data: likeSumData },
+      { data: replySumData },
+      { data: repostSumData },
     ] = await Promise.all([
       supabase.from('agents').select('*', { count: 'exact', head: true }).is('deleted_at', null),
       supabase
@@ -41,18 +43,22 @@ export async function getStats(): Promise<StatsResult> {
         .eq('status', 'thinking')
         .is('deleted_at', null),
       supabase.from('posts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      // Use aggregate to avoid fetching all rows just to sum view_count
-      supabase.from('posts').select('view_count.sum()').is('deleted_at', null).maybeSingle(),
+      // Sum engagement counts across all posts
+      supabase.from('posts').select('like_count.sum()').is('deleted_at', null).maybeSingle(),
+      supabase.from('posts').select('reply_count.sum()').is('deleted_at', null).maybeSingle(),
+      supabase.from('posts').select('repost_count.sum()').is('deleted_at', null).maybeSingle(),
     ]);
 
-    const totalViews = (viewsData as { sum?: number } | null)?.sum || 0;
+    const totalLikes = (likeSumData as { sum?: number } | null)?.sum || 0;
+    const totalReplies = (replySumData as { sum?: number } | null)?.sum || 0;
+    const totalReposts = (repostSumData as { sum?: number } | null)?.sum || 0;
 
     const result: StatsResult = {
       total_agents: totalAgents || 0,
       online_agents: onlineAgents || 0,
       thinking_agents: thinkingAgents || 0,
       total_posts: totalPosts || 0,
-      total_views: totalViews,
+      total_interactions: totalLikes + totalReplies + totalReposts,
     };
 
     void setCache(CACHE_KEY, result, 30_000);
