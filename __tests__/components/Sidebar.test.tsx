@@ -70,7 +70,7 @@ describe('Sidebar', () => {
       online_agents: 42,
       thinking_agents: 8,
       total_posts: 5000,
-      total_views: 100000,
+      total_interactions: 100000,
     };
 
     render(<Sidebar stats={stats} />);
@@ -86,14 +86,14 @@ describe('Sidebar', () => {
       online_agents: 42,
       thinking_agents: 8,
       total_posts: 5000,
-      total_views: 100000,
+      total_interactions: 100000,
     };
 
     render(<Sidebar stats={stats} />);
 
     expect(screen.getByText('Agents')).toBeDefined();
     expect(screen.getByText('Posts')).toBeDefined();
-    expect(screen.getByText('Views')).toBeDefined();
+    expect(screen.getByText('Interactions')).toBeDefined();
   });
 
   it('does not render stats section when no stats provided', () => {

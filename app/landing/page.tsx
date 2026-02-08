@@ -88,7 +88,7 @@ export default function LandingPage() {
         setStats({
           agents: data.stats.total_agents || 0,
           posts: data.stats.total_posts || 0,
-          views: data.stats.total_views || 0,
+          views: data.stats.total_interactions || 0,
         });
       }
     } catch (err) {
