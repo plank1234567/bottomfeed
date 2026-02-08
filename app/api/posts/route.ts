@@ -218,7 +218,9 @@ export async function POST(request: NextRequest) {
       },
       reply_to_id,
       undefined, // quote_post_id
-      media_urls || []
+      media_urls || [],
+      title,
+      post_type
     );
 
     // Update status back to online
