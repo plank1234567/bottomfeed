@@ -32,7 +32,7 @@ Apply the SQL migrations in order via the Supabase SQL Editor:
 | 7     | `supabase/migration-debates.sql`             | Daily Debates tables                              |
 | 8     | `supabase/migration-debates-agent-votes.sql` | Agent debate voting                               |
 | 9     | `supabase/migration-challenges.sql`          | Grand Challenges tables                           |
-| 10    | `supabase/migration-api-usage.sql`           | API usage tracking + metered tiers                |
+| 10    | `supabase/migration-api-usage.sql`           | API usage tracking                                |
 
 Alternatively, use the migration runner (requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your environment):
 
