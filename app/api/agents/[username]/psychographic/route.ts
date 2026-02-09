@@ -41,6 +41,7 @@ export async function GET(
       const dimensionMap: Record<string, unknown> = {};
       for (const dim of dimensions) {
         dimensionMap[dim.key] = {
+          key: dim.key,
           score: dim.score,
           confidence: dim.confidence,
           trend: dim.trend,
@@ -74,6 +75,7 @@ export async function GET(
       const dimensionMap: Record<string, unknown> = {};
       for (const dim of fallbackDimensions) {
         dimensionMap[dim.key] = {
+          key: dim.key,
           score: dim.score,
           confidence: dim.confidence,
           trend: dim.trend,
@@ -98,7 +100,7 @@ export async function GET(
     // No data at all
     const emptyDimensions: Record<string, unknown> = {};
     for (const key of DIMENSION_KEYS) {
-      emptyDimensions[key] = { score: 50, confidence: 0, trend: 'stable' };
+      emptyDimensions[key] = { key, score: 50, confidence: 0, trend: 'stable' };
     }
 
     return success({

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import OctagonChart from '@/components/OctagonChart';
 import type { PsychographicDimension } from '@/types';
 
@@ -21,7 +21,7 @@ describe('OctagonChart', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
     );
-    const svg = container.querySelector('svg');
+    const svg = container.querySelector('svg.octagon-chart-svg');
     expect(svg).toBeTruthy();
   });
 
@@ -49,16 +49,15 @@ describe('OctagonChart', () => {
 
   it('does not show labels in micro mode', () => {
     const { container } = render(<OctagonChart dimensions={mockDimensions} size="micro" />);
-    // Micro mode should not have text labels inside SVG
     const textElements = container.querySelectorAll('svg text');
     expect(textElements.length).toBe(0);
   });
 
-  it('shows 2-letter labels in compact mode', () => {
+  it('shows labels with scores in compact mode', () => {
     const { container } = render(<OctagonChart dimensions={mockDimensions} size="compact" />);
     const textElements = container.querySelectorAll('svg text');
-    expect(textElements.length).toBe(8); // 8 short labels
-    // Check one of the labels
+    // 8 short names + 8 scores = 16
+    expect(textElements.length).toBe(16);
     const labels = Array.from(textElements).map(t => t.textContent);
     expect(labels).toContain('IH');
     expect(labels).toContain('SA');
@@ -79,8 +78,154 @@ describe('OctagonChart', () => {
     expect(svg).toBeTruthy();
   });
 
-  it('shows confidence match percentage in standard mode', () => {
-    render(<OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />);
-    expect(screen.getByText('85% match')).toBeTruthy();
+  it('shows secondary archetype in standard mode', () => {
+    const archetypeWithSecondary = { name: 'The Scholar', secondary: 'The Sage', confidence: 0.85 };
+    render(
+      <OctagonChart
+        dimensions={mockDimensions}
+        archetype={archetypeWithSecondary}
+        size="standard"
+      />
+    );
+    expect(screen.getByText('+ The Sage')).toBeTruthy();
+  });
+
+  it('uses smooth path with cubic bezier curves for data shape', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
+    );
+    const dataPath = container.querySelector('.octagon-data-shape');
+    expect(dataPath).toBeTruthy();
+    expect(dataPath?.getAttribute('d')).toContain('C ');
+  });
+
+  it('renders SVG filter definitions', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
+    );
+    expect(container.querySelector('#oct-glow')).toBeTruthy();
+    expect(container.querySelector('#oct-fill')).toBeTruthy();
+    expect(container.querySelector('#oct-dot-glow')).toBeTruthy();
+  });
+
+  it('renders center origin dot', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
+    );
+    // Center dot has oct-core-breathe class when animations active (confidence > 0.5)
+    const core = container.querySelector('.oct-core-breathe');
+    expect(core).toBeTruthy();
+  });
+
+  it('shows hover detail panel on vertex hover', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
+    );
+    // Find vertex groups (g elements with cursor:pointer style inside main SVG)
+    const groups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
+    expect(groups.length).toBe(8);
+    fireEvent.mouseEnter(groups[0]!);
+    // Detail panel should appear
+    const panel = container.querySelector('.oct-detail-panel');
+    expect(panel).toBeTruthy();
+  });
+
+  it('hover panel shows confidence and interpretation', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
+    );
+    const groups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
+    fireEvent.mouseEnter(groups[0]!);
+    const panel = container.querySelector('.oct-detail-panel');
+    expect(panel).toBeTruthy();
+    // Should contain confidence text
+    expect(panel?.textContent).toContain('Confidence');
+    expect(panel?.textContent).toContain('80%');
+    // Should contain interpretation label
+    expect(panel?.textContent).toContain('Deep analytical thinker');
+  });
+
+  it('generates behavioral summary text', () => {
+    render(
+      <OctagonChart
+        dimensions={mockDimensions}
+        archetype={mockArchetype}
+        size="standard"
+        agentName="TestAgent"
+      />
+    );
+    const summary = document.querySelector('.oct-summary');
+    expect(summary).toBeTruthy();
+    expect(summary?.textContent).toContain('TestAgent');
+    expect(summary?.textContent).toContain('tends toward');
+  });
+
+  it('does not render summary in micro mode', () => {
+    const { container } = render(
+      <OctagonChart
+        dimensions={mockDimensions}
+        archetype={mockArchetype}
+        size="micro"
+        agentName="TestAgent"
+      />
+    );
+    expect(container.querySelector('.oct-summary')).toBeNull();
+  });
+
+  it('renders confidence ring in non-micro mode', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
+    );
+    const ring = container.querySelector('.oct-confidence-ring');
+    expect(ring).toBeTruthy();
+  });
+
+  it('does not render confidence ring in micro mode', () => {
+    const { container } = render(<OctagonChart dimensions={mockDimensions} size="micro" />);
+    expect(container.querySelector('.oct-confidence-ring')).toBeNull();
+  });
+
+  it('shows bridge data indicator when all confidences are 0.5', () => {
+    const bridgeDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      confidence: 0.5,
+    }));
+    render(<OctagonChart dimensions={bridgeDims} size="standard" />);
+    expect(screen.getByText('Estimated from bio')).toBeTruthy();
+  });
+
+  it('shows building profile message for low-data agents', () => {
+    const lowConfDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      confidence: 0,
+    }));
+    render(<OctagonChart dimensions={lowConfDims} size="standard" profilingStage={0} />);
+    // Chart still renders (not a placeholder)
+    expect(screen.getByRole('img')).toBeTruthy();
+    expect(screen.getByText(/Building behavioral profile/)).toBeTruthy();
+  });
+
+  it('renders chart even with zero confidence (dim but visible)', () => {
+    const lowConfDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      confidence: 0,
+    }));
+    const { container } = render(<OctagonChart dimensions={lowConfDims} size="standard" />);
+    const svg = container.querySelector('svg.octagon-chart-svg');
+    expect(svg).toBeTruthy();
+    // Data shape should still exist
+    expect(container.querySelector('.octagon-data-shape')).toBeTruthy();
+  });
+
+  it('shows total actions provenance when provided', () => {
+    render(
+      <OctagonChart
+        dimensions={mockDimensions}
+        archetype={mockArchetype}
+        size="standard"
+        totalActions={1247}
+      />
+    );
+    expect(screen.getByText(/1,247 analyzed actions/)).toBeTruthy();
   });
 });
