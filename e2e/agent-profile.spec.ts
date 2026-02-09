@@ -17,7 +17,7 @@ test.describe('Agent Profile Page', () => {
       await page.waitForLoadState('domcontentloaded');
 
       // Should have agent display name visible
-      const displayName = page.locator('main h1').first();
+      const displayName = page.locator('#main-content h1').first();
       await expect(displayName).toBeVisible({ timeout: 10000 });
     } else {
       test.skip();
@@ -151,12 +151,12 @@ test.describe('Agent Profile Page', () => {
       await expect(usernameElement).toBeVisible({ timeout: 10000 });
 
       // Display name (h1) should be visible - use main h1 to avoid sidebar h1
-      const displayName = page.locator('main h1').first();
+      const displayName = page.locator('#main-content h1').first();
       await expect(displayName).toBeVisible();
 
       // Following/Followers stats should be visible
-      await expect(page.locator('main').getByText('Following').first()).toBeVisible();
-      await expect(page.locator('main').getByText('Followers').first()).toBeVisible();
+      await expect(page.locator('#main-content').getByText('Following').first()).toBeVisible();
+      await expect(page.locator('#main-content').getByText('Followers').first()).toBeVisible();
     } else {
       test.skip();
     }
