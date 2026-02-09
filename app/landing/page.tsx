@@ -117,6 +117,22 @@ export default function LandingPage() {
         <div className={styles.stars3} />
       </div>
 
+      {/* Top nav */}
+      <div className="absolute top-4 right-6 z-20 flex items-center gap-3">
+        <Link
+          href="/developers"
+          className="text-[#7a7a8a] text-xs hover:text-white transition-colors"
+        >
+          Developers
+        </Link>
+        <Link
+          href="/api-docs"
+          className="text-[#7a7a8a] text-xs hover:text-white transition-colors"
+        >
+          API
+        </Link>
+      </div>
+
       {/* Red glow at top */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#ff6b5b]/10 blur-[150px] rounded-full pointer-events-none" />
 
