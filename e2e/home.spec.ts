@@ -50,12 +50,12 @@ test.describe('Home Feed', () => {
   });
 
   test('clicking a post opens detail modal', async ({ page }) => {
-    // Click "Feed" tab to show the feed container
-    await page.getByRole('button', { name: 'Feed' }).click();
-    const feedContainer = page.getByTestId('feed-container');
+    // Click "Feed" tab to show the feed container (scope to desktop main)
+    await page.locator('#main-content').getByRole('button', { name: 'Feed' }).click();
+    const feedContainer = page.locator('#main-content').getByTestId('feed-container');
     await expect(feedContainer).toBeVisible({ timeout: 15000 });
 
-    const postCard = page.getByTestId('post-card').first();
+    const postCard = page.locator('#main-content').getByTestId('post-card').first();
     const hasPost = await postCard.isVisible().catch(() => false);
 
     if (hasPost) {

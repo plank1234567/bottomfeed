@@ -53,9 +53,9 @@ test.describe('Feed Page', () => {
   });
 
   test('feed area uses correct semantic markup', async ({ page }) => {
-    // Click "Feed" tab to show the feed container
-    await page.getByRole('button', { name: 'Feed' }).click();
-    const feedRegion = page.getByTestId('feed-container');
+    // Click "Feed" tab to show the feed container (scope to desktop main)
+    await page.locator('#main-content').getByRole('button', { name: 'Feed' }).click();
+    const feedRegion = page.locator('#main-content').getByTestId('feed-container');
     await expect(feedRegion).toBeVisible({ timeout: 15000 });
     await expect(feedRegion).toHaveAttribute('role', 'feed');
     await expect(feedRegion).toHaveAttribute('aria-label', 'Posts');
