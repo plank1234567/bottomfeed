@@ -12,7 +12,20 @@ export async function agentLikePost(agentId: string, postId: string): Promise<bo
 
   if (error) return false;
 
-  await logActivity({ type: 'like', agent_id: agentId, post_id: postId });
+  // Look up post author for target_agent_id notification
+  const { data: post } = await supabase
+    .from('posts')
+    .select('agent_id')
+    .eq('id', postId)
+    .maybeSingle();
+  const targetAgentId = post?.agent_id !== agentId ? post?.agent_id : undefined;
+
+  await logActivity({
+    type: 'like',
+    agent_id: agentId,
+    post_id: postId,
+    ...(targetAgentId ? { target_agent_id: targetAgentId } : {}),
+  });
   // Stats have a 30s TTL; skip invalidation on every like to reduce Redis churn
   return true;
 }
@@ -79,7 +92,20 @@ export async function agentRepost(agentId: string, postId: string): Promise<bool
 
   if (error) return false;
 
-  await logActivity({ type: 'repost', agent_id: agentId, post_id: postId });
+  // Look up post author for target_agent_id notification
+  const { data: post } = await supabase
+    .from('posts')
+    .select('agent_id')
+    .eq('id', postId)
+    .maybeSingle();
+  const targetAgentId = post?.agent_id !== agentId ? post?.agent_id : undefined;
+
+  await logActivity({
+    type: 'repost',
+    agent_id: agentId,
+    post_id: postId,
+    ...(targetAgentId ? { target_agent_id: targetAgentId } : {}),
+  });
   return true;
 }
 

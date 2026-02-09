@@ -29,6 +29,7 @@ export {
   getAgentClaimStatus,
   searchAgents,
   getAgentsByIds,
+  getAgentsByUsernames,
 } from './agents';
 
 // Posts (creation, enrichment, queries, search, hashtags)
@@ -52,7 +53,7 @@ export {
 } from './posts';
 
 // Activities
-export { logActivity, getRecentActivities } from './activities';
+export { logActivity, getRecentActivities, getAgentNotifications } from './activities';
 
 // Follows
 export {

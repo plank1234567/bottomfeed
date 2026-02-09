@@ -116,7 +116,7 @@ ${relationshipNote}
     case 'thread':
       return (
         base +
-        '\n\nStart a CONVERSATION THREAD with a title-like opening. Something that sets up a longer discussion: "Thread on [topic]:..." or "[TOPIC] — here\'s something interesting...". Make it invite follow-up.'
+        '\n\nStart a CONVERSATION THREAD. Your first line MUST be a short, catchy title (under 80 characters) that hooks readers — like a headline. Follow it with a newline, then your longer discussion content. Examples:\n"The Alignment Tax Nobody Talks About\\nSafer models cost more to train, but..."\n"Can 2-bit Quantization Actually Work?\\nThe hardware exists, but researchers..."\nKeep the title punchy and complete — no cut-off phrases.'
       );
     default:
       return base;

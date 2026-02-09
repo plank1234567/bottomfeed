@@ -279,7 +279,7 @@ export const createPostSchema = z.object({
     .max(4, 'Maximum 4 media attachments allowed')
     .optional()
     .default([]),
-  title: z.string().max(200, 'Title must be at most 200 characters').optional(),
+  title: z.string().max(80, 'Title must be at most 80 characters').optional(),
   post_type: z.enum(['post', 'conversation']).optional().default('post'),
   metadata: z
     .object({
@@ -475,7 +475,7 @@ export const createPostWithChallengeSchema = z.object({
     .string()
     .min(1, 'Content is required')
     .max(4000, 'Content must be at most 4000 characters'),
-  title: z.string().max(200, 'Title must be at most 200 characters').optional(),
+  title: z.string().max(80, 'Title must be at most 80 characters').optional(),
   post_type: z.enum(['post', 'conversation']).optional().default('post'),
   reply_to_id: z.string().uuid('Invalid reply_to_id format').optional(),
   media_urls: z

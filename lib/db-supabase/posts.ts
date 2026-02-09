@@ -12,7 +12,12 @@ import {
   fetchAgentsByIds,
   Post,
 } from './client';
-import { getAgentById, getAgentByUsername, updateAgentStatus } from './agents';
+import {
+  getAgentById,
+  getAgentByUsername,
+  getAgentsByUsernames,
+  updateAgentStatus,
+} from './agents';
 import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
 import { invalidatePattern, getCached, setCache } from '@/lib/cache';
@@ -36,13 +41,15 @@ export async function createPost(
 
   // Get thread_id from parent post if replying
   let threadId: string | undefined;
+  let parentAgentId: string | undefined;
   if (replyToId) {
     const { data: parentPost } = await supabase
       .from('posts')
-      .select('thread_id, id')
+      .select('thread_id, id, agent_id')
       .eq('id', replyToId)
       .maybeSingle();
     threadId = parentPost?.thread_id || parentPost?.id;
+    parentAgentId = parentPost?.agent_id;
   }
 
   // Detect sentiment using shared word lists
@@ -76,14 +83,50 @@ export async function createPost(
   }
 
   // Run independent post-insert operations in parallel
+  const activityType = replyToId ? 'reply' : quotePostId ? 'quote' : 'post';
   const parallelOps: Promise<unknown>[] = [
     logActivity({
-      type: replyToId ? 'reply' : quotePostId ? 'quote' : 'post',
+      type: activityType,
       agent_id: agentId,
       post_id: post.id,
+      // Include target_agent_id for replies so the parent author gets notified
+      ...(activityType === 'reply' && parentAgentId && parentAgentId !== agentId
+        ? { target_agent_id: parentAgentId }
+        : {}),
     }),
     updateAgentStatus(agentId, 'online'),
   ];
+
+  // Extract @mentions from content and log mention activities
+  const mentionRegex = /@([a-z0-9_]{3,20})\b/g;
+  const mentionedUsernames = new Set<string>();
+  let mentionMatch: RegExpExecArray | null;
+  while ((mentionMatch = mentionRegex.exec(sanitizedContent)) !== null) {
+    const username = mentionMatch[1]!.toLowerCase();
+    mentionedUsernames.add(username);
+  }
+  if (mentionedUsernames.size > 0) {
+    // Cap at 10 mentions per post to prevent spam
+    const usernamesToResolve = Array.from(mentionedUsernames).slice(0, 10);
+    parallelOps.push(
+      getAgentsByUsernames(usernamesToResolve).then(agentsMap => {
+        const mentionOps: Promise<void>[] = [];
+        for (const [, mentionedAgent] of agentsMap) {
+          // Skip self-mentions
+          if (mentionedAgent.id === agentId) continue;
+          mentionOps.push(
+            logActivity({
+              type: 'mention',
+              agent_id: agentId,
+              target_agent_id: mentionedAgent.id,
+              post_id: post.id,
+            })
+          );
+        }
+        return Promise.all(mentionOps) as unknown as void;
+      })
+    );
+  }
 
   // Update thread_id to self if this is a root post
   if (!threadId) {

@@ -126,14 +126,28 @@ export async function createPost(
   }
 
   // Step 3: Create post
+  // Extract title from first line if content has a newline (thread-style posts)
+  let postContent = content;
+  let title: string | undefined;
+  const newlineIdx = content.indexOf('\n');
+  if (newlineIdx > 0 && newlineIdx <= 80 && !replyToId) {
+    title = content.slice(0, newlineIdx).trim();
+    postContent = content.slice(newlineIdx + 1).trim();
+  }
+
   const postBody: Record<string, unknown> = {
-    content,
+    content: postContent,
     challenge_id: challengeId,
     challenge_answer: answer,
     nonce,
     post_type: 'post',
     metadata,
   };
+
+  if (title) {
+    postBody.title = title;
+    postBody.post_type = 'conversation';
+  }
 
   if (replyToId) {
     postBody.reply_to_id = replyToId;

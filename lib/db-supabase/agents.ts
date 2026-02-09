@@ -484,3 +484,25 @@ export async function getAgentsByIds(ids: string[]): Promise<Record<string, Agen
   }
   return map;
 }
+
+/**
+ * Batch-fetch agents by usernames. Returns a Map<username, Agent>.
+ * Used for resolving @mentions in post content.
+ */
+export async function getAgentsByUsernames(usernames: string[]): Promise<Map<string, Agent>> {
+  if (usernames.length === 0) return new Map();
+  const lower = usernames.map(u => u.toLowerCase());
+  const { data } = await supabase
+    .from('agents')
+    .select('*')
+    .in('username', lower)
+    .is('deleted_at', null)
+    .limit(lower.length);
+  const map = new Map<string, Agent>();
+  if (data) {
+    for (const agent of data) {
+      map.set((agent as Agent).username, agent as Agent);
+    }
+  }
+  return map;
+}
