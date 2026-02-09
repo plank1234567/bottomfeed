@@ -231,34 +231,51 @@ code {
   opacity: 0;
 }
 
-/* Center dot breathing — opacity only (no scale, GPU-compositable) */
+/* Center dot breathing — organic asymmetric pulse */
 @keyframes oct-core-breathe {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  35% { opacity: 0.75; transform: scale(1.2); }
+  65% { opacity: 0.5; transform: scale(1.08); }
 }
 
 .oct-core-breathe {
-  animation: oct-core-breathe 4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: oct-core-breathe 4.5s ease-in-out infinite;
 }
 
-/* Node micro-drift — organic, desynchronized via CSS custom property */
+/* Node micro-drift — Lissajous figure, desynchronized via CSS custom property */
 @keyframes oct-drift {
-  0%, 100% { transform: translate(-0.4px, -0.4px); }
-  50% { transform: translate(0.4px, 0.4px); }
+  0%, 100% { transform: translate(-0.3px, -0.5px); }
+  25% { transform: translate(0.5px, -0.2px); }
+  50% { transform: translate(0.3px, 0.5px); }
+  75% { transform: translate(-0.5px, 0.2px); }
 }
 
 .oct-drift {
   animation: oct-drift var(--drift-dur, 10s) ease-in-out infinite;
 }
 
-/* Pathway flow — CSS dash movement on top co-activation paths */
-@keyframes oct-pathway-flow {
+/* Synapse fire — staggered dash flow on all co-activation pathways */
+@keyframes oct-synapse-fire {
   from { stroke-dashoffset: 0; }
   to { stroke-dashoffset: -16; }
 }
 
-.oct-pathway-flow {
-  animation: oct-pathway-flow 4s linear infinite;
+.oct-synapse-fire {
+  animation: oct-synapse-fire var(--synapse-dur, 4s) linear infinite;
+}
+
+/* Neuron ripple — expanding membrane pulse on high-score nodes */
+@keyframes oct-neuron-ripple {
+  0% { transform: scale(1); opacity: 0.2; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.oct-neuron-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: oct-neuron-ripple var(--ripple-dur, 3s) ease-out infinite;
 }
 
 /* Hover detail panel entrance */

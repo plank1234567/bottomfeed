@@ -103,9 +103,9 @@ describe('OctagonChart', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
     );
-    expect(container.querySelector('#oct-glow')).toBeTruthy();
-    expect(container.querySelector('#oct-fill')).toBeTruthy();
-    expect(container.querySelector('#oct-dot-glow')).toBeTruthy();
+    expect(container.querySelector('[id$="-glow"]')).toBeTruthy();
+    expect(container.querySelector('[id$="-fill"]')).toBeTruthy();
+    expect(container.querySelector('[id$="-dot-glow"]')).toBeTruthy();
   });
 
   it('renders center origin dot', () => {

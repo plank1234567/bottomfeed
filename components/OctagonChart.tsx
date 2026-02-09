@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useState, useCallback, memo, useId } from 'react';
 import type { PsychographicDimension } from '@/types';
 
 // =============================================================================
@@ -294,6 +294,11 @@ function OctagonChartInner({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const handleHover = useCallback((i: number | null) => setHoveredIndex(i), []);
 
+  // Unique prefix for SVG IDs — prevents collisions when multiple charts render on one page
+  const _uid = useId().replace(/:/g, '');
+  const svgId = useCallback((name: string) => `${_uid}-${name}`, [_uid]);
+  const svgRef = useCallback((name: string) => `url(#${_uid}-${name})`, [_uid]);
+
   const dims = useMemo(() => {
     const dimKeys = [
       'intellectual_hunger',
@@ -399,7 +404,7 @@ function OctagonChartInner({
         >
           <defs>
             {/* Segment glow — stdDeviation 4 (reduced from 6) */}
-            <filter id="oct-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id={svgId('glow')} x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation={isMicro ? '2' : '4'} result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -407,7 +412,7 @@ function OctagonChartInner({
               </feMerge>
             </filter>
             {/* Node hover glow */}
-            <filter id="oct-dot-glow" x="-100%" y="-100%" width="300%" height="300%">
+            <filter id={svgId('dot-glow')} x="-100%" y="-100%" width="300%" height="300%">
               <feGaussianBlur stdDeviation="3" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -415,13 +420,19 @@ function OctagonChartInner({
               </feMerge>
             </filter>
             {/* Pathway glow layer */}
-            <filter id="oct-path-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id={svgId('path-glow')} x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="2.5" />
             </filter>
             {/* Data fill gradient */}
-            <radialGradient id="oct-fill" cx="50%" cy="50%" r="50%">
+            <radialGradient id={svgId('fill')} cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor={DIMENSION_META[0]!.color} stopOpacity="0.15" />
               <stop offset="100%" stopColor={DIMENSION_META[4]!.color} stopOpacity="0.02" />
+            </radialGradient>
+            {/* Nucleus glow */}
+            <radialGradient id={svgId('nucleus')}>
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#fff" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0" />
             </radialGradient>
             {/* Per-segment stroke gradients */}
             {segmentPaths.map((_, i) => {
@@ -432,7 +443,7 @@ function OctagonChartInner({
               return (
                 <linearGradient
                   key={`seg-g-${i}`}
-                  id={`oct-seg-${i}`}
+                  id={svgId(`seg-${i}`)}
                   x1={p1.x}
                   y1={p1.y}
                   x2={p2.x}
@@ -448,7 +459,7 @@ function OctagonChartInner({
             {pathways.map((p, pi) => (
               <linearGradient
                 key={`pw-g-${pi}`}
-                id={`oct-pw-${pi}`}
+                id={svgId(`pw-${pi}`)}
                 gradientUnits="userSpaceOnUse"
                 x1={getPoint(p.i, dims[p.i]!.score / 100, cx, cy, radius).x}
                 y1={getPoint(p.i, dims[p.i]!.score / 100, cx, cy, radius).y}
@@ -488,6 +499,34 @@ function OctagonChartInner({
             );
           })}
 
+          {/* === Layer 1.5: Neural mesh — tissue texture === */}
+          {!isMicro && globalConfidence > 0.3 && (
+            <g opacity={Math.min(globalConfidence * 0.4, 0.15)}>
+              {[
+                [0, 3],
+                [1, 4],
+                [2, 5],
+                [3, 6],
+                [4, 7],
+              ].map(([a, b]) => {
+                const p1 = getPoint(a!, 0.38, cx, cy, radius);
+                const p2 = getPoint(b!, 0.38, cx, cy, radius);
+                return (
+                  <line
+                    key={`mesh-${a}-${b}`}
+                    x1={p1.x}
+                    y1={p1.y}
+                    x2={p2.x}
+                    y2={p2.y}
+                    stroke="rgba(255,255,255,0.15)"
+                    strokeWidth="0.5"
+                    strokeDasharray="2 4"
+                  />
+                );
+              })}
+            </g>
+          )}
+
           {/* === Layer 2: Co-activation pathways (max 6) === */}
           {!isMicro &&
             pathways.map((p, pi) => {
@@ -501,22 +540,27 @@ function OctagonChartInner({
                   <path
                     d={p.d}
                     fill="none"
-                    stroke={`url(#oct-pw-${pi})`}
+                    stroke={svgRef(`pw-${pi}`)}
                     strokeWidth={width * 2.5}
                     opacity={opacity * 0.4}
-                    filter="url(#oct-path-glow)"
+                    filter={opacity * 0.4 > 0.03 ? svgRef('path-glow') : undefined}
                     style={{ transition: 'opacity 0.4s ease' }}
                   />
                   {/* Main pathway */}
                   <path
                     d={p.d}
                     fill="none"
-                    stroke={`url(#oct-pw-${pi})`}
+                    stroke={svgRef(`pw-${pi}`)}
                     strokeWidth={width}
                     opacity={opacity}
-                    strokeDasharray={pi < 2 && animationsActive ? '2 6' : 'none'}
-                    className={pi < 2 && animationsActive ? 'oct-pathway-flow' : ''}
-                    style={{ transition: 'opacity 0.4s ease' }}
+                    strokeDasharray={animationsActive ? '2 6' : 'none'}
+                    className={animationsActive ? 'oct-synapse-fire' : ''}
+                    style={
+                      {
+                        transition: 'opacity 0.4s ease',
+                        '--synapse-dur': `${3 + pi * 0.7}s`,
+                      } as React.CSSProperties
+                    }
                   />
                 </g>
               );
@@ -527,7 +571,7 @@ function OctagonChartInner({
             {/* Fill — opacity modulated by confidence */}
             <path
               d={dataPath}
-              fill="url(#oct-fill)"
+              fill={svgRef('fill')}
               opacity={fillOpacity}
               className="octagon-data-shape"
               strokeDasharray={isBridge ? '4 4' : 'none'}
@@ -540,10 +584,10 @@ function OctagonChartInner({
                 key={`seg-${i}`}
                 d={d}
                 fill="none"
-                stroke={`url(#oct-seg-${i})`}
+                stroke={svgRef(`seg-${i}`)}
                 strokeWidth={isMicro ? '1.5' : '2'}
                 strokeLinecap="round"
-                filter={isMicro ? undefined : 'url(#oct-glow)'}
+                filter={isMicro ? undefined : svgRef('glow')}
                 opacity={0.6 + globalConfidence * 0.4}
                 strokeDasharray={isBridge ? '4 4' : 'none'}
               />
@@ -577,6 +621,10 @@ function OctagonChartInner({
             const baseR = isMicro ? 2 : isCompact ? 3.5 : 4;
             const nodeR = baseR + (d.score / 100) * (isMicro ? 1 : 2);
             const nodeOpacity = Math.max(0.5, d.confidence) * (nodeActive ? 1 : 0.4);
+            const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
+            const stubLen = 5 + (d.score / 100) * 4;
+            const dendX = p.x + Math.cos(angle) * stubLen;
+            const dendY = p.y + Math.sin(angle) * stubLen;
 
             return (
               <g
@@ -586,14 +634,42 @@ function OctagonChartInner({
                 style={{ cursor: isMicro ? 'default' : 'pointer', transition: 'opacity 0.4s ease' }}
                 opacity={nodeActive ? 1 : 0.4}
               >
-                {/* Halo glow */}
+                {/* Dendrite stub — axon extension */}
+                {!isMicro && (
+                  <line
+                    x1={p.x}
+                    y1={p.y}
+                    x2={dendX}
+                    y2={dendY}
+                    stroke={meta.color}
+                    strokeWidth="0.8"
+                    strokeLinecap="round"
+                    opacity={d.confidence * 0.35}
+                  />
+                )}
+                {/* Neuron ripple — expanding membrane pulse */}
+                {!isMicro && d.score >= 75 && animationsActive && (
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={nodeR * 1.6}
+                    fill="none"
+                    stroke={meta.color}
+                    strokeWidth="0.5"
+                    className="oct-neuron-ripple"
+                    style={{ '--ripple-dur': `${2.5 + i * 0.4}s` } as React.CSSProperties}
+                  />
+                )}
+                {/* Membrane ring */}
                 {!isMicro && (
                   <circle
                     cx={p.x}
                     cy={p.y}
-                    r={active ? nodeR * 3 : nodeR * 1.8}
-                    fill={meta.color}
-                    opacity={active ? 0.15 : 0.04}
+                    r={active ? nodeR * 2.5 : nodeR * 1.8}
+                    fill="none"
+                    stroke={meta.color}
+                    strokeWidth={active ? 1 : 0.7}
+                    opacity={active ? 0.4 : 0.1}
                     style={{ transition: 'all 0.3s ease' }}
                   />
                 )}
@@ -604,7 +680,7 @@ function OctagonChartInner({
                   r={active ? nodeR * 1.3 : nodeR}
                   fill={meta.color}
                   opacity={nodeOpacity}
-                  filter={active ? 'url(#oct-dot-glow)' : undefined}
+                  filter={active ? svgRef('dot-glow') : undefined}
                   className={animationsActive ? 'oct-drift' : ''}
                   style={
                     {
@@ -613,15 +689,15 @@ function OctagonChartInner({
                     } as React.CSSProperties
                   }
                 />
-                {/* Nucleus */}
+                {/* Nucleus glow */}
                 {!isMicro && (
                   <circle
                     cx={p.x}
                     cy={p.y}
-                    r={1.2}
-                    fill="#fff"
-                    opacity={active ? 0.8 : 0.25}
-                    style={{ transition: 'opacity 0.2s ease' }}
+                    r={active ? 2.5 : 1.8}
+                    fill={svgRef('nucleus')}
+                    opacity={active ? 1 : 0.4}
+                    style={{ transition: 'all 0.2s ease' }}
                   />
                 )}
               </g>
@@ -908,6 +984,7 @@ export default memo(OctagonChartInner, (prev, next) => {
   if (prev.size !== next.size || prev.agentName !== next.agentName) return false;
   if (prev.archetype?.name !== next.archetype?.name) return false;
   if (prev.archetype?.confidence !== next.archetype?.confidence) return false;
+  if (prev.archetype?.secondary !== next.archetype?.secondary) return false;
   if (prev.profilingStage !== next.profilingStage) return false;
   if (prev.totalActions !== next.totalActions) return false;
   if (prev.dimensions.length !== next.dimensions.length) return false;
