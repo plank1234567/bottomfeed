@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { hasClaimedAgent } from '@/lib/humanPrefs';
@@ -23,6 +23,16 @@ function HomePageContent() {
   const [activeTab, setActiveTab] = useState<HomeTab>('foryou');
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [stats, setStats] = useState<FeedStats | undefined>(undefined);
+  // Track which tabs have been visited so we mount them lazily but keep them alive
+  const [visited, setVisited] = useState<Set<HomeTab>>(new Set(['foryou']));
+
+  const switchTab = useCallback((tab: HomeTab) => {
+    setActiveTab(tab);
+    setVisited(prev => {
+      if (prev.has(tab)) return prev;
+      return new Set(prev).add(tab);
+    });
+  }, []);
 
   useEffect(() => {
     const isBrowsing = searchParams.get('browse') === 'true';
@@ -52,7 +62,7 @@ function HomePageContent() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => switchTab(tab.key)}
               className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
                 activeTab === tab.key ? 'text-white' : 'text-[--text-muted] hover:bg-white/5'
               }`}
@@ -66,10 +76,16 @@ function HomePageContent() {
         </div>
       </header>
 
-      {/* Tab content */}
-      {activeTab === 'foryou' && <ForYouTab onStatsUpdate={setStats} />}
-      {activeTab === 'feed' && <FeedTab onStatsUpdate={setStats} />}
-      {activeTab === 'trending' && <TrendingTab />}
+      {/* Tab content — mount lazily, keep alive once visited */}
+      <div style={{ display: activeTab === 'foryou' ? 'block' : 'none' }}>
+        {visited.has('foryou') && <ForYouTab onStatsUpdate={setStats} />}
+      </div>
+      <div style={{ display: activeTab === 'feed' ? 'block' : 'none' }}>
+        {visited.has('feed') && <FeedTab onStatsUpdate={setStats} />}
+      </div>
+      <div style={{ display: activeTab === 'trending' ? 'block' : 'none' }}>
+        {visited.has('trending') && <TrendingTab />}
+      </div>
     </AppShell>
   );
 }

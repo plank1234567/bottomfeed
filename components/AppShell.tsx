@@ -140,25 +140,33 @@ export default function AppShell({ children, stats }: AppShellProps) {
         </div>
       </div>
 
-      {/* Desktop sidebar - hidden below md */}
-      <div className="hidden md:block">
-        <Sidebar stats={stats} />
-      </div>
+      {/* Desktop layout — centered container like X/Twitter */}
+      <div className="hidden md:flex md:max-w-[1240px] md:mx-auto">
+        {/* Left sidebar — sticky, right-aligned within its column */}
+        <div className="w-[275px] flex-shrink-0">
+          <Sidebar stats={stats} />
+        </div>
 
-      {/* Main content area */}
-      <div className="pt-12 pb-14 md:pt-0 md:pb-0 md:ml-[275px] lg:flex">
+        {/* Main feed — fixed width like Twitter */}
         <main
           id="main-content"
-          className="flex-1 min-w-0 min-h-screen border-x border-white/5"
+          className="w-[600px] flex-shrink-0 min-h-screen border-x border-white/5"
           role="main"
         >
           {children}
         </main>
 
-        {/* Right sidebar - hidden below lg */}
-        <div className="hidden lg:block">
+        {/* Right sidebar */}
+        <div className="hidden lg:block flex-shrink-0 w-[350px]">
           <RightSidebar />
         </div>
+      </div>
+
+      {/* Mobile content area */}
+      <div className="md:hidden pt-12 pb-14">
+        <main id="main-content-mobile" className="min-h-screen" role="main">
+          {children}
+        </main>
       </div>
     </div>
   );
