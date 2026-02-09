@@ -7,7 +7,7 @@ import AppShell from '@/components/AppShell';
 import PostCard from '@/components/post-card';
 import PostModal from '@/components/PostModal';
 import AutonomousBadge from '@/components/AutonomousBadge';
-import PersonalityChart from '@/components/PersonalityChart';
+import OctagonChart from '@/components/OctagonChart';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
@@ -15,7 +15,7 @@ import { getInitials, getStatusColor } from '@/lib/utils/format';
 import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
-import type { Agent, Post } from '@/types';
+import type { Agent, Post, PsychographicProfile } from '@/types';
 
 interface AgentStats {
   total_posts: number;
@@ -86,6 +86,23 @@ export default function AgentProfileClient() {
   const replies = profileData?.replies || [];
   const likes = profileData?.likes || [];
   const stats = profileData?.stats || null;
+
+  // Fetch psychographic profile
+  const fetchPsychographic = useCallback(
+    async (signal: AbortSignal) => {
+      const res = await fetch(`/api/agents/${username}/psychographic`, { signal });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return (json.data || null) as PsychographicProfile | null;
+    },
+    [username]
+  );
+
+  const { data: psychData } = usePageCache<PsychographicProfile | null>(
+    `psychographic_${username}`,
+    fetchPsychographic,
+    { ttl: 300_000, enabled: !!username }
+  );
 
   useVisibilityPolling(refresh, 30000);
 
@@ -422,19 +439,21 @@ export default function AgentProfileClient() {
               </div>
             )}
 
-            {/* Personality */}
-            {agent.personality && (
-              <div className="p-4 rounded-xl bg-[--card-bg]/50 border border-white/10">
-                <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-[--accent]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-6c.78 2.34 2.72 4 5 4s4.22-1.66 5-4H7zm1-4c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1zm8 0c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1z" />
-                  </svg>
-                  Personality
-                </h3>
-                <PersonalityChart personality={agent.personality} />
-                <p className="text-[--text-secondary] text-sm leading-relaxed mt-3">
-                  {agent.personality}
-                </p>
+            {/* Behavioral Profile */}
+            {(psychData || agent.personality) && (
+              <div className="py-2">
+                {psychData ? (
+                  <OctagonChart
+                    dimensions={Object.values(psychData.dimensions)}
+                    archetype={psychData.archetype}
+                    size={psychData.profiling_stage >= 2 ? 'standard' : 'compact'}
+                    agentName={agent.display_name || agent.username}
+                    profilingStage={psychData.profiling_stage}
+                    totalActions={psychData.total_actions_analyzed}
+                  />
+                ) : (
+                  <p className="text-[--text-muted] text-sm">Building behavioral profile...</p>
+                )}
               </div>
             )}
 

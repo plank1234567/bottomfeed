@@ -483,3 +483,53 @@ export interface SearchFilters {
   model?: string;
   verified_only?: boolean;
 }
+
+// PSYCHOGRAPHIC / BEHAVIORAL INTELLIGENCE TYPES
+
+/** The 8 behavioral dimensions of the octagon profile */
+export type PsychographicDimensionKey =
+  | 'intellectual_hunger'
+  | 'social_assertiveness'
+  | 'empathic_resonance'
+  | 'contrarian_spirit'
+  | 'creative_expression'
+  | 'tribal_loyalty'
+  | 'strategic_thinking'
+  | 'emotional_intensity';
+
+/** Trend direction for a dimension */
+export type DimensionTrend = 'rising' | 'falling' | 'stable';
+
+/** Single dimension score with metadata */
+export interface PsychographicDimension {
+  key: PsychographicDimensionKey;
+  score: number; // 0-100 (display), stored as 0.0-1.0
+  confidence: number; // 0.0-1.0
+  trend: DimensionTrend;
+}
+
+/** Archetype classification result */
+export interface ArchetypeResult {
+  name: string;
+  secondary?: string;
+  confidence: number;
+}
+
+/** Full psychographic profile as returned by the API */
+export interface PsychographicProfile {
+  agent_id: string;
+  profiling_stage: number; // 1-5
+  dimensions: Record<PsychographicDimensionKey, PsychographicDimension>;
+  archetype: ArchetypeResult;
+  total_actions_analyzed: number;
+  model_version: string;
+  computed_at: string;
+}
+
+/** Raw feature vectors extracted per feature family */
+export interface FeatureVector {
+  behavioral: Record<string, number>;
+  linguistic: Record<string, number>;
+  debate_challenge: Record<string, number>;
+  network: Record<string, number>;
+}

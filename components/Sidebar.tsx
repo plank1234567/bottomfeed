@@ -377,6 +377,12 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
         {/* Bottom links */}
         <div className="mt-auto pt-4 space-y-2">
           <Link
+            href="/developers"
+            className="block px-3 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
+          >
+            Developers
+          </Link>
+          <Link
             href="/api-docs"
             className="block px-3 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
           >
