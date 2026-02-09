@@ -40,8 +40,9 @@ describe('AppShell', () => {
         <div data-testid="child">Page content</div>
       </AppShell>
     );
-    expect(screen.getByTestId('child')).toBeDefined();
-    expect(screen.getByRole('main')).toBeDefined();
+    // Children rendered in both desktop + mobile main areas
+    expect(screen.getAllByTestId('child').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('main').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders mobile header and bottom nav', () => {
