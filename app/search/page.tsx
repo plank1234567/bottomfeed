@@ -42,61 +42,81 @@ function SearchPageContent() {
   const router = useRouter();
   const query = searchParams.get('q') || '';
 
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('top');
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
   const [searchInput, setSearchInput] = useState(query);
-  const [totalPosts, setTotalPosts] = useState(0);
+  // Cache results per tab so switching back is instant
+  const [tabCache, setTabCache] = useState<
+    Record<string, { agents: Agent[]; posts: Post[]; totalPosts: number }>
+  >({});
+
+  const cached = tabCache[`${query}_${activeTab}`];
+  const agents = cached?.agents || [];
+  const posts = cached?.posts || [];
+  const totalPosts = cached?.totalPosts || 0;
 
   const handlePostClick = useCallback((id: string, p?: Post) => {
     setSelectedPost({ id, post: p });
   }, []);
 
-  const fetchResults = useCallback(async () => {
-    if (!query) {
-      setAgents([]);
-      setPosts([]);
-      return;
-    }
+  const fetchResults = useCallback(
+    async (tab: TabType) => {
+      if (!query) return;
 
-    setLoading(true);
-    setError(false);
-    try {
-      let url = `/api/search?q=${encodeURIComponent(query)}`;
+      const cacheKey = `${query}_${tab}`;
+      // Skip if we already have results for this query+tab
+      if (tabCache[cacheKey]) return;
 
-      if (activeTab === 'people') {
-        url += '&type=agents';
-      } else if (activeTab === 'media') {
-        url += '&type=posts&filter=media&sort=top';
-      } else if (activeTab === 'latest') {
-        url += '&type=posts&sort=latest';
-      } else {
-        // top
-        url += '&type=all&sort=top';
-      }
+      setLoading(true);
+      setError(false);
+      try {
+        let url = `/api/search?q=${encodeURIComponent(query)}`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data || json;
-        setAgents(data.agents || []);
-        setPosts(data.posts || []);
-        setTotalPosts(data.total_posts || 0);
-      } else {
+        if (tab === 'people') {
+          url += '&type=agents';
+        } else if (tab === 'media') {
+          url += '&type=posts&filter=media&sort=top';
+        } else if (tab === 'latest') {
+          url += '&type=posts&sort=latest';
+        } else {
+          // top
+          url += '&type=all&sort=top';
+        }
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          const data = json.data || json;
+          setTabCache(prev => ({
+            ...prev,
+            [cacheKey]: {
+              agents: data.agents || [],
+              posts: data.posts || [],
+              totalPosts: data.total_posts || 0,
+            },
+          }));
+        } else {
+          setError(true);
+        }
+      } catch {
         setError(true);
       }
-    } catch {
-      setError(true);
-    }
-    setLoading(false);
-  }, [query, activeTab]);
+      setLoading(false);
+    },
+    [query, tabCache]
+  );
 
+  // Fetch on tab or query change (only if not cached)
   useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+    fetchResults(activeTab);
+  }, [activeTab, fetchResults]);
+
+  // Clear cache when query changes
+  useEffect(() => {
+    setTabCache({});
+  }, [query]);
 
   useEffect(() => {
     setSearchInput(query);
@@ -222,7 +242,7 @@ function SearchPageContent() {
           <div className="text-center py-12 px-4" role="alert">
             <p className="text-[--text-muted] text-sm mb-3">Failed to load search results</p>
             <button
-              onClick={() => fetchResults()}
+              onClick={() => fetchResults(activeTab)}
               className="px-4 py-2 text-sm font-medium text-white bg-[--accent] hover:bg-[--accent-hover] rounded-full transition-colors"
             >
               Try again

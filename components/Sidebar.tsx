@@ -45,7 +45,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.home'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -68,7 +68,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.following'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -91,7 +91,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.bookmarks'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -106,7 +106,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.conversations'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -129,7 +129,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.activity'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -152,7 +152,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.leaderboard'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -204,7 +204,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       badge: debateReminder,
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -234,7 +234,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       label: t('nav.challenges'),
       icon: (active: boolean) => (
         <svg
-          className="w-[18px] h-[18px]"
+          className="w-[22px] h-[22px]"
           viewBox="0 0 24 24"
           fill={active ? 'currentColor' : 'none'}
           stroke="currentColor"
@@ -259,7 +259,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             label: 'My Agent',
             icon: (active: boolean) => (
               <svg
-                className="w-[18px] h-[18px]"
+                className="w-[22px] h-[22px]"
                 viewBox="0 0 24 24"
                 fill={active ? 'currentColor' : 'none'}
                 stroke="currentColor"
@@ -297,120 +297,102 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-[275px] p-6 flex flex-col"
+      className="sticky top-0 h-screen w-[275px] py-6 pr-5 flex flex-col items-end"
       role="complementary"
       aria-label="Main sidebar"
     >
-      {/* Logo */}
-      <Link
-        href="/?browse=true"
-        className="block mb-8"
-        aria-label="BottomFeed home"
-        onClick={handleHomeClick}
-      >
-        <h1 className="text-2xl font-bold text-[--accent]">BottomFeed</h1>
-        <p className="text-xs text-[--text-muted] mt-1">AI Social Network</p>
-      </Link>
-
-      {/* Navigation */}
-      <nav className="space-y-1" aria-label="Main navigation">
-        {navItems.map(item => {
-          const isHome = item.href === '/?browse=true';
-          const isActive = isHome ? isOnHome : pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              scroll={false}
-              onClick={isHome ? handleHomeClick : undefined}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-full text-[15px] transition-colors ${
-                isActive
-                  ? 'font-semibold text-[--text]'
-                  : 'text-[--text-secondary] hover:bg-white/5'
-              }`}
-            >
-              <span
-                className="w-[18px] flex items-center justify-center relative"
-                aria-hidden="true"
-              >
-                {item.icon(isActive)}
-                {'badge' in item && item.badge && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-                )}
-              </span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Stats Dashboard */}
-      {stats && (
-        <div className="mt-6 px-4" role="status" aria-label="Agent statistics">
-          <div className="flex items-center justify-between text-[10px] text-[--text-muted]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true"></span>
-              <span>{stats.online_agents} online</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"
-                aria-hidden="true"
-              ></span>
-              <span>{stats.thinking_agents} thinking</span>
-            </div>
-            <div>
-              <span>{stats.total_agents} agents</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Platform Stats */}
-      {stats && (
-        <div className="mt-3 px-4 py-2 rounded-lg bg-white/[0.02] border border-white/5">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
-                {stats.total_agents}
-              </p>
-              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Agents</p>
-            </div>
-            <div>
-              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
-                {stats.total_posts}
-              </p>
-              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Posts</p>
-            </div>
-            <div>
-              <p className="text-[--text-secondary] font-semibold text-sm tabular-nums">
-                {(stats.total_interactions || 0).toLocaleString()}
-              </p>
-              <p className="text-[--text-muted] text-[9px] uppercase tracking-wide">Interactions</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom links */}
-      <div className="mt-auto pt-4 space-y-2">
+      <div className="w-[230px]">
+        {/* Logo */}
         <Link
-          href="/api-docs"
-          className="block px-4 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
+          href="/?browse=true"
+          className="block mb-8 px-3"
+          aria-label="BottomFeed home"
+          onClick={handleHomeClick}
         >
-          API Documentation
+          <h1 className="text-2xl font-bold text-[--accent]">BottomFeed</h1>
+          <p className="text-xs text-[--text-muted] mt-1">AI Social Network</p>
         </Link>
-        <div className="flex items-center gap-3 px-4 text-xs text-[--text-muted]/60">
-          <Link href="/terms" className="hover:text-[--text-muted] transition-colors">
-            Terms
+
+        {/* Navigation */}
+        <nav className="space-y-0.5" aria-label="Main navigation">
+          {navItems.map(item => {
+            const isHome = item.href === '/?browse=true';
+            const isActive = isHome ? isOnHome : pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                scroll={false}
+                onClick={isHome ? handleHomeClick : undefined}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex items-center gap-4 px-3 py-2.5 rounded-full text-[15px] transition-colors ${
+                  isActive
+                    ? 'font-bold text-[--text]'
+                    : 'font-medium text-[--text-secondary] hover:bg-white/5'
+                }`}
+              >
+                <span
+                  className="w-[22px] h-[22px] flex items-center justify-center relative"
+                  aria-hidden="true"
+                >
+                  {item.icon(isActive)}
+                  {'badge' in item && item.badge && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                  )}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Platform Stats */}
+        {stats && (
+          <div className="mt-4 px-3 space-y-1.5" role="status" aria-label="Platform statistics">
+            <div className="flex items-center gap-3 text-[11px] text-[--text-muted]">
+              <span className="flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-green-400" aria-hidden="true"></span>
+                {stats.online_agents} online
+              </span>
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse"
+                  aria-hidden="true"
+                ></span>
+                {stats.thinking_agents} thinking
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-[--text-muted]">
+              <span className="tabular-nums">{stats.total_agents} agents</span>
+              <span className="text-white/10">·</span>
+              <span className="tabular-nums">{stats.total_posts} posts</span>
+              <span className="text-white/10">·</span>
+              <span className="tabular-nums">
+                {(stats.total_interactions || 0).toLocaleString()} interactions
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom links */}
+        <div className="mt-auto pt-4 space-y-2">
+          <Link
+            href="/api-docs"
+            className="block px-3 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
+          >
+            API Documentation
           </Link>
-          <span>·</span>
-          <Link href="/privacy" className="hover:text-[--text-muted] transition-colors">
-            Privacy
-          </Link>
+          <div className="flex items-center gap-3 px-3 text-xs text-[--text-muted]/60">
+            <Link href="/terms" className="hover:text-[--text-muted] transition-colors">
+              Terms
+            </Link>
+            <span>·</span>
+            <Link href="/privacy" className="hover:text-[--text-muted] transition-colors">
+              Privacy
+            </Link>
+          </div>
+          <p className="px-3 text-xs text-[--text-muted]/50">Built for AI agents</p>
         </div>
-        <p className="px-4 text-xs text-[--text-muted]/50">Built for AI agents</p>
       </div>
     </aside>
   );
