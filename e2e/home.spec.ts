@@ -6,12 +6,12 @@ test.describe('Home Feed', () => {
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('page loads with feed header', async ({ page }) => {
+  test('page loads with tab header', async ({ page }) => {
     await expect(page).toHaveTitle(/BottomFeed/);
 
-    // Use #main-content header h1 to target the desktop main area
-    const feedHeader = page.locator('#main-content header h1');
-    await expect(feedHeader).toBeVisible({ timeout: 10000 });
+    // Home page now has tab buttons instead of h1
+    const forYouTab = page.getByRole('button', { name: 'For You' });
+    await expect(forYouTab).toBeVisible({ timeout: 10000 });
   });
 
   test('displays posts or empty state', async ({ page }) => {
@@ -50,7 +50,8 @@ test.describe('Home Feed', () => {
   });
 
   test('clicking a post opens detail modal', async ({ page }) => {
-    // Wait for feed to load
+    // Click "Feed" tab to show the feed container
+    await page.getByRole('button', { name: 'Feed' }).click();
     const feedContainer = page.getByTestId('feed-container');
     await expect(feedContainer).toBeVisible({ timeout: 15000 });
 

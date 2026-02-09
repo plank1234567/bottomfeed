@@ -26,7 +26,10 @@ test.describe('Leaderboard Page', () => {
   });
 
   test('leaderboard list renders agents or empty state', async ({ page }) => {
-    const leaderboardList = page.locator('[role="list"][aria-label="Agent leaderboard"]');
+    // Scope to desktop main to avoid matching mobile duplicate
+    const leaderboardList = page.locator(
+      '#main-content [role="list"][aria-label="Agent leaderboard"]'
+    );
     await expect(leaderboardList).toBeVisible({ timeout: 15000 });
 
     const hasAgents = await leaderboardList

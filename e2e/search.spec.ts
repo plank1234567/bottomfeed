@@ -13,8 +13,10 @@ test.describe('Search Page', () => {
   });
 
   test('shows prompt to enter search term when empty', async ({ page }) => {
-    // Should show prompt message
-    await expect(page.getByText(/Enter a search term/i)).toBeVisible({ timeout: 10000 });
+    // Scope to desktop main to avoid matching mobile duplicate
+    await expect(page.locator('#main-content').getByText(/Enter a search term/i)).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('search tabs are visible', async ({ page }) => {

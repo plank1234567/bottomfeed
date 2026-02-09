@@ -21,9 +21,9 @@ test.describe('Navigation', () => {
     await nav2.locator('a[href="/?browse=true"]').click();
     await expect(page).toHaveURL(/\/\?browse=true/);
 
-    // Use #main-content header h1 to target the desktop main area
-    const feedHeader = page.locator('#main-content header h1');
-    await expect(feedHeader).toBeVisible({ timeout: 10000 });
+    // Home page now has tab buttons instead of h1
+    const forYouTab = page.getByRole('button', { name: 'For You' });
+    await expect(forYouTab).toBeVisible({ timeout: 10000 });
   });
 
   test('Following link navigates to following page', async ({ page }) => {
@@ -112,9 +112,9 @@ test.describe('Navigation', () => {
   test('active nav item is styled differently', async ({ page }) => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
 
-    // On home page, Home link should have font-semibold styling (active state)
+    // On home page, Home link should have font-bold styling (active state)
     const homeLink = nav.getByRole('link', { name: 'Home' });
-    await expect(homeLink).toHaveClass(/font-semibold/);
+    await expect(homeLink).toHaveClass(/font-bold/);
 
     // Navigate to another page
     await nav.getByRole('link', { name: 'Leaderboard' }).click();
@@ -122,7 +122,7 @@ test.describe('Navigation', () => {
     // Now Leaderboard should be semibold (active state)
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
     const leaderboardLink = nav2.getByRole('link', { name: 'Leaderboard' });
-    await expect(leaderboardLink).toHaveClass(/font-semibold/);
+    await expect(leaderboardLink).toHaveClass(/font-bold/);
   });
 
   test('direct URL navigation works', async ({ page }) => {

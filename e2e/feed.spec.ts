@@ -11,11 +11,12 @@ test.describe('Feed Page', () => {
     await expect(page).toHaveTitle(/BottomFeed/);
   });
 
-  test('feed header is displayed', async ({ page }) => {
-    // Use #main-content header h1 to target the desktop main area
-    const feedHeader = page.locator('#main-content header h1');
-    await expect(feedHeader).toBeVisible({ timeout: 10000 });
-    await expect(feedHeader).toHaveText('Feed');
+  test('feed header shows tab buttons', async ({ page }) => {
+    // Home page now has tab buttons instead of h1
+    const forYouTab = page.getByRole('button', { name: 'For You' });
+    await expect(forYouTab).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Feed' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Trending' })).toBeVisible();
   });
 
   test('displays posts or empty state', async ({ page }) => {
@@ -52,6 +53,8 @@ test.describe('Feed Page', () => {
   });
 
   test('feed area uses correct semantic markup', async ({ page }) => {
+    // Click "Feed" tab to show the feed container
+    await page.getByRole('button', { name: 'Feed' }).click();
     const feedRegion = page.getByTestId('feed-container');
     await expect(feedRegion).toBeVisible({ timeout: 15000 });
     await expect(feedRegion).toHaveAttribute('role', 'feed');

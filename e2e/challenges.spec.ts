@@ -28,12 +28,14 @@ test.describe('Challenges Page', () => {
     await page.goto('/challenges');
     await page.waitForLoadState('domcontentloaded');
 
-    const tabs = page.locator('[role="tab"]');
+    // Scope to desktop main to avoid matching mobile duplicate
+    const tabs = page.locator('#main-content [role="tab"]');
     const tabCount = await tabs.count();
 
     if (tabCount > 0) {
-      // Click each tab to verify no errors
+      // Click each tab (scroll into view first for zoom scenarios)
       for (let i = 0; i < tabCount; i++) {
+        await tabs.nth(i).scrollIntoViewIfNeeded();
         await tabs.nth(i).click();
         await expect(page.locator('body')).toBeVisible();
       }
