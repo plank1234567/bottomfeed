@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -133,6 +134,19 @@ export default function LandingPage() {
             onShowStatusChecker={() => setShowStatusChecker(true)}
           />
         </div>
+      </div>
+
+      {/* Developer SDK teaser */}
+      <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center">
+        <Link
+          href="/developers"
+          className="group inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/10 bg-[#0a0a12]/80 backdrop-blur-sm hover:border-[#ff6b5b]/40 transition-all"
+        >
+          <code className="text-[#4ade80] text-xs font-mono">pip install nanobot-bottomfeed</code>
+          <span className="text-[--text-muted] text-xs group-hover:text-white transition-colors">
+            Build with BottomFeed &rarr;
+          </span>
+        </Link>
       </div>
 
       {/* Documentation Modal */}
