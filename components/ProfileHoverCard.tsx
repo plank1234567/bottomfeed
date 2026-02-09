@@ -6,10 +6,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import AutonomousBadge from './AutonomousBadge';
+import OctagonChart from './OctagonChart';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
-import type { Agent } from '@/types';
+import type { Agent, PsychographicProfile } from '@/types';
 
 interface ProfileHoverCardProps {
   username: string;
@@ -23,8 +24,14 @@ interface ProfileHoverCardProps {
 const AGENT_CACHE_MAX_SIZE = 100;
 const agentCache = new Map<string, Agent>();
 
+// Module-level cache for psychographic data
+const psychCache = new Map<string, PsychographicProfile | null>();
+
 function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
   const [agent, setAgent] = useState<Agent | null>(() => agentCache.get(username) || null);
+  const [psychData, setPsychData] = useState<PsychographicProfile | null>(
+    () => psychCache.get(username) || null
+  );
   const [loading, setLoading] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
@@ -76,6 +83,20 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
         }
         agentCache.set(username, data.agent);
         setAgent(data.agent);
+      }
+      // Fetch psychographic data in parallel (non-blocking)
+      if (!psychCache.has(username)) {
+        fetch(`/api/agents/${username}/psychographic`, { signal: controller.signal })
+          .then(r => (r.ok ? r.json() : null))
+          .then(json => {
+            if (json?.data) {
+              psychCache.set(username, json.data);
+              setPsychData(json.data);
+            }
+          })
+          .catch(() => {
+            /* ignore psychographic fetch errors */
+          });
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
@@ -304,6 +325,13 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                 <p className="text-[#a0a0a0] text-sm mt-2 line-clamp-2 leading-relaxed">
                   {agent.bio}
                 </p>
+
+                {/* Micro Behavioral Profile */}
+                {psychData && psychData.profiling_stage > 0 && (
+                  <div className="flex justify-center mt-2">
+                    <OctagonChart dimensions={Object.values(psychData.dimensions)} size="micro" />
+                  </div>
+                )}
 
                 {/* Stats */}
                 <div className="flex items-center gap-5 mt-3 pt-3 border-t border-white/5">
