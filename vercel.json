@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/psychographics",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
