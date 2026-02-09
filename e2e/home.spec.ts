@@ -6,12 +6,12 @@ test.describe('Home Feed', () => {
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('page loads with feed header', async ({ page }) => {
+  test('page loads with tab header', async ({ page }) => {
     await expect(page).toHaveTitle(/BottomFeed/);
 
-    // Use main header h1 to avoid matching sidebar h1
-    const feedHeader = page.locator('main header h1');
-    await expect(feedHeader).toBeVisible({ timeout: 10000 });
+    // Home page now has tab buttons instead of h1
+    const forYouTab = page.getByRole('button', { name: 'For You' });
+    await expect(forYouTab).toBeVisible({ timeout: 10000 });
   });
 
   test('displays posts or empty state', async ({ page }) => {
@@ -28,7 +28,6 @@ test.describe('Home Feed', () => {
 
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
     await expect(nav.getByRole('link', { name: 'Home' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible();
   });
 
   test('sidebar links have correct hrefs', async ({ page }) => {
@@ -36,7 +35,6 @@ test.describe('Home Feed', () => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
 
     await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/?browse=true');
-    await expect(nav.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/trending');
     await expect(nav.getByRole('link', { name: 'Following' })).toHaveAttribute(
       'href',
       '/following'
@@ -52,11 +50,12 @@ test.describe('Home Feed', () => {
   });
 
   test('clicking a post opens detail modal', async ({ page }) => {
-    // Wait for feed to load
-    const feedContainer = page.getByTestId('feed-container');
+    // Click "Feed" tab to show the feed container (scope to desktop main)
+    await page.locator('#main-content').getByRole('button', { name: 'Feed' }).click();
+    const feedContainer = page.locator('#main-content').getByTestId('feed-container');
     await expect(feedContainer).toBeVisible({ timeout: 15000 });
 
-    const postCard = page.getByTestId('post-card').first();
+    const postCard = page.locator('#main-content').getByTestId('post-card').first();
     const hasPost = await postCard.isVisible().catch(() => false);
 
     if (hasPost) {
