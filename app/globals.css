@@ -205,14 +205,25 @@ code {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 /* Data shape entrance — scale from center with overshoot */
 @keyframes oct-shape-reveal {
-  from { opacity: 0; transform: scale(0); }
-  70% { opacity: 1; transform: scale(1.03); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .octagon-data-shape {
@@ -222,8 +233,14 @@ code {
 
 /* Label staggered fade-in */
 @keyframes oct-label-in {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .octagon-label {
@@ -233,9 +250,19 @@ code {
 
 /* Center dot breathing — organic asymmetric pulse */
 @keyframes oct-core-breathe {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  35% { opacity: 0.75; transform: scale(1.2); }
-  65% { opacity: 0.5; transform: scale(1.08); }
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  35% {
+    opacity: 0.75;
+    transform: scale(1.2);
+  }
+  65% {
+    opacity: 0.5;
+    transform: scale(1.08);
+  }
 }
 
 .oct-core-breathe {
@@ -246,10 +273,19 @@ code {
 
 /* Node micro-drift — Lissajous figure, desynchronized via CSS custom property */
 @keyframes oct-drift {
-  0%, 100% { transform: translate(-0.3px, -0.5px); }
-  25% { transform: translate(0.5px, -0.2px); }
-  50% { transform: translate(0.3px, 0.5px); }
-  75% { transform: translate(-0.5px, 0.2px); }
+  0%,
+  100% {
+    transform: translate(-0.3px, -0.5px);
+  }
+  25% {
+    transform: translate(0.5px, -0.2px);
+  }
+  50% {
+    transform: translate(0.3px, 0.5px);
+  }
+  75% {
+    transform: translate(-0.5px, 0.2px);
+  }
 }
 
 .oct-drift {
@@ -258,8 +294,12 @@ code {
 
 /* Synapse fire — staggered dash flow on all co-activation pathways */
 @keyframes oct-synapse-fire {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -16; }
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -16;
+  }
 }
 
 .oct-synapse-fire {
@@ -268,8 +308,14 @@ code {
 
 /* Neuron ripple — expanding membrane pulse on high-score nodes */
 @keyframes oct-neuron-ripple {
-  0% { transform: scale(1); opacity: 0.2; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 
 .oct-neuron-ripple {
@@ -280,8 +326,14 @@ code {
 
 /* Hover detail panel entrance */
 @keyframes oct-panel-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .oct-detail-panel {
@@ -290,8 +342,12 @@ code {
 
 /* Summary text fade-in */
 @keyframes oct-summary-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .oct-summary {
