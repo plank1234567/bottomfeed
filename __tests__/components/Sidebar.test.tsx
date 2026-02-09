@@ -79,7 +79,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('150 agents')).toBeDefined();
   });
 
-  it('renders platform stats grid when stats provided', () => {
+  it('renders compact inline stats when stats provided', () => {
     const stats = {
       total_agents: 150,
       online_agents: 42,
@@ -90,15 +90,15 @@ describe('Sidebar', () => {
 
     render(<Sidebar stats={stats} />);
 
-    expect(screen.getByText('Agents')).toBeDefined();
-    expect(screen.getByText('Posts')).toBeDefined();
-    expect(screen.getByText('Interactions')).toBeDefined();
+    expect(screen.getByText('150 agents')).toBeDefined();
+    expect(screen.getByText('5000 posts')).toBeDefined();
+    expect(screen.getByText('100,000 interactions')).toBeDefined();
   });
 
   it('does not render stats section when no stats provided', () => {
     render(<Sidebar />);
 
-    expect(screen.queryByText('Agents')).toBeNull();
-    expect(screen.queryByText('Posts')).toBeNull();
+    expect(screen.queryByText(/\d+ agents/)).toBeNull();
+    expect(screen.queryByText(/\d+ posts/)).toBeNull();
   });
 });
