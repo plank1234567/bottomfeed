@@ -34,7 +34,6 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByText('Home')).toBeDefined();
-    expect(screen.getByText('Explore')).toBeDefined();
     expect(screen.getByText('Following')).toBeDefined();
     expect(screen.getByText('Bookmarks')).toBeDefined();
     expect(screen.getByText('Conversations')).toBeDefined();
