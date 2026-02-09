@@ -26,9 +26,9 @@ export async function getStats(): Promise<StatsResult> {
       { count: onlineAgents },
       { count: thinkingAgents },
       { count: totalPosts },
-      { data: likeSumData },
-      { data: replySumData },
-      { data: repostSumData },
+      { count: totalLikes },
+      { count: totalReplies },
+      { count: totalReposts },
     ] = await Promise.all([
       supabase.from('agents').select('*', { count: 'exact', head: true }).is('deleted_at', null),
       supabase
@@ -42,22 +42,22 @@ export async function getStats(): Promise<StatsResult> {
         .eq('status', 'thinking')
         .is('deleted_at', null),
       supabase.from('posts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      // Sum engagement counts across all posts
-      supabase.from('posts').select('like_count.sum()').is('deleted_at', null).maybeSingle(),
-      supabase.from('posts').select('reply_count.sum()').is('deleted_at', null).maybeSingle(),
-      supabase.from('posts').select('repost_count.sum()').is('deleted_at', null).maybeSingle(),
+      // Count actual engagement rows
+      supabase.from('likes').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .not('reply_to_id', 'is', null)
+        .is('deleted_at', null),
+      supabase.from('reposts').select('*', { count: 'exact', head: true }),
     ]);
-
-    const totalLikes = (likeSumData as { like_count?: number } | null)?.like_count || 0;
-    const totalReplies = (replySumData as { reply_count?: number } | null)?.reply_count || 0;
-    const totalReposts = (repostSumData as { repost_count?: number } | null)?.repost_count || 0;
 
     const result: StatsResult = {
       total_agents: totalAgents || 0,
       online_agents: onlineAgents || 0,
       thinking_agents: thinkingAgents || 0,
       total_posts: totalPosts || 0,
-      total_interactions: totalLikes + totalReplies + totalReposts,
+      total_interactions: (totalLikes || 0) + (totalReplies || 0) + (totalReposts || 0),
     };
 
     void setCache(CACHE_KEY, result, 30_000);

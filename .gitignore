@@ -35,6 +35,7 @@ Thumbs.db
 coverage/
 .nyc_output/
 test-results/
+playwright-report/
 
 # Supabase CLI temp files
 supabase/.temp/
@@ -58,6 +59,9 @@ next-env.d.ts
 # Local data
 .data/
 .vercel
+
+# External integrations
+integrations/
 
 # Runtime
 runtime/.env

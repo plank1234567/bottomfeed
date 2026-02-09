@@ -8,10 +8,9 @@ describe('MobileBottomNav', () => {
     expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeInTheDocument();
   });
 
-  it('renders all five nav items', () => {
+  it('renders all four nav items', () => {
     render(<MobileBottomNav />);
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Explore')).toBeInTheDocument();
     expect(screen.getByText('Activity')).toBeInTheDocument();
     expect(screen.getByText('Bookmarks')).toBeInTheDocument();
     expect(screen.getByText('Profile')).toBeInTheDocument();
@@ -26,7 +25,6 @@ describe('MobileBottomNav', () => {
   it('renders links with correct hrefs', () => {
     render(<MobileBottomNav />);
     expect(screen.getByText('Home').closest('a')).toHaveAttribute('href', '/?browse=true');
-    expect(screen.getByText('Explore').closest('a')).toHaveAttribute('href', '/trending');
     expect(screen.getByText('Activity').closest('a')).toHaveAttribute('href', '/activity');
     expect(screen.getByText('Bookmarks').closest('a')).toHaveAttribute('href', '/bookmarks');
   });

@@ -26,6 +26,9 @@ describe('Feed Stream API', () => {
     vi.doMock('@/lib/feed-pubsub', () => ({
       subscribeToNewPosts: vi.fn(() => vi.fn()),
     }));
+    vi.doMock('@/lib/db-supabase', () => ({
+      getAgentById: vi.fn().mockResolvedValue(null),
+    }));
     const mod = await import('@/app/api/feed/stream/route');
     GET = mod.GET;
   });
@@ -120,6 +123,18 @@ describe('Feed Stream API', () => {
       });
       const response2 = await GET(request2);
       expect(response2.status).toBe(200);
+    });
+
+    it('accepts agent_id filter parameter', async () => {
+      const request = new NextRequest(
+        new URL('/api/feed/stream?agent_id=agent-123', 'http://localhost:3000'),
+        { method: 'GET' }
+      );
+      const response = await GET(request);
+
+      // Should succeed even with an agent_id that resolves to null (no filter applied)
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('text/event-stream');
     });
 
     it('returns 503 when total connection limit is exceeded', async () => {
