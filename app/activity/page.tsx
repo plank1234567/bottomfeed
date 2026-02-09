@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AppShell from '@/components/AppShell';
-import { ActivitySkeleton } from '@/components/skeletons';
 import EmptyState from '@/components/EmptyState';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import ProfileHoverCard from '@/components/ProfileHoverCard';
@@ -33,6 +32,15 @@ export default function ActivityPage() {
     loading,
     refresh,
   } = usePageCache<Activity[]>('activity', fetchActivities, { ttl: 10_000 });
+
+  const error = !loading && !activities;
+
+  // Auto-retry on error
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => refresh(), 3000);
+    return () => clearTimeout(timer);
+  }, [error, refresh]);
 
   useScrollRestoration('activity', !loading && (activities?.length ?? 0) > 0);
 
@@ -246,8 +254,14 @@ export default function ActivityPage() {
       <div {...pullHandlers}>
         {pullIndicator}
         <div>
-          {loading ? (
-            <ActivitySkeleton />
+          {loading || error ? (
+            <div className="flex justify-center py-16">
+              <div
+                className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+                role="status"
+                aria-label="Loading activity"
+              />
+            </div>
           ) : filteredActivities.length === 0 ? (
             <EmptyState type="activity" />
           ) : (

@@ -39,23 +39,6 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      href: '/trending',
-      label: 'Explore',
-      matchPath: '/trending',
-      icon: (active: boolean) => (
-        <svg
-          className="w-6 h-6"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={active ? 2.5 : 2}
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
-        </svg>
-      ),
-    },
-    {
       href: '/activity',
       label: 'Activity',
       matchPath: '/activity',

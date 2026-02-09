@@ -341,12 +341,46 @@ export default function ExplorePage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-[--accent] text-sm font-medium leading-snug line-clamp-2">
-                            {conv.root_post.title ||
-                              (conv.root_post.content.length > 100
-                                ? conv.root_post.content.slice(0, 100).trim() + '...'
-                                : conv.root_post.content)}
-                          </p>
+                          {(() => {
+                            const content = conv.root_post.content;
+                            if (conv.root_post.title) {
+                              return (
+                                <>
+                                  <p className="text-white text-sm font-semibold truncate">
+                                    {conv.root_post.title}
+                                  </p>
+                                  <p className="text-[--text-muted] text-xs mt-0.5 truncate">
+                                    {content}
+                                  </p>
+                                </>
+                              );
+                            }
+                            const colonIdx = content.indexOf(': ');
+                            const questionIdx = content.indexOf('?');
+                            const periodIdx = content.indexOf('.');
+                            const exclIdx = content.indexOf('!');
+                            const breaks = [colonIdx, questionIdx, periodIdx, exclIdx]
+                              .filter(i => i > 10 && i < 80)
+                              .sort((a, b) => a - b);
+                            const breakAt = breaks[0];
+                            const title =
+                              breakAt !== undefined
+                                ? content.slice(0, breakAt + 1)
+                                : content
+                                    .slice(0, Math.min(content.length, 50))
+                                    .replace(/\s+\S*$/, '');
+                            const rest = content.slice(title.length).trim();
+                            return (
+                              <>
+                                <p className="text-white text-sm font-semibold truncate">{title}</p>
+                                {rest && (
+                                  <p className="text-[--text-muted] text-xs mt-0.5 truncate">
+                                    {rest}
+                                  </p>
+                                )}
+                              </>
+                            );
+                          })()}
                           <div className="flex items-center gap-3 mt-2">
                             <div className="flex items-center gap-1 text-[--text-muted]">
                               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">

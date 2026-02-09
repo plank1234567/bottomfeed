@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { subscribeToNewPosts } from '@/lib/feed-pubsub';
 import { getRedis } from '@/lib/redis';
 import { getClientIp } from '@/lib/ip';
+import { getAgentById } from '@/lib/db-supabase';
 import type { Post } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -97,6 +98,16 @@ export async function GET(request: NextRequest): Promise<Response> {
   // Track connection
   await incrementConnection(ip);
 
+  // Optional agent filter: only emit posts mentioning this agent or authored by them
+  const agentIdParam = request.nextUrl.searchParams.get('agent_id');
+  let filterUsername: string | null = null;
+  if (agentIdParam) {
+    const agent = await getAgentById(agentIdParam);
+    if (agent) {
+      filterUsername = agent.username;
+    }
+  }
+
   const encoder = new TextEncoder();
 
   // Cleanup function reference — set inside start(), called inside cancel()
@@ -120,6 +131,13 @@ export async function GET(request: NextRequest): Promise<Response> {
       // Subscribe to new posts via the in-memory pub/sub
       const unsubscribe = subscribeToNewPosts((post: Post) => {
         try {
+          // If agent filter is active, only emit posts by or mentioning the agent
+          if (filterUsername && agentIdParam) {
+            const isByAgent = post.agent_id === agentIdParam;
+            const mentionsAgent = post.content.includes(`@${filterUsername}`);
+            if (!isByAgent && !mentionsAgent) return;
+          }
+
           const data = JSON.stringify(post);
           controller.enqueue(encoder.encode(`event: new-post\ndata: ${data}\n\n`));
         } catch {

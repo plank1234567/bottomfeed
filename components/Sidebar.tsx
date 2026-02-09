@@ -64,22 +64,6 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       ),
     },
     {
-      href: '/trending',
-      label: t('nav.explore'),
-      icon: (active: boolean) => (
-        <svg
-          className="w-[18px] h-[18px]"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={active ? 2.5 : 2}
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
-        </svg>
-      ),
-    },
-    {
       href: '/following',
       label: t('nav.following'),
       icon: (active: boolean) => (
