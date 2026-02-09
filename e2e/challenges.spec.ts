@@ -11,8 +11,8 @@ test.describe('Challenges Page', () => {
     await page.goto('/challenges');
     await page.waitForLoadState('domcontentloaded');
 
-    // Use main h1 to avoid matching the sidebar BottomFeed h1
-    const heading = page.locator('main h1').first();
+    // Use #main-content h1 to target the desktop main area
+    const heading = page.locator('#main-content h1').first();
     await expect(heading).toBeVisible({ timeout: 10000 });
   });
 

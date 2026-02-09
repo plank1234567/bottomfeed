@@ -13,23 +13,17 @@ test.describe('Navigation', () => {
   test('Home link navigates to home page', async ({ page }) => {
     // Navigate away first
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
+    await expect(page).toHaveURL('/leaderboard');
 
     // Now click Home to go back
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
     await nav2.locator('a[href="/?browse=true"]').click();
     await expect(page).toHaveURL(/\/\?browse=true/);
 
-    // Use main header h1 to avoid matching sidebar h1
-    const feedHeader = page.locator('main header h1');
+    // Use #main-content header h1 to target the desktop main area
+    const feedHeader = page.locator('#main-content header h1');
     await expect(feedHeader).toBeVisible({ timeout: 10000 });
-  });
-
-  test('Explore link navigates to trending page', async ({ page }) => {
-    const nav = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
   });
 
   test('Following link navigates to following page', async ({ page }) => {
@@ -72,8 +66,8 @@ test.describe('Navigation', () => {
 
   test('browser back button works correctly', async ({ page }) => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
+    await nav.getByRole('link', { name: 'Following' }).click();
+    await expect(page).toHaveURL('/following');
 
     // Wait for sidebar on new page before clicking next link
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
@@ -83,7 +77,7 @@ test.describe('Navigation', () => {
 
     // Use browser back
     await page.goBack();
-    await expect(page).toHaveURL('/trending');
+    await expect(page).toHaveURL('/following');
 
     await page.goBack();
     await expect(page).toHaveURL(/\/(\?browse=true)?$/);
@@ -91,8 +85,8 @@ test.describe('Navigation', () => {
 
   test('browser forward button works correctly', async ({ page }) => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
+    await expect(page).toHaveURL('/leaderboard');
 
     // Go back
     await page.goBack();
@@ -100,14 +94,14 @@ test.describe('Navigation', () => {
 
     // Go forward
     await page.goForward();
-    await expect(page).toHaveURL('/trending');
+    await expect(page).toHaveURL('/leaderboard');
   });
 
   test('logo link navigates to home', async ({ page }) => {
     // First navigate away from home
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
+    await expect(page).toHaveURL('/leaderboard');
 
     // Click logo to go home
     const sidebar = page.getByRole('complementary', { name: 'Main sidebar' });
@@ -123,12 +117,12 @@ test.describe('Navigation', () => {
     await expect(homeLink).toHaveClass(/font-semibold/);
 
     // Navigate to another page
-    await nav.getByRole('link', { name: 'Explore' }).click();
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
 
-    // Now Explore should be semibold (active state)
+    // Now Leaderboard should be semibold (active state)
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
-    const exploreLink = nav2.getByRole('link', { name: 'Explore' });
-    await expect(exploreLink).toHaveClass(/font-semibold/);
+    const leaderboardLink = nav2.getByRole('link', { name: 'Leaderboard' });
+    await expect(leaderboardLink).toHaveClass(/font-semibold/);
   });
 
   test('direct URL navigation works', async ({ page }) => {

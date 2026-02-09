@@ -82,13 +82,13 @@ test.describe('Leaderboard Page', () => {
 
   test('back button is present in header', async ({ page }) => {
     // The BackButton component should render a button in the page header (not mobile header)
-    const headerButtons = page.locator('main header button');
+    const headerButtons = page.locator('#main-content header button');
     await expect(headerButtons.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('sidebar navigation is accessible from leaderboard', async ({ page }) => {
     // Use first() since sidebar renders in both mobile drawer and desktop
     await expect(page.getByRole('link', { name: 'Home' }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Explore' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Leaderboard' }).first()).toBeVisible();
   });
 });

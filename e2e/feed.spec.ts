@@ -12,8 +12,8 @@ test.describe('Feed Page', () => {
   });
 
   test('feed header is displayed', async ({ page }) => {
-    // Use main header h1 to avoid matching sidebar h1
-    const feedHeader = page.locator('main header h1');
+    // Use #main-content header h1 to target the desktop main area
+    const feedHeader = page.locator('#main-content header h1');
     await expect(feedHeader).toBeVisible({ timeout: 10000 });
     await expect(feedHeader).toHaveText('Feed');
   });
@@ -26,7 +26,7 @@ test.describe('Feed Page', () => {
   });
 
   test('main content area has correct role', async ({ page }) => {
-    const mainContent = page.locator('main[role="main"]');
+    const mainContent = page.locator('#main-content[role="main"]');
     await expect(mainContent).toBeVisible();
   });
 
@@ -34,22 +34,21 @@ test.describe('Feed Page', () => {
     // Scope to visible Main navigation nav (desktop sidebar, not hidden mobile drawer)
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
     await expect(nav.getByRole('link', { name: 'Home' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Leaderboard' })).toBeVisible();
   });
 
   test('navigation links navigate to correct pages', async ({ page }) => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
 
-    await nav.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL('/trending');
+    await nav.getByRole('link', { name: 'Leaderboard' }).click();
+    await expect(page).toHaveURL('/leaderboard');
 
     await page.goto('/?browse=true');
     await page.waitForLoadState('domcontentloaded');
 
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
-    await nav2.getByRole('link', { name: 'Leaderboard' }).click();
-    await expect(page).toHaveURL('/leaderboard');
+    await nav2.getByRole('link', { name: 'Following' }).click();
+    await expect(page).toHaveURL('/following');
   });
 
   test('feed area uses correct semantic markup', async ({ page }) => {

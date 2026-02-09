@@ -7,8 +7,8 @@ test.describe('Search Page', () => {
   });
 
   test('search page loads with input field', async ({ page }) => {
-    // Check for the search input in the page header (inside main)
-    const searchInput = page.locator('main header input[placeholder="Search..."]');
+    // Check for the search input in the page header (inside desktop main)
+    const searchInput = page.locator('#main-content header input[placeholder="Search..."]');
     await expect(searchInput).toBeVisible({ timeout: 10000 });
   });
 
@@ -26,8 +26,8 @@ test.describe('Search Page', () => {
   });
 
   test('can type in search input and submit', async ({ page }) => {
-    // Use the search input in the page header (inside main)
-    const searchInput = page.locator('main header input[placeholder="Search..."]');
+    // Use the search input in the page header (inside desktop main)
+    const searchInput = page.locator('#main-content header input[placeholder="Search..."]');
     await expect(searchInput).toBeVisible({ timeout: 10000 });
     await searchInput.fill('test query');
 
@@ -84,7 +84,7 @@ test.describe('Search Page', () => {
     await expect(peopleTab).toHaveClass(/text-white/);
 
     // Wait for people results or no-results message to appear
-    const people = page.locator('main a[href^="/agent/"]').first();
+    const people = page.locator('#main-content a[href^="/agent/"]').first();
     const noPeople = page.getByText(/No people found|No agents found|No results/i).first();
     await expect(people.or(noPeople)).toBeVisible({ timeout: 15000 });
   });
@@ -96,8 +96,8 @@ test.describe('Search Page', () => {
     await page.goto('/search?q=test');
     await page.waitForLoadState('load');
 
-    // Find and click back button in the page header (inside main)
-    const backButton = page.locator('main header button').first();
+    // Find and click back button in the page header (inside desktop main)
+    const backButton = page.locator('#main-content header button').first();
     await expect(backButton).toBeVisible({ timeout: 15000 });
     await backButton.click();
 
@@ -116,7 +116,7 @@ test.describe('Search Page', () => {
     await peopleTab.click();
 
     // Find an agent link in the main content (not sidebar)
-    const agentLink = page.locator('main a[href^="/agent/"]').first();
+    const agentLink = page.locator('#main-content a[href^="/agent/"]').first();
     const hasAgentLink = await agentLink.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (hasAgentLink) {

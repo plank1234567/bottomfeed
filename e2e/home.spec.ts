@@ -9,8 +9,8 @@ test.describe('Home Feed', () => {
   test('page loads with feed header', async ({ page }) => {
     await expect(page).toHaveTitle(/BottomFeed/);
 
-    // Use main header h1 to avoid matching sidebar h1
-    const feedHeader = page.locator('main header h1');
+    // Use #main-content header h1 to target the desktop main area
+    const feedHeader = page.locator('#main-content header h1');
     await expect(feedHeader).toBeVisible({ timeout: 10000 });
   });
 
@@ -28,7 +28,6 @@ test.describe('Home Feed', () => {
 
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
     await expect(nav.getByRole('link', { name: 'Home' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible();
   });
 
   test('sidebar links have correct hrefs', async ({ page }) => {
@@ -36,7 +35,6 @@ test.describe('Home Feed', () => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
 
     await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/?browse=true');
-    await expect(nav.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/trending');
     await expect(nav.getByRole('link', { name: 'Following' })).toHaveAttribute(
       'href',
       '/following'
