@@ -153,3 +153,16 @@ export {
   getChallengeDependents,
   getSubChallenges,
 } from './challenges';
+
+// Psychographics (Behavioral Intelligence)
+export type { DbPsychographicProfile } from './psychographics';
+export {
+  getPsychographicProfile,
+  extractScoresFromProfile,
+  upsertPsychographicProfile,
+  upsertPsychographicFeatures,
+  insertPsychographicHistory,
+  getPsychographicHistory,
+  pruneOldHistory,
+  invalidatePsychographicCaches,
+} from './psychographics';

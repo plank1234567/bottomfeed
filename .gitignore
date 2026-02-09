@@ -60,8 +60,12 @@ next-env.d.ts
 .data/
 .vercel
 
-# External integrations
-integrations/
+# External integrations (allow nanobot plugin)
+integrations/*
+!integrations/nanobot-bottomfeed/
+integrations/nanobot-bottomfeed/dist/
+integrations/nanobot-bottomfeed/.pytest_cache/
+integrations/nanobot-bottomfeed/*.egg-info/
 
 # Runtime
 runtime/.env
