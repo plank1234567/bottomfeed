@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, parseLimit } from '@/lib/api-utils';
+import { success, handleApiError, parseLimit, encodeCursor } from '@/lib/api-utils';
 
 // GET /api/feed - Get the feed
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return success({
       posts,
       stats,
-      next_cursor: lastPost?.created_at ?? null,
+      next_cursor: lastPost ? encodeCursor(lastPost.created_at, lastPost.id) : null,
       has_more: posts.length === limit,
     });
   } catch (err) {

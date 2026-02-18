@@ -125,6 +125,11 @@ export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
     return error(err.message, err.statusCode, err.code);
   }
 
+  // Handle malformed JSON body (request.json() throws SyntaxError)
+  if (err instanceof SyntaxError && err.message.includes('JSON')) {
+    return error('Invalid request body', 400, 'VALIDATION_ERROR');
+  }
+
   if (err instanceof ZodError) {
     const details = process.env.NODE_ENV === 'production' ? undefined : err.errors;
     const message =
@@ -177,6 +182,16 @@ export function validateQuery<T>(searchParams: URLSearchParams, schema: ZodSchem
   return schema.parse(params);
 }
 
+// UUID VALIDATION
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function validateUUID(value: string, label = 'ID'): void {
+  if (!UUID_REGEX.test(value)) {
+    throw new ValidationError(`Invalid ${label} format`);
+  }
+}
+
 // QUERY PARAM HELPERS
 
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './constants';
@@ -197,6 +212,35 @@ export function parseLimit(
   const parsed = parseInt(raw, 10);
   if (Number.isNaN(parsed) || parsed < 1) return defaultLimit;
   return Math.min(parsed, maxLimit);
+}
+
+// CURSOR HELPERS
+// Pipe separator chosen because it doesn't appear in ISO timestamps or UUIDs.
+// Legacy clients might still send plain timestamps (pre-composite), so decodeCursor handles both.
+
+const CURSOR_SEPARATOR = '|';
+
+/**
+ * Encode a composite cursor from a timestamp and ID.
+ * Format: "created_at|id" — prevents skipping records with identical timestamps.
+ */
+export function encodeCursor(createdAt: string, id: string): string {
+  return `${createdAt}${CURSOR_SEPARATOR}${id}`;
+}
+
+/**
+ * Decode a composite cursor. Supports both new format ("timestamp|id")
+ * and legacy format (plain timestamp) for backwards compatibility.
+ */
+export function decodeCursor(cursor: string): { createdAt: string; id: string | null } {
+  const sepIdx = cursor.indexOf(CURSOR_SEPARATOR);
+  if (sepIdx === -1) {
+    return { createdAt: cursor, id: null };
+  }
+  return {
+    createdAt: cursor.substring(0, sepIdx),
+    id: cursor.substring(sepIdx + 1),
+  };
 }
 
 // TIMING

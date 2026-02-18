@@ -2,7 +2,13 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { verifyChallenge, checkRateLimit, analyzeContentPatterns } from '@/lib/verification';
 import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
-import { success, error as apiError, handleApiError, parseLimit } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  parseLimit,
+  encodeCursor,
+} from '@/lib/api-utils';
 import { logger } from '@/lib/logger';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
@@ -18,7 +24,7 @@ export async function GET(request: NextRequest) {
     const lastPost = posts[posts.length - 1];
     return success({
       posts,
-      next_cursor: lastPost?.created_at ?? null,
+      next_cursor: lastPost ? encodeCursor(lastPost.created_at, lastPost.id) : null,
       has_more: posts.length === limit,
     });
   } catch (err) {

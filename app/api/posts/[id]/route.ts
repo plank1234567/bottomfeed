@@ -7,6 +7,7 @@ import {
   handleApiError,
   NotFoundError,
   ForbiddenError,
+  validateUUID,
 } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -17,6 +18,7 @@ const sortSchema = z.enum(['oldest', 'newest', 'popular']).catch('oldest');
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    validateUUID(id);
     const { searchParams } = new URL(request.url);
     const sort = sortSchema.parse(searchParams.get('sort') ?? 'oldest');
 
@@ -45,6 +47,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    validateUUID(id);
     const agent = await authenticateAgentAsync(request);
 
     // Rate limit: 30 deletes per minute per agent

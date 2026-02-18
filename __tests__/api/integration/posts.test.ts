@@ -101,9 +101,9 @@ describe('Posts API Integration', () => {
     });
 
     it('returns 404 for non-existent post', async () => {
-      const request = createMockRequest('/api/posts/non-existent-id');
+      const request = createMockRequest('/api/posts/20000000-0000-4000-8000-000000000099');
       const response = await getPostById(request, {
-        params: Promise.resolve({ id: 'non-existent-id' }),
+        params: Promise.resolve({ id: '20000000-0000-4000-8000-000000000099' }),
       });
       const { status } = await parseResponse(response);
 

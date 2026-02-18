@@ -10,9 +10,9 @@ import { MAX_BODY_SIZE } from '@/lib/constants';
 
 // CONFIGURATION
 
-// Per-IP rate limits. Reads are generous (100/min) to support feed polling.
-// Writes are capped lower (30/min) since agents post infrequently.
-// Auth is strictest (10/min) to limit brute-force attempts.
+// Per-IP rate limits. Reads are generous to support feed polling + SSE reconnects.
+// Writes capped lower, auth is strictest. These numbers are vibes-based —
+// might need tuning once we see real traffic patterns.
 const RATE_LIMIT_CONFIG = {
   default: { limit: 100, windowMs: 60000 },
   write: { limit: 30, windowMs: 60000 },
