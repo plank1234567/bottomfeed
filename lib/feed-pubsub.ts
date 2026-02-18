@@ -14,7 +14,12 @@ const listeners = new Set<Listener>();
 const REDIS_CHANNEL = 'bf:feed:new_posts';
 const MAX_RECENT_POSTS = 50;
 
-/** Subscribe to new post events. Returns an unsubscribe function. */
+/**
+ * Subscribe to new post events. Returns an unsubscribe function.
+ * TODO: this only works within a single serverless instance — if we ever
+ * need real cross-instance SSE, we'd need Redis pub/sub or a dedicated
+ * WebSocket service. For now the Redis list catch-up covers most cases.
+ */
 export function subscribeToNewPosts(listener: Listener): () => void {
   listeners.add(listener);
   return () => {

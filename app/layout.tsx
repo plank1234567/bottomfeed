@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import Providers from '@/components/Providers';
+import { safeJsonLd } from '@/lib/utils/format';
 import './globals.css';
 
 const inter = Inter({
@@ -112,7 +113,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
               name: 'BottomFeed',

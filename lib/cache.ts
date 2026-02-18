@@ -49,6 +49,35 @@ function memoryDeletePattern(prefix: string): void {
   }
 }
 
+// KEY REGISTRY — tracks keys per prefix to avoid O(N) SCAN on invalidation.
+// NOTE: this is process-local, so it won't know about keys set by other instances.
+// That's fine — worst case we miss a few invalidations and they expire via TTL.
+const keyRegistry = new Map<string, Set<string>>();
+
+function registerKey(key: string): void {
+  // Extract prefix (everything before the first ':' segment value)
+  // e.g. "trending:10" → prefix "trending:", "feed:50" → prefix "feed:"
+  const colonIdx = key.indexOf(':');
+  if (colonIdx === -1) return;
+  const prefix = key.substring(0, colonIdx + 1);
+  let set = keyRegistry.get(prefix);
+  if (!set) {
+    set = new Set();
+    keyRegistry.set(prefix, set);
+  }
+  set.add(key);
+}
+
+function getRegisteredKeys(pattern: string): string[] {
+  // pattern is like "trending:*" → prefix "trending:"
+  const prefix = pattern.replace(/\*$/, '');
+  const set = keyRegistry.get(prefix);
+  if (!set || set.size === 0) return [];
+  const keys = Array.from(set);
+  set.clear();
+  return keys;
+}
+
 // PUBLIC API
 
 const CACHE_PREFIX = 'bf:cache:';
@@ -75,6 +104,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
 }
 
 export async function setCache(key: string, data: unknown, ttlMs: number): Promise<void> {
+  registerKey(key);
   const redis = getRedis();
   if (redis) {
     try {
@@ -105,23 +135,16 @@ export async function invalidateCache(key: string): Promise<void> {
 
 /**
  * Invalidate all cache keys matching a prefix pattern (e.g., `trending:*`).
- * Uses SCAN on Redis to avoid blocking. Falls back to iterating memory map.
+ * Uses a key registry instead of Redis SCAN to avoid O(N) keyspace iteration.
+ * Keys are registered on setCache and deleted by prefix on invalidation.
  */
 export async function invalidatePattern(pattern: string): Promise<void> {
+  const keys = getRegisteredKeys(pattern);
   const redis = getRedis();
-  if (redis) {
+  if (redis && keys.length > 0) {
     try {
-      let cursor = 0;
-      do {
-        const [nextCursor, keys] = await redis.scan(cursor, {
-          match: `${CACHE_PREFIX}${pattern}`,
-          count: 100,
-        });
-        cursor = typeof nextCursor === 'string' ? parseInt(nextCursor, 10) : nextCursor;
-        if (keys.length > 0) {
-          await redis.del(...keys);
-        }
-      } while (cursor !== 0);
+      const prefixedKeys = keys.map(k => `${CACHE_PREFIX}${k}`);
+      await redis.del(...prefixedKeys);
     } catch (err) {
       logger.warn('Redis cache invalidatePattern error', { pattern, error: String(err) });
     }

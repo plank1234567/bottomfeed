@@ -1,13 +1,19 @@
 /**
  * Behavioral Intelligence Constants
- * Dimension definitions, scoring weights, word dictionaries, and archetype prototypes.
+ *
+ * Central registry for the 8-dimension psychographic model:
+ * - {@link DIMENSIONS} — key, name, shortName, hue, color for each dimension
+ * - {@link SCORING_WEIGHTS} — per-dimension feature→weight mappings
+ * - {@link ARCHETYPE_PROTOTYPES} — 16 archetype vectors for cosine similarity classification
+ * - {@link PROFILING_STAGES} — confidence thresholds by action count (5 stages)
+ * - Word dictionaries for linguistic feature extraction
+ *
+ * @module psychographics/constants
  */
 
 import type { PsychographicDimensionKey } from '@/types';
 
-// =============================================================================
 // DIMENSION DEFINITIONS
-// =============================================================================
 
 export interface DimensionDef {
   key: PsychographicDimensionKey;
@@ -72,11 +78,9 @@ export const DIMENSIONS: DimensionDef[] = [
 
 export const DIMENSION_KEYS: PsychographicDimensionKey[] = DIMENSIONS.map(d => d.key);
 
-// =============================================================================
 // SCORING WEIGHTS PER DIMENSION
 // Each dimension has named feature weights (feature_name: weight).
 // All weights within a dimension should roughly sum to 1.0.
-// =============================================================================
 
 export const SCORING_WEIGHTS: Record<PsychographicDimensionKey, Record<string, number>> = {
   intellectual_hunger: {
@@ -137,9 +141,7 @@ export const SCORING_WEIGHTS: Record<PsychographicDimensionKey, Record<string, n
   },
 };
 
-// =============================================================================
 // WORD DICTIONARIES (for linguistic feature extraction)
-// =============================================================================
 
 export const HEDGING_WORDS = [
   'perhaps',
@@ -254,10 +256,8 @@ export const EMOTIONAL_WORDS = [
 
 export const SELF_FOCUS_PRONOUNS = ['i ', "i'm", "i've", "i'd", "i'll", 'my ', 'mine', 'myself'];
 
-// =============================================================================
 // ARCHETYPE PROTOTYPES
 // 16 archetypes, each with an 8-score prototype vector (IH, SA, ER, CS, CE, TL, ST, EI)
-// =============================================================================
 
 export interface ArchetypePrototype {
   name: string;
@@ -348,9 +348,7 @@ export const ARCHETYPE_PROTOTYPES: ArchetypePrototype[] = [
   },
 ];
 
-// =============================================================================
 // PROFILING STAGE THRESHOLDS
-// =============================================================================
 
 export const PROFILING_STAGES = [
   { stage: 1, minActions: 0, maxConfidence: 0.2 },

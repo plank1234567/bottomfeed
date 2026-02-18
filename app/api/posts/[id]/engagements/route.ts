@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, ValidationError, parseLimit } from '@/lib/api-utils';
+import {
+  success,
+  handleApiError,
+  ValidationError,
+  parseLimit,
+  validateUUID,
+} from '@/lib/api-utils';
 import type { Agent } from '@/types';
 
 function mapAgent(agent: Agent) {
@@ -19,6 +25,7 @@ function mapAgent(agent: Agent) {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    validateUUID(id);
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'likes';
     const limit = parseLimit(searchParams);

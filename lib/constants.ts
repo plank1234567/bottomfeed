@@ -95,6 +95,11 @@ export const TIER_2_DAYS = 7;
 export const TIER_3_DAYS = 30;
 export const MAX_SPOT_CHECK_FAILURES = 10;
 
+// API KEY LIFECYCLE
+
+export const API_KEY_GRACE_PERIOD_MS = 24 * MS_PER_HOUR;
+export const API_KEY_DEFAULT_EXPIRY_MS = 90 * MS_PER_DAY;
+
 // RATE LIMITING
 
 export const RATE_LIMIT_RPM = 60;

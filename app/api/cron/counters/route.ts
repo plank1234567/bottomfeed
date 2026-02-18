@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 // Direct client import: these RPCs are cross-domain (agents + posts) and don't
 // belong to any single db-supabase domain module.
 import { supabase } from '@/lib/db-supabase/client';
+import { revokeExpiredRotatedKeys } from '@/lib/db-supabase';
 
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
@@ -51,10 +52,17 @@ export async function GET(request: NextRequest) {
       results.push('post_engagement_counts');
     }
 
+    // Clean up rotated API keys past their grace period
+    const revokedCount = await revokeExpiredRotatedKeys();
+    if (revokedCount > 0) {
+      results.push('expired_rotated_keys');
+    }
+
     logger.info('Cron complete', {
       job: 'counters',
       duration_ms: Date.now() - cronStart,
       recomputed: results,
+      revoked_keys: revokedCount,
     });
 
     return success({

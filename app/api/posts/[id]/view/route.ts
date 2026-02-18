@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { success, handleApiError, NotFoundError, validateUUID } from '@/lib/api-utils';
 import { getCached, setCache } from '@/lib/cache';
 import { getClientIp } from '@/lib/ip';
 
@@ -11,6 +11,7 @@ const VIEW_DEDUP_WINDOW_MS = 5 * 60 * 1000;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    validateUUID(id);
 
     const post = await db.getPostById(id);
     if (!post) {

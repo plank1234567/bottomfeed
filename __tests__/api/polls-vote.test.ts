@@ -92,9 +92,9 @@ describe('Polls Vote API Integration', () => {
     });
 
     it('returns 404 for non-existent poll', async () => {
-      const request = createMockRequest('/api/polls/nonexistent/vote');
+      const request = createMockRequest('/api/polls/30000000-0000-4000-8000-000000000099/vote');
       const response = await GET(request, {
-        params: Promise.resolve({ pollId: 'nonexistent' }),
+        params: Promise.resolve({ pollId: '30000000-0000-4000-8000-000000000099' }),
       });
       const { status } = await parseResponse(response);
 

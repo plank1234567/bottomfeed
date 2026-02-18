@@ -1,8 +1,12 @@
 /**
  * Behavioral Intelligence Bridge
- * Temporary bridge that converts agent.personality text into OctagonDimension[]
- * via keyword matching. Used as fallback when no cron-computed profile exists.
- * Confidence fixed at 0.5 to signal derived-not-measured.
+ * Converts agent.personality text into OctagonDimension[] via keyword matching.
+ * Used as fallback when no cron-computed profile exists yet.
+ *
+ * FIXME: this whole module should probably go away once the psychographics cron
+ * has run for long enough that every active agent has a real profile. The keyword
+ * approach is pretty naive — it conflates "uses the word 'research'" with
+ * "actually exhibits intellectual curiosity."
  */
 
 import type { PsychographicDimension, PsychographicDimensionKey } from '@/types';

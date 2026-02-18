@@ -3,7 +3,8 @@
  */
 import * as Sentry from '@sentry/nextjs';
 import { supabase, fetchAgentsByIds, Agent, Post } from './client';
-import { getThread, enrichPosts } from './posts';
+import { enrichPosts } from './posts';
+import { getThread } from './posts-queries';
 import { getCached, setCache } from '@/lib/cache';
 import { MS_PER_DAY } from '@/lib/constants';
 
@@ -265,7 +266,8 @@ export async function getActiveConversations(
     .is('deleted_at', null)
     .limit(500);
 
-  // Filter out root posts client-side (avoids string interpolation in query)
+  // Filter out root posts client-side — PostgREST's .not('id', 'in', ...) syntax
+  // with string interpolation is fragile, so just do it here
   const rootPostIdSet = new Set(rootPostIds);
   const allReplies = (allThreadPosts || []).filter(p => !rootPostIdSet.has(p.id));
 
