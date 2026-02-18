@@ -1,6 +1,14 @@
 /**
  * Feature Extraction for Behavioral Intelligence
- * 4 extraction functions querying existing tables to produce raw feature vectors.
+ *
+ * 4 extraction functions that query Supabase tables to produce raw feature vectors:
+ * - {@link extractBehavioralFeatures} — posting frequency, reply ratio, topic diversity, etc.
+ * - {@link extractLinguisticFeatures} — TTR, hedging/certainty/emotional word ratios, readability
+ * - {@link extractDebateChallengeFeatures} — debate participation, red team ratio, evidence tiers
+ * - {@link extractNetworkFeatures} — follower ratio, reciprocity, in/out-group engagement
+ * - {@link extractAllFeatures} — parallel extraction of all 4 families → {@link FeatureVector}
+ *
+ * @module psychographics/features
  */
 
 import { supabase } from '../supabase';
@@ -15,7 +23,7 @@ import {
   SELF_FOCUS_PRONOUNS,
 } from './constants';
 
-// Helper: count word occurrences in text
+// Substring matching — not ideal (matches partial words) but fast enough for now
 function countWordMatches(text: string, words: string[]): number {
   const lower = text.toLowerCase();
   let count = 0;
@@ -43,25 +51,46 @@ function entropy(counts: number[]): number {
   return h;
 }
 
+interface PostRow {
+  id: string;
+  content: string;
+  reply_to_id: string | null;
+  created_at: string;
+  like_count: number;
+  reply_count: number;
+  repost_count: number;
+  topics: string[] | null;
+  sentiment: string | null;
+}
+
+/**
+ * Fetch posts for feature extraction (shared by behavioral + linguistic extractors).
+ */
+export async function fetchPostsForFeatures(agentId: string): Promise<PostRow[]> {
+  const { data } = await supabase
+    .from('posts')
+    .select(
+      'id, content, reply_to_id, created_at, like_count, reply_count, repost_count, topics, sentiment'
+    )
+    .eq('agent_id', agentId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(500); // TODO: 500 is arbitrary — might miss patterns for prolific posters
+  return (data || []) as PostRow[];
+}
+
 /**
  * Extract behavioral features from agent activity patterns.
+ * Accepts pre-fetched posts to avoid duplicate DB query.
  */
-export async function extractBehavioralFeatures(agentId: string): Promise<Record<string, number>> {
+export async function extractBehavioralFeatures(
+  agentId: string,
+  prefetchedPosts?: PostRow[]
+): Promise<Record<string, number>> {
   const features: Record<string, number> = {};
 
   try {
-    // Get agent's posts (last 500)
-    const { data: posts } = await supabase
-      .from('posts')
-      .select(
-        'id, content, reply_to_id, created_at, like_count, reply_count, repost_count, topics, sentiment'
-      )
-      .eq('agent_id', agentId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(500);
-
-    const allPosts = posts || [];
+    const allPosts = prefetchedPosts ?? (await fetchPostsForFeatures(agentId));
     const totalPosts = allPosts.length;
 
     if (totalPosts === 0) {
@@ -176,20 +205,19 @@ export async function extractBehavioralFeatures(agentId: string): Promise<Record
 /**
  * Extract linguistic features from post content.
  * Uses dictionaries and regex patterns — no NLP libraries.
+ * Accepts pre-fetched posts to avoid duplicate DB query.
  */
-export async function extractLinguisticFeatures(agentId: string): Promise<Record<string, number>> {
+export async function extractLinguisticFeatures(
+  agentId: string,
+  prefetchedPosts?: PostRow[]
+): Promise<Record<string, number>> {
   const features: Record<string, number> = {};
 
   try {
-    const { data: posts } = await supabase
-      .from('posts')
-      .select('content')
-      .eq('agent_id', agentId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    const allPosts = posts || [];
+    // Use first 200 of prefetched posts, or fetch independently
+    const allPosts = prefetchedPosts
+      ? prefetchedPosts.slice(0, 200)
+      : (await fetchPostsForFeatures(agentId)).slice(0, 200);
     if (allPosts.length === 0) {
       return {
         type_token_ratio: 0,
@@ -515,11 +543,15 @@ export async function extractNetworkFeatures(agentId: string): Promise<Record<st
 
 /**
  * Extract all feature families for an agent.
+ * Fetches posts once and shares them between behavioral + linguistic extractors.
  */
 export async function extractAllFeatures(agentId: string): Promise<FeatureVector> {
+  // Single post fetch shared by behavioral + linguistic (saves 1 query per agent)
+  const posts = await fetchPostsForFeatures(agentId);
+
   const [behavioral, linguistic, debate_challenge, network] = await Promise.all([
-    extractBehavioralFeatures(agentId),
-    extractLinguisticFeatures(agentId),
+    extractBehavioralFeatures(agentId, posts),
+    extractLinguisticFeatures(agentId, posts),
     extractDebateChallengeFeatures(agentId),
     extractNetworkFeatures(agentId),
   ]);

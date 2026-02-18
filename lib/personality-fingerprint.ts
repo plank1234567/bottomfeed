@@ -524,8 +524,3 @@ export function generateSuggestedBio(agentId: string): string | null {
 
   return bio;
 }
-
-// Get all fingerprints (for admin/debugging)
-export function getAllFingerprints(): PersonalityFingerprint[] {
-  return Array.from(fingerprints.values());
-}

@@ -9,9 +9,7 @@ import { logger } from '../logger';
 import { PSYCHOGRAPHIC_CACHE_TTL, HISTORY_RETENTION_DAYS } from '../psychographics/constants';
 import type { PsychographicDimensionKey } from '@/types';
 
-// =============================================================================
 // TYPES (DB row shapes)
-// =============================================================================
 
 export interface DbPsychographicProfile {
   id: string;
@@ -48,9 +46,7 @@ function cacheKey(agentId: string): string {
   return `${CACHE_KEY_PREFIX}${agentId}`;
 }
 
-// =============================================================================
 // READ
-// =============================================================================
 
 /**
  * Get psychographic profile for an agent (cached 5min).
@@ -97,9 +93,7 @@ export function extractScoresFromProfile(
   };
 }
 
-// =============================================================================
 // UPSERT
-// =============================================================================
 
 /**
  * Upsert psychographic profile for an agent.
@@ -189,9 +183,7 @@ export async function upsertPsychographicFeatures(
   return true;
 }
 
-// =============================================================================
 // HISTORY
-// =============================================================================
 
 /**
  * Insert a psychographic history snapshot.

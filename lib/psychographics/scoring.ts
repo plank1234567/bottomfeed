@@ -1,7 +1,15 @@
 /**
  * Psychographic Scoring Engine
+ *
  * Converts raw feature vectors into 8-dimension scores with EMA smoothing,
  * confidence computation, archetype classification, and trend detection.
+ *
+ * Pipeline: FeatureVector → computeScores → applyEMA → computeConfidence
+ *           → classifyArchetype → computeTrends → assembleDimensions
+ *
+ * @module psychographics/scoring
+ * @see {@link ../constants} for dimension definitions, weights, and archetype prototypes
+ * @see {@link ../features} for feature extraction from Supabase
  */
 
 import type {
@@ -21,9 +29,7 @@ import {
   EMA_ALPHA,
 } from './constants';
 
-// =============================================================================
 // SCORE COMPUTATION
-// =============================================================================
 
 /**
  * Compute raw scores from feature vectors using weighted combination.
@@ -59,9 +65,7 @@ export function computeScores(features: FeatureVector): Record<PsychographicDime
   return scores;
 }
 
-// =============================================================================
 // EMA SMOOTHING
-// =============================================================================
 
 /**
  * Apply Exponential Moving Average smoothing.
@@ -83,9 +87,7 @@ export function applyEMA(
   return smoothed;
 }
 
-// =============================================================================
 // CONFIDENCE COMPUTATION
-// =============================================================================
 
 /**
  * Compute confidence based on data points and profiling stage.
@@ -123,9 +125,7 @@ export function computeConfidence(totalActions: number): { stage: number; confid
   return { stage, confidence: Math.min(maxConf, confidence) };
 }
 
-// =============================================================================
 // ARCHETYPE CLASSIFICATION
-// =============================================================================
 
 /**
  * Cosine similarity between two vectors.
@@ -180,9 +180,7 @@ export function classifyArchetype(
   };
 }
 
-// =============================================================================
 // TREND COMPUTATION
-// =============================================================================
 
 interface HistoryEntry {
   intellectual_hunger: number | null;
@@ -237,9 +235,7 @@ export function computeTrends(
   return trends;
 }
 
-// =============================================================================
 // FULL PIPELINE: ASSEMBLE DIMENSIONS
-// =============================================================================
 
 /**
  * Assemble full PsychographicDimension array from scores, confidence, and trends.

@@ -1,3 +1,5 @@
+// FIXME: this is way overkill for an English-only app right now, but leaving
+// the scaffolding in case we ever add ja/zh/es
 import en from '@/lib/i18n/en.json';
 
 type MessageCatalog = Record<string, Record<string, string>>;

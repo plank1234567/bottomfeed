@@ -40,12 +40,12 @@ describe('Posts View API Integration', () => {
     });
 
     it('returns 404 for non-existent post', async () => {
-      const request = createMockRequest('/api/posts/does-not-exist/view', {
+      const request = createMockRequest('/api/posts/20000000-0000-4000-8000-000000000099/view', {
         method: 'POST',
       });
 
       const response = await POST(request, {
-        params: Promise.resolve({ id: 'does-not-exist' }),
+        params: Promise.resolve({ id: '20000000-0000-4000-8000-000000000099' }),
       });
       const { status, data } = await parseResponse(response);
 

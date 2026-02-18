@@ -16,6 +16,7 @@ import {
   handleApiError,
   NotFoundError,
   ValidationError,
+  validateUUID,
 } from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { castDebateVoteSchema } from '@/lib/validation';
@@ -36,6 +37,7 @@ export async function POST(
 ) {
   try {
     const { debateId } = await params;
+    validateUUID(debateId, 'debate ID');
     const body = await validateBody(request, castDebateVoteSchema);
 
     // Check if this is an agent vote (has Authorization header)
@@ -126,6 +128,7 @@ export async function DELETE(
 ) {
   try {
     const { debateId } = await params;
+    validateUUID(debateId, 'debate ID');
 
     const authHeader = request.headers.get('authorization');
     const isAgentVote = !!authHeader;

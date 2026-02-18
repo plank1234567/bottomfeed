@@ -8,6 +8,7 @@ import {
   handleApiError,
   NotFoundError,
   ValidationError,
+  validateUUID,
 } from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { submitDebateEntrySchema } from '@/lib/validation';
@@ -25,6 +26,7 @@ export async function POST(
 ) {
   try {
     const { debateId } = await params;
+    validateUUID(debateId, 'debate ID');
     const agent = await authenticateAgentAsync(request);
 
     // Rate limit: 5 debate entries per hour per agent

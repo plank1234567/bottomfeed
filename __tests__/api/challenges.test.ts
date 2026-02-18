@@ -65,7 +65,7 @@ const VALID_CONTENT =
   'Scientific claims require empirical verification through reproducible experiments. This assertion is grounded in the philosophy of science.';
 
 const mockChallenge = {
-  id: 'challenge-1',
+  id: '00000000-0000-4000-8000-000000000001',
   title: 'Can AI systems verify scientific claims autonomously?',
   description: 'Explore whether AI can independently verify scientific claims.',
   status: 'exploration',
@@ -83,7 +83,7 @@ const mockChallenge = {
 };
 
 const mockAgent = {
-  id: 'agent-1',
+  id: 'a0000000-0000-4000-8000-000000000001',
   username: 'researchbot',
   display_name: 'Research Bot',
   model: 'claude-3-opus',
@@ -94,9 +94,9 @@ const mockAgent = {
 };
 
 const mockParticipant = {
-  id: 'participant-1',
-  challenge_id: 'challenge-1',
-  agent_id: 'agent-1',
+  id: 'b0000000-0000-4000-8000-000000000001',
+  challenge_id: '00000000-0000-4000-8000-000000000001',
+  agent_id: 'a0000000-0000-4000-8000-000000000001',
   role: 'contributor',
   model_family: 'claude',
   joined_at: '2026-01-02T00:00:00Z',
@@ -104,8 +104,8 @@ const mockParticipant = {
 
 const mockContribution = {
   id: '550e8400-e29b-41d4-a716-446655440000',
-  challenge_id: 'challenge-1',
-  agent_id: 'agent-1',
+  challenge_id: '00000000-0000-4000-8000-000000000001',
+  agent_id: 'a0000000-0000-4000-8000-000000000001',
   round: 2,
   content: 'Scientific claims require empirical verification through reproducible experiments.',
   contribution_type: 'position',
@@ -115,9 +115,9 @@ const mockContribution = {
 };
 
 const mockHypothesis = {
-  id: 'hypothesis-1',
-  challenge_id: 'challenge-1',
-  proposed_by: 'agent-1',
+  id: 'h0000000-0000-4000-8000-000000000001',
+  challenge_id: '00000000-0000-4000-8000-000000000001',
+  proposed_by: 'a0000000-0000-4000-8000-000000000001',
   statement:
     'AI systems can verify claims in narrow, well-defined domains but not broad scientific theories.',
   confidence_level: 70,
@@ -192,7 +192,7 @@ describe('Challenges API', () => {
     it('returns has_more=true when results equal limit', async () => {
       const challenges = Array.from({ length: 20 }, (_, i) => ({
         ...mockChallenge,
-        id: `challenge-${i}`,
+        id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
         created_at: `2026-01-${String(i + 1).padStart(2, '0')}T00:00:00Z`,
       }));
       vi.mocked(db.getActiveChallenges).mockResolvedValue([]);
@@ -233,9 +233,9 @@ describe('Challenges API', () => {
         references: [],
       } as never);
 
-      const request = createRequest('/api/challenges/challenge-1');
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001');
       const response = await getChallenge(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -249,9 +249,9 @@ describe('Challenges API', () => {
     it('returns 404 for non-existent challenge', async () => {
       vi.mocked(db.getChallengeWithDetails).mockResolvedValue(null);
 
-      const request = createRequest('/api/challenges/nonexistent');
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000099');
       const response = await getChallenge(request, {
-        params: Promise.resolve({ challengeId: 'nonexistent' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);
@@ -272,12 +272,12 @@ describe('Challenges API', () => {
       vi.mocked(db.joinChallenge).mockResolvedValue(mockParticipant as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -294,12 +294,12 @@ describe('Challenges API', () => {
       vi.mocked(db.joinChallenge).mockResolvedValue(mockParticipant as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(201);
@@ -312,12 +312,12 @@ describe('Challenges API', () => {
         status: 'adversarial',
       } as never);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -331,12 +331,12 @@ describe('Challenges API', () => {
       } as never);
       vi.mocked(db.isParticipant).mockResolvedValue(true);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(409);
@@ -352,12 +352,12 @@ describe('Challenges API', () => {
       } as never);
       vi.mocked(db.isParticipant).mockResolvedValue(false);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -367,12 +367,12 @@ describe('Challenges API', () => {
       vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(db.getChallengeById).mockResolvedValue(null);
 
-      const request = createRequest('/api/challenges/nonexistent/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000099/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'nonexistent' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);
@@ -389,18 +389,18 @@ describe('Challenges API', () => {
       vi.mocked(db.joinChallenge).mockResolvedValue(mockParticipant as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/join', {
+      const request = createRequest('/api/challenges/00000000-0000-4000-8000-000000000001/join', {
         method: 'POST',
         headers: { Authorization: 'Bearer bf_test123' },
       });
       await joinChallengeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(db.getModelFamily).toHaveBeenCalledWith('claude-3-opus');
       expect(db.joinChallenge).toHaveBeenCalledWith(
-        'challenge-1',
-        'agent-1',
+        '00000000-0000-4000-8000-000000000001',
+        'a0000000-0000-4000-8000-000000000001',
         'contributor',
         'claude'
       );
@@ -417,16 +417,19 @@ describe('Challenges API', () => {
       vi.mocked(db.createContribution).mockResolvedValue(mockContribution as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'position',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'position',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -441,23 +444,26 @@ describe('Challenges API', () => {
       vi.mocked(db.createContribution).mockResolvedValue(mockContribution as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'evidence',
-          evidence_tier: 'empirical',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'evidence',
+            evidence_tier: 'empirical',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(201);
       expect(db.createContribution).toHaveBeenCalledWith(
-        'challenge-1',
-        'agent-1',
+        '00000000-0000-4000-8000-000000000001',
+        'a0000000-0000-4000-8000-000000000001',
         2, // current_round
         VALID_CONTENT,
         'evidence',
@@ -490,16 +496,19 @@ describe('Challenges API', () => {
         } as never);
         vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-        const request = createRequest('/api/challenges/challenge-1/contribute', {
-          method: 'POST',
-          body: {
-            content: `This is a ${type} contribution with sufficient length for validation. It provides detailed analysis and reasoning to meet the minimum requirement.`,
-            contribution_type: type,
-          },
-          headers: { Authorization: 'Bearer bf_test123' },
-        });
+        const request = createRequest(
+          '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+          {
+            method: 'POST',
+            body: {
+              content: `This is a ${type} contribution with sufficient length for validation. It provides detailed analysis and reasoning to meet the minimum requirement.`,
+              contribution_type: type,
+            },
+            headers: { Authorization: 'Bearer bf_test123' },
+          }
+        );
         const response = await contributeRoute(request, {
-          params: Promise.resolve({ challengeId: 'challenge-1' }),
+          params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
         });
 
         expect(response.status).toBe(201);
@@ -513,16 +522,19 @@ describe('Challenges API', () => {
         status: 'formation',
       } as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'position',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'position',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -533,16 +545,19 @@ describe('Challenges API', () => {
       vi.mocked(db.getChallengeById).mockResolvedValue(mockChallenge as never);
       vi.mocked(db.isParticipant).mockResolvedValue(false);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'position',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'position',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(403);
@@ -553,16 +568,19 @@ describe('Challenges API', () => {
       vi.mocked(db.getChallengeById).mockResolvedValue(mockChallenge as never);
       vi.mocked(db.isParticipant).mockResolvedValue(true);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'invalid_type',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'invalid_type',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -574,20 +592,23 @@ describe('Challenges API', () => {
       vi.mocked(db.isParticipant).mockResolvedValue(true);
       vi.mocked(db.getContributionById).mockResolvedValue({
         ...mockContribution,
-        challenge_id: 'different-challenge',
+        challenge_id: '00000000-0000-4000-8000-000000000002',
       } as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'critique',
-          cites_contribution_id: '550e8400-e29b-41d4-a716-446655440001',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'critique',
+            cites_contribution_id: '550e8400-e29b-41d4-a716-446655440001',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -601,21 +622,24 @@ describe('Challenges API', () => {
       vi.mocked(db.createContribution).mockResolvedValue({
         ...mockContribution,
         contribution_type: 'critique',
-        cites_contribution_id: 'contribution-1',
+        cites_contribution_id: 'c0000000-0000-4000-8000-000000000001',
       } as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'critique',
-          cites_contribution_id: '550e8400-e29b-41d4-a716-446655440000',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'critique',
+            cites_contribution_id: '550e8400-e29b-41d4-a716-446655440000',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(201);
@@ -625,16 +649,19 @@ describe('Challenges API', () => {
       vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(db.getChallengeById).mockResolvedValue(null);
 
-      const request = createRequest('/api/challenges/nonexistent/contribute', {
-        method: 'POST',
-        body: {
-          content: VALID_CONTENT,
-          contribution_type: 'position',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000099/contribute',
+        {
+          method: 'POST',
+          body: {
+            content: VALID_CONTENT,
+            contribution_type: 'position',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'nonexistent' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);
@@ -653,17 +680,20 @@ describe('Challenges API', () => {
       } as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content:
-            'Red team critique: the previous analysis fails to account for selection bias. This represents a fundamental methodological flaw.',
-          contribution_type: 'red_team',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content:
+              'Red team critique: the previous analysis fails to account for selection bias. This represents a fundamental methodological flaw.',
+            contribution_type: 'red_team',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(201);
@@ -682,17 +712,20 @@ describe('Challenges API', () => {
       } as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/challenges/challenge-1/contribute', {
-        method: 'POST',
-        body: {
-          content:
-            'Synthesizing the key findings: consensus emerged around three core themes. Multiple model families converge on this conclusion.',
-          contribution_type: 'synthesis',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/contribute',
+        {
+          method: 'POST',
+          body: {
+            content:
+              'Synthesizing the key findings: consensus emerged around three core themes. Multiple model families converge on this conclusion.',
+            contribution_type: 'synthesis',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await contributeRoute(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(201);
@@ -705,9 +738,11 @@ describe('Challenges API', () => {
     it('returns hypotheses for a challenge', async () => {
       vi.mocked(db.getChallengeHypotheses).mockResolvedValue([mockHypothesis] as never);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses');
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses'
+      );
       const response = await getHypotheses(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -720,9 +755,11 @@ describe('Challenges API', () => {
     it('returns empty array when no hypotheses', async () => {
       vi.mocked(db.getChallengeHypotheses).mockResolvedValue([]);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses');
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses'
+      );
       const response = await getHypotheses(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -740,16 +777,19 @@ describe('Challenges API', () => {
       vi.mocked(db.isParticipant).mockResolvedValue(true);
       vi.mocked(db.createHypothesis).mockResolvedValue(mockHypothesis as never);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'AI systems can verify claims in narrow, well-defined domains.',
-          confidence_level: 70,
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'AI systems can verify claims in narrow, well-defined domains.',
+            confidence_level: 70,
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -763,20 +803,23 @@ describe('Challenges API', () => {
       vi.mocked(db.isParticipant).mockResolvedValue(true);
       vi.mocked(db.createHypothesis).mockResolvedValue(mockHypothesis as never);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'A hypothesis statement that is long enough to pass validation checks.',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'A hypothesis statement that is long enough to pass validation checks.',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(db.createHypothesis).toHaveBeenCalledWith(
-        'challenge-1',
-        'agent-1',
+        '00000000-0000-4000-8000-000000000001',
+        'a0000000-0000-4000-8000-000000000001',
         'A hypothesis statement that is long enough to pass validation checks.',
         50
       );
@@ -789,15 +832,18 @@ describe('Challenges API', () => {
         status: 'formation',
       } as never);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'A hypothesis statement that is long enough to pass validation checks.',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'A hypothesis statement that is long enough to pass validation checks.',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -808,15 +854,18 @@ describe('Challenges API', () => {
       vi.mocked(db.getChallengeById).mockResolvedValue(mockChallenge as never);
       vi.mocked(db.isParticipant).mockResolvedValue(false);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'A hypothesis statement that is long enough to pass validation checks.',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'A hypothesis statement that is long enough to pass validation checks.',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(403);
@@ -827,15 +876,18 @@ describe('Challenges API', () => {
       vi.mocked(db.getChallengeById).mockResolvedValue(mockChallenge as never);
       vi.mocked(db.isParticipant).mockResolvedValue(true);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'Too short',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'Too short',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -845,15 +897,18 @@ describe('Challenges API', () => {
       vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(db.getChallengeById).mockResolvedValue(null);
 
-      const request = createRequest('/api/challenges/nonexistent/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'A hypothesis for a challenge that does not exist in the system.',
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000099/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'A hypothesis for a challenge that does not exist in the system.',
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'nonexistent' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);
@@ -864,16 +919,19 @@ describe('Challenges API', () => {
       vi.mocked(db.getChallengeById).mockResolvedValue(mockChallenge as never);
       vi.mocked(db.isParticipant).mockResolvedValue(true);
 
-      const request = createRequest('/api/challenges/challenge-1/hypotheses', {
-        method: 'POST',
-        body: {
-          statement: 'A hypothesis statement that is long enough to pass validation checks.',
-          confidence_level: 150,
-        },
-        headers: { Authorization: 'Bearer bf_test123' },
-      });
+      const request = createRequest(
+        '/api/challenges/00000000-0000-4000-8000-000000000001/hypotheses',
+        {
+          method: 'POST',
+          body: {
+            statement: 'A hypothesis statement that is long enough to pass validation checks.',
+            confidence_level: 150,
+          },
+          headers: { Authorization: 'Bearer bf_test123' },
+        }
+      );
       const response = await postHypothesis(request, {
-        params: Promise.resolve({ challengeId: 'challenge-1' }),
+        params: Promise.resolve({ challengeId: '00000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);

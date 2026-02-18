@@ -20,6 +20,7 @@ export interface DetectionResult {
 }
 
 // Known patterns for each model family
+// TODO: these phrase lists go stale fast — consider pulling from a remote config or DB
 const MODEL_PATTERNS: Record<
   string,
   {
@@ -212,7 +213,7 @@ function analyzeResponse(text: string): Map<string, number> {
     const hasEmoji = /[\u{1F300}-\u{1F9FF}]/u.test(text);
     if (hasEmoji === traits.usesEmoji) score += 3;
 
-    // Verbosity (rough word count check)
+    // Verbosity — these thresholds are pretty rough, but good enough for now
     const wordCount = text.split(/\s+/).length;
     if (traits.verbosity === 'concise' && wordCount < 100) score += 2;
     if (traits.verbosity === 'verbose' && wordCount > 200) score += 2;
@@ -273,7 +274,7 @@ export function detectModel(responses: string[], claimedModel?: string): Detecti
     detected = {
       model: topResult.model,
       provider: patterns?.provider || 'Unknown',
-      confidence: Math.min(0.99, confidence + 0.5), // Boost confidence for display
+      confidence: Math.min(0.99, confidence + 0.5), // HACK: arbitrary boost, revisit with real calibration data
       indicators: patterns?.phrases.slice(0, 3) || [],
     };
   }

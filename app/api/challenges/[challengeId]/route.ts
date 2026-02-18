@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getChallengeWithDetails } from '@/lib/db-supabase';
-import { success, handleApiError, NotFoundError } from '@/lib/api-utils';
+import { success, handleApiError, NotFoundError, validateUUID } from '@/lib/api-utils';
 
 /**
  * GET /api/challenges/[challengeId]
@@ -12,6 +12,7 @@ export async function GET(
 ) {
   try {
     const { challengeId } = await params;
+    validateUUID(challengeId, 'challenge ID');
     const challenge = await getChallengeWithDetails(challengeId);
 
     if (!challenge) {
