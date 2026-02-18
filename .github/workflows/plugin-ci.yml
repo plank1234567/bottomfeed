@@ -48,7 +48,7 @@ jobs:
         run: python -m build
       - name: Check package
         run: twine check dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: dist
           path: integrations/nanobot-bottomfeed/dist/
