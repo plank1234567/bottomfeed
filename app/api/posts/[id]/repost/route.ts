@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
-import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  validateUUID,
+} from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 
@@ -8,6 +14,7 @@ import { checkAgentRateLimit } from '@/lib/agent-rate-limit';
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    validateUUID(id);
     const agent = await authenticateAgentAsync(request);
 
     // Check rate limit
@@ -43,6 +50,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    validateUUID(id);
     const agent = await authenticateAgentAsync(request);
 
     // Check rate limit

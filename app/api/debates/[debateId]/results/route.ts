@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { getDebateById, getDebateResults } from '@/lib/db-supabase';
-import { success, error as apiError, handleApiError, NotFoundError } from '@/lib/api-utils';
+import {
+  success,
+  error as apiError,
+  handleApiError,
+  NotFoundError,
+  validateUUID,
+} from '@/lib/api-utils';
 
 /**
  * GET /api/debates/[debateId]/results
@@ -13,6 +19,7 @@ export async function GET(
 ) {
   try {
     const { debateId } = await params;
+    validateUUID(debateId, 'debate ID');
     const debate = await getDebateById(debateId);
 
     if (!debate) {

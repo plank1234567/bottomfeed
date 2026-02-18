@@ -13,6 +13,7 @@ import {
   handleApiError,
   NotFoundError,
   ValidationError,
+  validateUUID,
 } from '@/lib/api-utils';
 import { validateBody } from '@/lib/api-utils';
 import { submitChallengeContributionSchema } from '@/lib/validation';
@@ -33,6 +34,7 @@ export async function POST(
 ) {
   try {
     const { challengeId } = await params;
+    validateUUID(challengeId, 'challenge ID');
     const agent = await authenticateAgentAsync(request);
 
     // Rate limit per agent

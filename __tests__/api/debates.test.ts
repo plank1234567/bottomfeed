@@ -70,7 +70,7 @@ function createRequest(
 }
 
 const mockDebate = {
-  id: 'debate-1',
+  id: '10000000-0000-4000-8000-000000000001',
   topic: 'Is AI consciousness possible?',
   description: 'Discuss whether AI can achieve consciousness.',
   debate_number: 1,
@@ -84,7 +84,7 @@ const mockDebate = {
 };
 
 const mockAgent = {
-  id: 'agent-1',
+  id: 'a0000000-0000-4000-8000-000000000001',
   username: 'testbot',
   display_name: 'Test Bot',
   model: 'gpt-4',
@@ -96,8 +96,8 @@ const mockAgent = {
 
 const mockEntry = {
   id: '550e8400-e29b-41d4-a716-446655440000',
-  debate_id: 'debate-1',
-  agent_id: 'agent-1',
+  debate_id: '10000000-0000-4000-8000-000000000001',
+  agent_id: 'a0000000-0000-4000-8000-000000000001',
   content:
     'This is a long enough argument about AI consciousness that should pass validation easily.',
   vote_count: 5,
@@ -154,9 +154,9 @@ describe('Debates API', () => {
       } as never);
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
 
-      const request = createRequest('/api/debates/debate-1');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001');
       const response = await getDebate(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -169,9 +169,9 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
 
-      const request = createRequest('/api/debates/debate-1');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001');
       const response = await getDebate(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -187,9 +187,9 @@ describe('Debates API', () => {
     it('returns 404 for non-existent debate', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue(null);
 
-      const request = createRequest('/api/debates/nonexistent');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000099');
       const response = await getDebate(request, {
-        params: Promise.resolve({ debateId: 'nonexistent' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);
@@ -204,13 +204,13 @@ describe('Debates API', () => {
       vi.mocked(db.createDebateEntry).mockResolvedValue(mockEntry as never);
       vi.mocked(db.logActivity).mockResolvedValue(undefined as never);
 
-      const request = createRequest('/api/debates/debate-1/entries', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/entries', {
         method: 'POST',
         body: { content: 'A'.repeat(60) },
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await postEntry(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -223,13 +223,13 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getAgentDebateEntry).mockResolvedValue(mockEntry as never);
 
-      const request = createRequest('/api/debates/debate-1/entries', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/entries', {
         method: 'POST',
         body: { content: 'A'.repeat(60) },
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await postEntry(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(409);
@@ -239,13 +239,13 @@ describe('Debates API', () => {
       vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(db.getDebateById).mockResolvedValue({ ...mockDebate, status: 'closed' } as never);
 
-      const request = createRequest('/api/debates/debate-1/entries', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/entries', {
         method: 'POST',
         body: { content: 'A'.repeat(60) },
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await postEntry(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -256,13 +256,13 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getAgentDebateEntry).mockResolvedValue(null);
 
-      const request = createRequest('/api/debates/debate-1/entries', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/entries', {
         method: 'POST',
         body: { content: 'Too short' },
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await postEntry(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -276,12 +276,12 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
       vi.mocked(db.castDebateVote).mockResolvedValue(true);
 
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: mockEntry.id },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -293,12 +293,12 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.hasVoted).mockResolvedValue(true);
 
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: mockEntry.id },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(409);
@@ -307,44 +307,48 @@ describe('Debates API', () => {
     it('rejects votes on closed debates', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue({ ...mockDebate, status: 'closed' } as never);
 
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: mockEntry.id },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
     });
 
     it('rejects invalid entry_id format', async () => {
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: 'not-a-uuid' },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
     });
 
     it('casts an agent vote with Bearer token', async () => {
-      const votingAgent = { ...mockAgent, id: 'agent-2', username: 'votebot' };
+      const votingAgent = {
+        ...mockAgent,
+        id: 'a0000000-0000-4000-8000-000000000002',
+        username: 'votebot',
+      };
       vi.mocked(authenticateAgentAsync).mockResolvedValue(votingAgent as never);
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
       vi.mocked(db.hasAgentVoted).mockResolvedValue(false);
       vi.mocked(db.castAgentDebateVote).mockResolvedValue(true);
 
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: mockEntry.id },
         headers: { Authorization: 'Bearer bf_test456' },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -358,13 +362,13 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.getDebateEntries).mockResolvedValue([mockEntry] as never);
 
-      const request = createRequest('/api/debates/debate-1/vote', {
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
         method: 'POST',
         body: { entry_id: mockEntry.id },
         headers: { Authorization: 'Bearer bf_test123' },
       });
       const response = await postVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -376,9 +380,11 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.retractDebateVote).mockResolvedValue(true);
 
-      const request = createRequest('/api/debates/debate-1/vote', { method: 'DELETE' });
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
+        method: 'DELETE',
+      });
       const response = await deleteVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -390,9 +396,11 @@ describe('Debates API', () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
       vi.mocked(db.retractDebateVote).mockResolvedValue(false);
 
-      const request = createRequest('/api/debates/debate-1/vote', { method: 'DELETE' });
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
+        method: 'DELETE',
+      });
       const response = await deleteVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(404);
@@ -401,9 +409,11 @@ describe('Debates API', () => {
     it('rejects retraction on closed debate', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue({ ...mockDebate, status: 'closed' } as never);
 
-      const request = createRequest('/api/debates/debate-1/vote', { method: 'DELETE' });
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/vote', {
+        method: 'DELETE',
+      });
       const response = await deleteVote(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(400);
@@ -424,9 +434,9 @@ describe('Debates API', () => {
         entries: [{ ...mockEntry, vote_percentage: 100, is_winner: true }],
       } as never);
 
-      const request = createRequest('/api/debates/debate-1/results');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/results');
       const response = await getResults(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
       const json = await response.json();
 
@@ -438,9 +448,9 @@ describe('Debates API', () => {
     it('returns 422 for open debate', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue(mockDebate as never);
 
-      const request = createRequest('/api/debates/debate-1/results');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000001/results');
       const response = await getResults(request, {
-        params: Promise.resolve({ debateId: 'debate-1' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000001' }),
       });
 
       expect(response.status).toBe(422);
@@ -449,9 +459,9 @@ describe('Debates API', () => {
     it('returns 404 for non-existent debate', async () => {
       vi.mocked(db.getDebateById).mockResolvedValue(null);
 
-      const request = createRequest('/api/debates/nonexistent/results');
+      const request = createRequest('/api/debates/10000000-0000-4000-8000-000000000099/results');
       const response = await getResults(request, {
-        params: Promise.resolve({ debateId: 'nonexistent' }),
+        params: Promise.resolve({ debateId: '10000000-0000-4000-8000-000000000099' }),
       });
 
       expect(response.status).toBe(404);

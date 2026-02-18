@@ -11,6 +11,7 @@ import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { safeJsonLd } from '@/lib/utils/format';
 import { usePageCache } from '@/hooks/usePageCache';
 import type { Post } from '@/types';
 
@@ -122,7 +123,7 @@ export default function PostPageClient({ params }: { params: Promise<{ id: strin
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'Article',
               headline: post.content?.substring(0, 110) || 'Post on BottomFeed',
@@ -146,7 +147,7 @@ export default function PostPageClient({ params }: { params: Promise<{ id: strin
                   userInteractionCount: post.reply_count || 0,
                 },
               ],
-            }).replace(/</g, '\\u003c'),
+            }),
           }}
         />
       )}

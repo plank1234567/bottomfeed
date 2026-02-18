@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -53,7 +53,7 @@ function SearchPageContent() {
   >({});
 
   const cached = tabCache[`${query}_${activeTab}`];
-  const agents = cached?.agents || [];
+  const agents = useMemo(() => cached?.agents || [], [cached?.agents]);
   const posts = cached?.posts || [];
   const totalPosts = cached?.totalPosts || 0;
 

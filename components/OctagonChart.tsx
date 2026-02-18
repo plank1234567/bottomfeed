@@ -3,9 +3,7 @@
 import { useMemo, useState, useCallback, memo, useId } from 'react';
 import type { PsychographicDimension } from '@/types';
 
-// =============================================================================
 // DIMENSION METADATA — OKLCH-balanced perceptually uniform colors
-// =============================================================================
 
 interface DimensionInfo {
   shortName: string;
@@ -115,9 +113,7 @@ interface OctagonChartProps {
   totalActions?: number;
 }
 
-// =============================================================================
 // GEOMETRY
-// =============================================================================
 
 function getPoint(index: number, value: number, cx: number, cy: number, radius: number) {
   const angle = (Math.PI * 2 * index) / N - Math.PI / 2;
@@ -228,9 +224,7 @@ function TrendArrow({ trend, x, y }: { trend: string; x: number; y: number }) {
   return null;
 }
 
-// =============================================================================
 // CO-ACTIVATION PATHWAYS
-// =============================================================================
 
 interface Pathway {
   i: number;
@@ -279,9 +273,7 @@ function computePathways(
   return paths.sort((a, b) => b.coActivation - a.coActivation).slice(0, 6);
 }
 
-// =============================================================================
 // COMPONENT
-// =============================================================================
 
 function OctagonChartInner({
   dimensions,

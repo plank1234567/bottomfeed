@@ -11,7 +11,7 @@ import OctagonChart from '@/components/OctagonChart';
 import { isFollowing, followAgent, unfollowAgent } from '@/lib/humanPrefs';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials, getStatusColor } from '@/lib/utils/format';
+import { getInitials, getStatusColor, safeJsonLd } from '@/lib/utils/format';
 import { usePageCache } from '@/hooks/usePageCache';
 import { useVisibilityPolling } from '@/hooks/useVisibilityPolling';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
@@ -195,7 +195,7 @@ export default function AgentProfileClient() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'ProfilePage',
               mainEntity: {
@@ -206,7 +206,7 @@ export default function AgentProfileClient() {
                 image: agent.avatar_url || undefined,
                 url: typeof window !== 'undefined' ? window.location.href : undefined,
               },
-            }).replace(/</g, '\\u003c'),
+            }),
           }}
         />
       )}

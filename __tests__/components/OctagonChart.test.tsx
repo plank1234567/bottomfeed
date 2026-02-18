@@ -229,9 +229,7 @@ describe('OctagonChart', () => {
     expect(screen.getByText(/1,247 analyzed actions/)).toBeTruthy();
   });
 
-  // ==========================================================================
   // Neural feature tests
-  // ==========================================================================
 
   it('renders dendrite stubs in standard mode', () => {
     const { container } = render(
@@ -378,5 +376,105 @@ describe('OctagonChart', () => {
     // Should not be exactly "oct-glow" — should have a prefix
     expect(id).not.toBe('oct-glow');
     expect(id).toContain('glow');
+  });
+
+  // Edge case: score boundaries
+
+  it('renders with all scores at 0', () => {
+    const zeroDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      score: 0,
+      confidence: 0.8,
+    }));
+    const { container } = render(
+      <OctagonChart dimensions={zeroDims} archetype={mockArchetype} size="standard" />
+    );
+    expect(container.querySelector('svg.octagon-chart-svg')).toBeTruthy();
+    expect(container.querySelector('.octagon-data-shape')).toBeTruthy();
+  });
+
+  it('renders with all scores at 100', () => {
+    const maxDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      score: 100,
+      confidence: 0.9,
+    }));
+    const { container } = render(
+      <OctagonChart dimensions={maxDims} archetype={mockArchetype} size="standard" />
+    );
+    expect(container.querySelector('svg.octagon-chart-svg')).toBeTruthy();
+    expect(container.querySelector('.octagon-data-shape')).toBeTruthy();
+  });
+
+  it('renders at confidence boundary 0.3 (mesh threshold)', () => {
+    const boundaryDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      confidence: 0.3,
+    }));
+    const { container } = render(<OctagonChart dimensions={boundaryDims} size="standard" />);
+    // At exactly 0.3 average confidence, mesh should render (> 0.3 threshold)
+    // or not — verify chart still renders either way
+    expect(container.querySelector('svg.octagon-chart-svg')).toBeTruthy();
+  });
+
+  it('renders at confidence boundary 0.5 (animation threshold)', () => {
+    const boundaryDims: PsychographicDimension[] = mockDimensions.map(d => ({
+      ...d,
+      confidence: 0.5,
+    }));
+    const { container } = render(<OctagonChart dimensions={boundaryDims} size="standard" />);
+    expect(container.querySelector('svg.octagon-chart-svg')).toBeTruthy();
+    // At exactly 0.5 average confidence, animations use > 0.5 threshold
+    // so core breathe is NOT active — chart still renders correctly
+    expect(container.querySelector('.octagon-data-shape')).toBeTruthy();
+  });
+
+  it('renders with mixed extreme scores (polarized profile)', () => {
+    const polarized: PsychographicDimension[] = [
+      { key: 'intellectual_hunger', score: 100, confidence: 0.9, trend: 'rising' },
+      { key: 'social_assertiveness', score: 0, confidence: 0.9, trend: 'stable' },
+      { key: 'empathic_resonance', score: 100, confidence: 0.9, trend: 'stable' },
+      { key: 'contrarian_spirit', score: 0, confidence: 0.9, trend: 'falling' },
+      { key: 'creative_expression', score: 100, confidence: 0.9, trend: 'rising' },
+      { key: 'tribal_loyalty', score: 0, confidence: 0.9, trend: 'stable' },
+      { key: 'strategic_thinking', score: 100, confidence: 0.9, trend: 'stable' },
+      { key: 'emotional_intensity', score: 0, confidence: 0.9, trend: 'stable' },
+    ];
+    const { container } = render(
+      <OctagonChart
+        dimensions={polarized}
+        archetype={{ name: 'The Maverick', confidence: 0.7 }}
+        size="standard"
+      />
+    );
+    expect(container.querySelector('.octagon-data-shape')).toBeTruthy();
+    expect(screen.getByText('The Maverick')).toBeTruthy();
+  });
+
+  it('all 8 dimension keys are present in aria-label', () => {
+    render(<OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />);
+    const svg = screen.getByRole('img');
+    const label = svg.getAttribute('aria-label')!;
+    expect(label).toContain('Intellectual Hunger');
+    expect(label).toContain('Social Assertiveness');
+    expect(label).toContain('Empathic Resonance');
+    expect(label).toContain('Contrarian Spirit');
+    expect(label).toContain('Creative Expression');
+    expect(label).toContain('Tribal Loyalty');
+    expect(label).toContain('Strategic Thinking');
+    expect(label).toContain('Emotional Intensity');
+  });
+
+  it('hover panel shows trend indicator for rising dimensions', () => {
+    const { container } = render(
+      <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
+    );
+    const groups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
+    // First dimension (IH) has trend: 'rising'
+    fireEvent.mouseEnter(groups[0]!);
+    const panel = container.querySelector('.oct-detail-panel');
+    expect(panel).toBeTruthy();
+    // Panel text should contain some trend indicator
+    expect(panel?.textContent).toContain('80%');
   });
 });

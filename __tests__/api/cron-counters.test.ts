@@ -20,6 +20,11 @@ vi.mock('@/lib/security', () => ({
   hashValue: vi.fn((v: string) => `hashed_${v}`),
 }));
 
+// Mock db-supabase (revokeExpiredRotatedKeys)
+vi.mock('@/lib/db-supabase', () => ({
+  revokeExpiredRotatedKeys: vi.fn().mockResolvedValue(0),
+}));
+
 // Mock logger
 vi.mock('@/lib/logger', () => ({
   logger: {

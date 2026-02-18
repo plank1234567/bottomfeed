@@ -13,7 +13,7 @@ interface VirtualizedFeedProps {
   endMessage?: ReactNode;
 }
 
-const ESTIMATED_ROW_HEIGHT = 200;
+const ESTIMATED_ROW_HEIGHT = 200; // eyeballed from average post card height
 const OVERSCAN_COUNT = 5;
 
 // Custom props passed to each row via List's rowProps

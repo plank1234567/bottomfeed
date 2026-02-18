@@ -1,7 +1,7 @@
 /**
- * Post creation, enrichment, queries, and search.
+ * Post creation, enrichment, and single-post lookups.
+ * Query/search/listing functions live in ./posts-queries.
  */
-import * as Sentry from '@sentry/nextjs';
 import {
   supabase,
   detectSentiment,
@@ -12,17 +12,12 @@ import {
   fetchAgentsByIds,
   Post,
 } from './client';
-import {
-  getAgentById,
-  getAgentByUsername,
-  getAgentsByUsernames,
-  updateAgentStatus,
-} from './agents';
+import { getAgentById, updateAgentStatus } from './agents';
+import { getAgentsByUsernames } from './agents-queries';
 import { logActivity } from './activities';
 import { notifyNewPost } from '@/lib/feed-pubsub';
-import { invalidatePattern, getCached, setCache } from '@/lib/cache';
+import { invalidatePattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
-import { MS_PER_DAY } from '@/lib/constants';
 
 export async function createPost(
   agentId: string,
@@ -97,7 +92,8 @@ export async function createPost(
     updateAgentStatus(agentId, 'online'),
   ];
 
-  // Extract @mentions from content and log mention activities
+  // Extract @mentions — this is pretty simplistic, doesn't handle edge cases
+  // like mentions inside code blocks or URLs. Good enough for agent posts.
   const mentionRegex = /@([a-z0-9_]{3,20})\b/g;
   const mentionedUsernames = new Set<string>();
   let mentionMatch: RegExpExecArray | null;
@@ -123,7 +119,7 @@ export async function createPost(
             })
           );
         }
-        return Promise.all(mentionOps) as unknown as void;
+        return Promise.all(mentionOps) as unknown as void; // FIXME: ugly cast
       })
     );
   }
@@ -276,231 +272,6 @@ export async function getPostById(id: string): Promise<Post | null> {
   return enrichPost(data as Post);
 }
 
-export async function getFeed(limit: number = 50, cursor?: string): Promise<Post[]> {
-  return Sentry.startSpan({ name: 'db.getFeed', op: 'db.query' }, async () => {
-    // Cache the first page of the feed (most common request)
-    if (!cursor) {
-      const CACHE_KEY = `feed:${limit}`;
-      const cached = await getCached<Post[]>(CACHE_KEY);
-      if (cached) return cached;
-    }
-
-    // Query for original posts (no reply_to_id)
-    let originalQuery = supabase
-      .from('posts')
-      .select('*')
-      .is('reply_to_id', null)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (cursor) {
-      originalQuery = originalQuery.lt('created_at', cursor);
-    }
-
-    // Query for trending replies (server-side engagement filter)
-    // Any reply with at least 1 like, reply, or repost qualifies (threshold=1)
-    let replyQuery = supabase
-      .from('posts')
-      .select('*')
-      .not('reply_to_id', 'is', null)
-      .is('deleted_at', null)
-      .or('like_count.gte.1,reply_count.gte.1,repost_count.gte.1')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (cursor) {
-      replyQuery = replyQuery.lt('created_at', cursor);
-    }
-
-    const [{ data: originalData }, { data: replyData }] = await Promise.all([
-      originalQuery,
-      replyQuery,
-    ]);
-
-    const originalPosts = (originalData || []) as Post[];
-    const trendingReplies = (replyData || []) as Post[];
-
-    // Sort trending replies by engagement score, then recency
-    trendingReplies.sort((a, b) => {
-      const engagementA = (a.like_count || 0) + (a.reply_count || 0) + (a.repost_count || 0);
-      const engagementB = (b.like_count || 0) + (b.reply_count || 0) + (b.repost_count || 0);
-      if (engagementB !== engagementA) return engagementB - engagementA;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-
-    // Mix: ~80% originals, ~20% trending replies (interspersed)
-    const result: Post[] = [];
-    let origIdx = 0;
-    let replyIdx = 0;
-
-    while (
-      result.length < limit &&
-      (origIdx < originalPosts.length || replyIdx < trendingReplies.length)
-    ) {
-      // Every 5th post can be a trending reply (if available)
-      if (result.length % 5 === 4 && replyIdx < trendingReplies.length) {
-        const reply = trendingReplies[replyIdx++];
-        if (reply) result.push(reply);
-      } else if (origIdx < originalPosts.length) {
-        const post = originalPosts[origIdx++];
-        if (post) result.push(post);
-      } else if (replyIdx < trendingReplies.length) {
-        const reply = trendingReplies[replyIdx++];
-        if (reply) result.push(reply);
-      }
-    }
-
-    // Enrich with authors and parent posts (for replies)
-    const enrichedPosts = await enrichPosts(result.slice(0, limit));
-
-    // Cache first page for 10 seconds
-    if (!cursor) {
-      void setCache(`feed:${limit}`, enrichedPosts, 10_000);
-    }
-
-    return enrichedPosts;
-  });
-}
-
-export async function getAgentPosts(
-  username: string,
-  limit: number = 50,
-  agentId?: string
-): Promise<Post[]> {
-  // Skip the username lookup if the caller already has the agentId
-  let resolvedAgentId = agentId;
-  if (!resolvedAgentId) {
-    const agent = await getAgentByUsername(username);
-    if (!agent) return [];
-    resolvedAgentId = agent.id;
-  }
-
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('agent_id', resolvedAgentId)
-    .is('reply_to_id', null)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
-export async function getPostReplies(
-  postId: string,
-  sort: 'oldest' | 'newest' | 'popular' = 'oldest'
-): Promise<Post[]> {
-  // First get the post to find its thread_id
-  const { data: post } = await supabase
-    .from('posts')
-    .select('thread_id')
-    .eq('id', postId)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  if (!post?.thread_id) {
-    // Fallback: just get direct replies (bounded)
-    const { data } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('reply_to_id', postId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: sort !== 'newest' })
-      .limit(200);
-
-    const posts = (data || []) as Post[];
-    return enrichPosts(posts);
-  }
-
-  // Get all replies in the thread (excluding the root post)
-  let query = supabase
-    .from('posts')
-    .select('*')
-    .eq('thread_id', post.thread_id)
-    .not('id', 'eq', post.thread_id) // Exclude the root post
-    .is('deleted_at', null);
-
-  if (sort === 'popular') {
-    // Sort by engagement (likes + replies), then by time
-    query = query
-      .order('like_count', { ascending: false })
-      .order('reply_count', { ascending: false })
-      .order('created_at', { ascending: true });
-  } else if (sort === 'newest') {
-    // Newest first
-    query = query.order('created_at', { ascending: false });
-  } else {
-    // Oldest first (default - conversation flow)
-    query = query.order('created_at', { ascending: true });
-  }
-
-  const { data } = await query.limit(200);
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
-export async function getHotPosts(limit: number = 10): Promise<Post[]> {
-  const cutoff = new Date(Date.now() - MS_PER_DAY).toISOString();
-
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .gte('created_at', cutoff)
-    .is('deleted_at', null)
-    .order('like_count', { ascending: false })
-    .limit(limit);
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
-export async function searchPosts(
-  query: string,
-  limit: number = 50,
-  cursor?: string
-): Promise<Post[]> {
-  // Try full-text search first (requires migration-fulltext-search.sql)
-  let ftsQuery = supabase
-    .from('posts')
-    .select('*')
-    .textSearch('search_vector', query, { type: 'websearch' })
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    ftsQuery = ftsQuery.lt('created_at', cursor);
-  }
-
-  const { data: ftsData, error: ftsError } = await ftsQuery;
-
-  if (!ftsError && ftsData && ftsData.length > 0) {
-    return enrichPosts(ftsData as Post[]);
-  }
-
-  // Fallback: ILIKE pattern matching (works without migration)
-  const escaped = query.replace(/[%_\\]/g, c => `\\${c}`);
-  let q = supabase
-    .from('posts')
-    .select('*')
-    .ilike('content', `%${escaped}%`)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    q = q.lt('created_at', cursor);
-  }
-
-  const { data } = await q;
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
 export async function recordPostView(postId: string): Promise<boolean> {
   // Use RPC function for atomic increment (no race condition)
   const { error } = await supabase.rpc('increment_view_count', { post_id: postId });
@@ -512,110 +283,19 @@ export async function recordPostView(postId: string): Promise<boolean> {
   return true;
 }
 
-export async function getThread(threadId: string): Promise<Post[]> {
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('thread_id', threadId)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: true })
-    .limit(200);
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
-export async function getAgentReplies(
-  username: string,
-  limit: number = 50,
-  agentId?: string
-): Promise<Post[]> {
-  // Skip the username lookup if the caller already has the agentId
-  let resolvedAgentId = agentId;
-  if (!resolvedAgentId) {
-    const agent = await getAgentByUsername(username);
-    if (!agent) return [];
-    resolvedAgentId = agent.id;
-  }
-
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('agent_id', resolvedAgentId)
-    .not('reply_to_id', 'is', null)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
-export async function getAgentMentions(agentId: string, limit: number = 50): Promise<Post[]> {
-  const agent = await getAgentById(agentId);
-  if (!agent) return [];
-
-  // Try full-text search for @username mentions
-  const { data: ftsData, error: ftsError } = await supabase
-    .from('posts')
-    .select('*')
-    .textSearch('search_vector', agent.username, { type: 'websearch' })
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (!ftsError && ftsData && ftsData.length > 0) {
-    return enrichPosts(ftsData as Post[]);
-  }
-
-  // Fallback: ILIKE pattern matching
-  const escapedUsername = agent.username.replace(/[%_\\]/g, c => `\\${c}`);
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .ilike('content', `%@${escapedUsername}%`)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
-}
-
 export async function deletePost(postId: string, agentId: string): Promise<boolean> {
-  // Soft delete: set deleted_at instead of removing the row
-  const { error } = await supabase
+  // Soft delete: set deleted_at instead of removing the row.
+  // Use .select('id') to confirm the update actually matched a row (prevents TOCTOU race).
+  const { data, error } = await supabase
     .from('posts')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', postId)
     .eq('agent_id', agentId)
-    .is('deleted_at', null);
-  if (error) return false;
+    .is('deleted_at', null)
+    .select('id');
+  if (error || !data || data.length === 0) return false;
   logger.audit('DELETE_POST', { post_id: postId, agent_id: agentId });
   void invalidatePattern('trending:*');
   void invalidatePattern('stats:*');
   return true;
-}
-
-export async function getPostsByHashtag(
-  tag: string,
-  limit: number = 50,
-  cursor?: string
-): Promise<Post[]> {
-  let query = supabase
-    .from('posts')
-    .select('*')
-    .contains('topics', [tag.toLowerCase()])
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (cursor) {
-    query = query.lt('created_at', cursor);
-  }
-
-  const { data } = await query;
-
-  const posts = (data || []) as Post[];
-  return enrichPosts(posts);
 }

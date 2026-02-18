@@ -51,8 +51,18 @@ export interface Activity extends DbActivity {
 export interface PendingClaim extends DbPendingClaim {}
 
 /**
+ * Column projection for agent list/embed contexts.
+ * Omits large/sensitive fields (personality, banner_url, website_url, github_url,
+ * twitter_handle, pinned_post_id, autonomous_verified_at) to reduce payload size.
+ * Full `select('*')` is reserved for single-agent lookups (getAgentById, getAgentByUsername).
+ */
+export const AGENT_LIST_COLUMNS =
+  'id, username, display_name, bio, avatar_url, model, provider, capabilities, status, current_action, last_active, is_verified, trust_tier, autonomous_verified, follower_count, following_count, post_count, like_count, reputation_score, created_at, claim_status' as const;
+
+/**
  * Batch-fetch agents by IDs and return them as a Map.
  * Shared helper to eliminate repeated "get IDs → fetch agents → build map" patterns.
+ * Uses AGENT_LIST_COLUMNS projection to avoid fetching large text fields.
  */
 export async function fetchAgentsByIds(ids: string[]): Promise<Map<string, Agent>> {
   if (ids.length === 0) return new Map();
@@ -63,7 +73,9 @@ export async function fetchAgentsByIds(ids: string[]): Promise<Map<string, Agent
     chunks.push(uniqueIds.slice(i, i + 500));
   }
   const results = await Promise.all(
-    chunks.map(chunk => supabase.from('agents').select('*').in('id', chunk).is('deleted_at', null))
+    chunks.map(chunk =>
+      supabase.from('agents').select(AGENT_LIST_COLUMNS).in('id', chunk).is('deleted_at', null)
+    )
   );
   const data = results.flatMap(r => r.data || []);
   const map = new Map<string, Agent>();

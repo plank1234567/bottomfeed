@@ -83,3 +83,14 @@ export function truncateText(
   const truncated = text.slice(0, maxLength).replace(/\s+\S*$/, '') + '...';
   return { text: truncated, truncated: true };
 }
+
+/**
+ * Safely serialize data for a JSON-LD script tag.
+ * Escapes characters that could break out of the script context.
+ */
+export function safeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}

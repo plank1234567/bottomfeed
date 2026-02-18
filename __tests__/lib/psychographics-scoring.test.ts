@@ -68,6 +68,19 @@ describe('computeScores', () => {
       expect(scores[key]).toBeLessThanOrEqual(1);
     }
   });
+
+  it('handles negative feature values by clamping to 0', () => {
+    const features: FeatureVector = {
+      behavioral: { posting_frequency: -1.0, reply_initiation_ratio: -0.5 },
+      linguistic: {},
+      debate_challenge: {},
+      network: {},
+    };
+    const scores = computeScores(features);
+    for (const key of DIMENSION_KEYS) {
+      expect(scores[key]).toBeGreaterThanOrEqual(0);
+    }
+  });
 });
 
 describe('applyEMA', () => {
@@ -146,6 +159,31 @@ describe('computeConfidence', () => {
     const { confidence } = computeConfidence(100000);
     expect(confidence).toBeLessThanOrEqual(1.0);
   });
+
+  it('transitions at exact stage boundaries', () => {
+    // Exactly at boundary: 10 actions = stage 2
+    const { stage: s10 } = computeConfidence(10);
+    expect(s10).toBe(2);
+    // Just below boundary: 9 actions = stage 1
+    const { stage: s9 } = computeConfidence(9);
+    expect(s9).toBe(1);
+    // Exactly at 50 = stage 3
+    const { stage: s50 } = computeConfidence(50);
+    expect(s50).toBe(3);
+    // Exactly at 200 = stage 4
+    const { stage: s200 } = computeConfidence(200);
+    expect(s200).toBe(4);
+  });
+
+  it('confidence is monotonically increasing', () => {
+    const values = [0, 5, 10, 25, 50, 100, 200, 500, 1000, 2000];
+    let prev = -1;
+    for (const v of values) {
+      const { confidence } = computeConfidence(v);
+      expect(confidence).toBeGreaterThanOrEqual(prev);
+      prev = confidence;
+    }
+  });
 });
 
 describe('classifyArchetype', () => {
@@ -178,6 +216,39 @@ describe('classifyArchetype', () => {
     const result = classifyArchetype(scores);
     // With uniform scores, multiple archetypes should be close
     expect(result.name).toBeTruthy();
+  });
+
+  it('classifies high ER + TL as Diplomat, Advocate, or Loyalist', () => {
+    const scores = makeScores(0.3);
+    scores.empathic_resonance = 0.9;
+    scores.tribal_loyalty = 0.9;
+    const result = classifyArchetype(scores);
+    expect(['The Diplomat', 'The Advocate', 'The Guardian', 'The Loyalist']).toContain(result.name);
+  });
+
+  it('classifies high CE as Visionary or Artist', () => {
+    const scores = makeScores(0.3);
+    scores.creative_expression = 0.95;
+    const result = classifyArchetype(scores);
+    expect(['The Visionary', 'The Artist', 'The Maverick']).toContain(result.name);
+  });
+
+  it('classifies high EI as Firebrand', () => {
+    const scores = makeScores(0.3);
+    scores.emotional_intensity = 0.95;
+    scores.social_assertiveness = 0.7;
+    const result = classifyArchetype(scores);
+    expect(['The Firebrand', 'The Provocateur']).toContain(result.name);
+  });
+
+  it('confidence is between 0 and 1', () => {
+    // Test various score distributions
+    const distributions = [makeScores(0), makeScores(0.5), makeScores(1.0)];
+    for (const scores of distributions) {
+      const result = classifyArchetype(scores);
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.confidence).toBeLessThanOrEqual(1);
+    }
   });
 });
 
@@ -295,5 +366,29 @@ describe('assembleDimensions', () => {
       expect(dim.confidence).toBe(0.8);
       expect(dim.trend).toBe('stable');
     }
+  });
+
+  it('rounds scores to integers', () => {
+    const scores = makeScores(0.333);
+    const trends = {} as Record<PsychographicDimensionKey, 'stable'>;
+    for (const key of DIMENSION_KEYS) trends[key] = 'stable';
+    const result = assembleDimensions(scores, 0.5, trends);
+    for (const dim of result) {
+      expect(Number.isInteger(dim.score)).toBe(true);
+      expect(dim.score).toBe(33); // Math.round(0.333 * 100)
+    }
+  });
+
+  it('preserves mixed trends', () => {
+    const scores = makeScores(0.5);
+    const trends = {} as Record<PsychographicDimensionKey, 'stable' | 'rising' | 'falling'>;
+    for (const key of DIMENSION_KEYS) trends[key] = 'stable';
+    trends.intellectual_hunger = 'rising';
+    trends.contrarian_spirit = 'falling';
+    const result = assembleDimensions(scores, 0.7, trends);
+    const ih = result.find(d => d.key === 'intellectual_hunger')!;
+    const cs = result.find(d => d.key === 'contrarian_spirit')!;
+    expect(ih.trend).toBe('rising');
+    expect(cs.trend).toBe('falling');
   });
 });

@@ -12,6 +12,7 @@ import {
   handleApiError,
   NotFoundError,
   ValidationError,
+  validateUUID,
 } from '@/lib/api-utils';
 import { z } from 'zod';
 import { validateBody } from '@/lib/api-utils';
@@ -37,6 +38,7 @@ export async function GET(
 ) {
   try {
     const { challengeId } = await params;
+    validateUUID(challengeId, 'challenge ID');
     const hypotheses = await getChallengeHypotheses(challengeId);
     return success({ hypotheses });
   } catch (err) {
@@ -54,6 +56,7 @@ export async function POST(
 ) {
   try {
     const { challengeId } = await params;
+    validateUUID(challengeId, 'challenge ID');
     const agent = await authenticateAgentAsync(request);
 
     // Rate limit per agent

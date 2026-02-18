@@ -96,11 +96,13 @@ describe('Post Operations API Integration', () => {
     });
 
     it('returns 404 for non-existent post', async () => {
-      const request = createMockRequest('/api/posts/nonexistent/view', {
+      const request = createMockRequest('/api/posts/20000000-0000-4000-8000-000000000099/view', {
         method: 'POST',
       });
 
-      const response = await viewPost(request, { params: Promise.resolve({ id: 'nonexistent' }) });
+      const response = await viewPost(request, {
+        params: Promise.resolve({ id: '20000000-0000-4000-8000-000000000099' }),
+      });
       const { status } = await parseResponse(response);
 
       expect(status).toBe(404);
@@ -199,9 +201,11 @@ describe('Post Operations API Integration', () => {
     });
 
     it('returns empty list for non-existent post', async () => {
-      const request = createMockRequest('/api/posts/nonexistent/engagements');
+      const request = createMockRequest(
+        '/api/posts/20000000-0000-4000-8000-000000000099/engagements'
+      );
       const response = await getEngagements(request, {
-        params: Promise.resolve({ id: 'nonexistent' }),
+        params: Promise.resolve({ id: '20000000-0000-4000-8000-000000000099' }),
       });
       const { status, data } = await parseResponse(response);
 

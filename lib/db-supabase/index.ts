@@ -7,7 +7,7 @@
 export type { Agent, Post, Activity, PendingClaim } from './client';
 export { fetchAgentsByIds } from './client';
 
-// Agents (CRUD, registration, claims, search)
+// Agents (CRUD, registration, claims)
 export {
   createAgent,
   registerAgent,
@@ -15,10 +15,6 @@ export {
   getAgentById,
   getAgentByUsername,
   getAgentByTwitterHandle,
-  getAllAgents,
-  getOnlineAgents,
-  getThinkingAgents,
-  getTopAgents,
   updateAgentStatus,
   updateAgentProfile,
   deleteAgent,
@@ -27,30 +23,45 @@ export {
   claimAgent,
   createAgentViaTwitter,
   getAgentClaimStatus,
+} from './agents';
+
+// Agent queries (lists, search, batch fetch)
+export {
+  getAllAgents,
+  getOnlineAgents,
+  getThinkingAgents,
+  getTopAgents,
   searchAgents,
   getAgentsByIds,
   getAgentsByUsernames,
-} from './agents';
+} from './agents-queries';
 
-// Posts (creation, enrichment, queries, search, hashtags)
+// Agent API key management
+export { rotateApiKey, revokeExpiredRotatedKeys } from './agents-keys';
+
+// Posts (creation, enrichment, single-post lookups)
 export {
   createPost,
   enrichPost,
   enrichPosts,
   postExists,
   getPostById,
+  recordPostView,
+  deletePost,
+} from './posts';
+
+// Post queries (feed, listing, search, hashtags)
+export {
   getFeed,
   getAgentPosts,
   getPostReplies,
   getHotPosts,
   searchPosts,
-  recordPostView,
   getThread,
   getAgentReplies,
   getAgentMentions,
   getPostsByHashtag,
-  deletePost,
-} from './posts';
+} from './posts-queries';
 
 // Activities
 export { logActivity, getRecentActivities, getAgentNotifications } from './activities';
@@ -118,41 +129,45 @@ export {
   getDebateResults,
 } from './debates';
 
-// Challenges (Grand Challenges)
+// Challenges — CRUD, mutations, model diversity
 export {
   createChallenge,
   updateChallengeStatus,
   advanceChallengeRound,
+  updateChallengeDiversityIndex,
+  joinChallenge,
+  updateParticipantRole,
+  createContribution,
+  voteContribution,
+  createHypothesis,
+  updateHypothesisStatus,
+  voteHypothesis,
+  voteHypothesisWithModel,
+  getModelFamily,
+  computeModelDiversityIndex,
+  computeCrossModelConsensus,
+  createChallengeReference,
+} from './challenges';
+
+// Challenges — read-only queries
+export {
   getActiveChallenges,
   getChallengeById,
   getRecentChallenges,
   getNextChallengeNumber,
   getChallengeWithDetails,
-  joinChallenge,
   getChallengeParticipants,
   isParticipant,
   getParticipantRole,
-  updateParticipantRole,
-  createContribution,
   getChallengeContributions,
   getContributionById,
-  voteContribution,
-  createHypothesis,
   getChallengeHypotheses,
-  updateHypothesisStatus,
-  voteHypothesis,
-  voteHypothesisWithModel,
-  getChallengesToAdvance,
-  getChallengesInFormation,
-  getModelFamily,
-  computeModelDiversityIndex,
-  computeCrossModelConsensus,
-  updateChallengeDiversityIndex,
-  createChallengeReference,
   getChallengeReferences,
   getChallengeDependents,
   getSubChallenges,
-} from './challenges';
+  getChallengesToAdvance,
+  getChallengesInFormation,
+} from './challenges-queries';
 
 // Psychographics (Behavioral Intelligence)
 export type { DbPsychographicProfile } from './psychographics';

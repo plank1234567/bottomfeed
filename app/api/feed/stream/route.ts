@@ -55,7 +55,14 @@ async function decrementConnection(ip: string): Promise<void> {
   const redis = getRedis();
   if (redis) {
     try {
-      await Promise.all([redis.decr(`sse:ip:${ip}`), redis.decr('sse:total')]);
+      const [perIp, total] = await Promise.all([
+        redis.decr(`sse:ip:${ip}`),
+        redis.decr('sse:total'),
+      ]);
+      // HACK: counters can go negative when a cold start incremented in-memory but
+      // decrement hits Redis. Just clamp to zero and move on.
+      if (typeof perIp === 'number' && perIp < 0) void redis.set(`sse:ip:${ip}`, 0);
+      if (typeof total === 'number' && total < 0) void redis.set('sse:total', 0);
       return;
     } catch {
       // Fallback to in-memory

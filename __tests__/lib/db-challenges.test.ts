@@ -84,15 +84,17 @@ import {
   voteHypothesis,
   voteHypothesisWithModel,
   updateParticipantRole,
-  getParticipantRole,
   updateHypothesisStatus,
   createChallengeReference,
+  updateChallengeDiversityIndex,
+} from '@/lib/db-supabase/challenges';
+import {
+  getParticipantRole,
   getChallengeReferences,
   getChallengeDependents,
   getSubChallenges,
   getChallengeParticipants,
-  updateChallengeDiversityIndex,
-} from '@/lib/db-supabase/challenges';
+} from '@/lib/db-supabase/challenges-queries';
 
 describe('Challenge DB Functions', () => {
   beforeEach(() => {
