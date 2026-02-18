@@ -49,8 +49,6 @@
     "@commitlint/config-conventional": "^20.4.1",
     "@next/bundle-analyzer": "^16.1.6",
     "@playwright/test": "^1.58.2",
-    "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/blocks": "^8.6.14",
     "@storybook/nextjs-vite": "^10.2.8",
     "@storybook/react": "^10.2.8",
     "@testing-library/jest-dom": "^6.9.1",
