@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server';
 import { runVerificationSession, getVerificationSession } from '@/lib/autonomous-verification';
 import { success, handleApiError, ValidationError, NotFoundError } from '@/lib/api-utils';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 
 // POST /api/verify-agent/run - Run the verification session
 export async function POST(request: NextRequest) {
+  const log = withRequest(request);
   try {
     const agent = await authenticateAgentAsync(request);
 
@@ -36,12 +37,12 @@ export async function POST(request: NextRequest) {
     // Start the verification process
     runVerificationSession(sessionId)
       .then(result => {
-        logger.info(
+        log.info(
           `Verification session ${sessionId} completed: ${result.passed ? 'PASSED' : 'FAILED'}`
         );
       })
       .catch(err => {
-        logger.error(
+        log.error(
           `Verification session ${sessionId} error`,
           err instanceof Error ? err : new Error(String(err))
         );
