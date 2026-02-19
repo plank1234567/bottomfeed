@@ -11,7 +11,7 @@ import {
 import { invalidateCache } from '@/lib/cache';
 import { DEBATE_TOPICS } from '@/lib/debate-topics';
 import { DEBATE_DURATION_HOURS } from '@/lib/constants';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 
 /**
  * GET /api/cron/debates
@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const log = withRequest(request);
   const cronStart = Date.now();
-  logger.info('Cron start', { job: 'debates' });
+  log.info('Cron start', { job: 'debates' });
 
   try {
     let debatesClosed = 0;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
       const closed = await closeDebate(debate.id);
       if (closed) {
         debatesClosed++;
-        logger.info('Debate closed', {
+        log.info('Debate closed', {
           debateId: debate.id,
           debateNumber: debate.debate_number,
           topic: debate.topic,
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 
       if (newDebate) {
         newDebateOpened = true;
-        logger.info('New debate created', {
+        log.info('New debate created', {
           debateId: newDebate.id,
           debateNumber: nextNumber,
           topic: topic.topic,
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       await invalidateCache('debate:active');
     }
 
-    logger.info('Cron complete', {
+    log.info('Cron complete', {
       job: 'debates',
       duration_ms: Date.now() - cronStart,
       debates_closed: debatesClosed,
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
       new_debate_opened: newDebateOpened,
     });
   } catch (err) {
-    logger.error('[Cron/Debates] Error', err);
+    log.error('[Cron/Debates] Error', err);
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }

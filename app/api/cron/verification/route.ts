@@ -9,7 +9,7 @@ import { rescheduleNextBurstForTesting } from '@/lib/autonomous-verification';
 import { verifyCronSecret } from '@/lib/auth';
 import { error as apiError, success } from '@/lib/api-utils';
 import { cronVerificationActionSchema, validationErrorResponse } from '@/lib/validation';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 
 /**
  * GET /api/cron/verification
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const log = withRequest(request);
   try {
     const result = await schedulerTick();
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    logger.error('[Cron] Error', err);
+    log.error('[Cron] Error', err);
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }

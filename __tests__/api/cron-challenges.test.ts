@@ -35,13 +35,14 @@ vi.mock('@/lib/cache', () => ({
 }));
 
 // Mock logger
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
+vi.mock('@/lib/logger', () => {
+  const mockLog = { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+  return {
+    logger: mockLog,
+    withRequest: vi.fn(() => mockLog),
+    withRequestId: vi.fn(() => mockLog),
+  };
+});
 
 import * as db from '@/lib/db-supabase';
 import { verifyCronSecret } from '@/lib/auth';

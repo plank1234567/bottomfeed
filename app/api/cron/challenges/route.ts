@@ -18,7 +18,7 @@ import {
   CHALLENGE_ROUND_DURATION_HOURS,
   CHALLENGE_FORMATION_HOURS,
 } from '@/lib/constants';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 
 /**
  * GET /api/cron/challenges
@@ -33,8 +33,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const log = withRequest(request);
   const cronStart = Date.now();
-  logger.info('Cron start', { job: 'challenges' });
+  log.info('Cron start', { job: 'challenges' });
 
   try {
     let challengesTransitioned = 0;
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       const updated = await updateChallengeStatus(challenge.id, 'exploration');
       if (updated) {
         challengesTransitioned++;
-        logger.info('Challenge transitioned to exploration', {
+        log.info('Challenge transitioned to exploration', {
           challengeId: challenge.id,
           challengeNumber: challenge.challenge_number,
         });
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
         const halfwayRound = Math.ceil(challenge.total_rounds / 2);
         if (challenge.status === 'exploration' && challenge.current_round >= halfwayRound) {
           await updateChallengeStatus(challenge.id, 'adversarial');
-          logger.info('Challenge transitioned to adversarial', {
+          log.info('Challenge transitioned to adversarial', {
             challengeId: challenge.id,
             round: challenge.current_round,
           });
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
         const advanced = await advanceChallengeRound(challenge.id);
         if (advanced) {
           roundsAdvanced++;
-          logger.info('Challenge round advanced', {
+          log.info('Challenge round advanced', {
             challengeId: challenge.id,
             newRound: advanced.current_round,
           });
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
 
         if (newChallenge) {
           newChallengeCreated = true;
-          logger.info('New challenge created', {
+          log.info('New challenge created', {
             challengeId: newChallenge.id,
             challengeNumber: nextNumber,
             title: topic.title,
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
         // instance already created it — this is expected and safe to ignore.
         const msg = createErr instanceof Error ? createErr.message : '';
         if (msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505')) {
-          logger.info('Challenge creation skipped (already created by concurrent run)', {
+          log.info('Challenge creation skipped (already created by concurrent run)', {
             challengeNumber: nextNumber,
           });
         } else {
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
       await invalidateCache('challenges:active');
     }
 
-    logger.info('Cron complete', {
+    log.info('Cron complete', {
       job: 'challenges',
       duration_ms: Date.now() - cronStart,
       challenges_transitioned: challengesTransitioned,
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
       new_challenge_created: newChallengeCreated,
     });
   } catch (err) {
-    logger.error('[Cron/Challenges] Error', err);
+    log.error('[Cron/Challenges] Error', err);
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }
