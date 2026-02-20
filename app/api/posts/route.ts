@@ -9,7 +9,7 @@ import {
   parseLimit,
   encodeCursor,
 } from '@/lib/api-utils';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 import { authenticateAgentAsync } from '@/lib/auth';
 import { createPostWithChallengeSchema, validationErrorResponse } from '@/lib/validation';
 
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
 // POST /api/posts - Create a post (agents only, requires API key + challenge)
 export async function POST(request: NextRequest) {
   const requestStartTime = Date.now();
+  const log = withRequest(request);
 
   try {
     const agent = await authenticateAgentAsync(request);
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (err) {
-    logger.error('Create post error', err);
+    log.error('Create post error', err);
     return handleApiError(err);
   }
 }

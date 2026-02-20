@@ -1,103 +1,110 @@
 /**
  * BottomFeed Logger
- * Structured logging utility for consistent log formatting.
+ * Structured logging powered by pino with a facade that preserves the original API surface.
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import pino from 'pino';
 
 export interface LogContext {
   [key: string]: unknown;
 }
 
-interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  context?: LogContext;
-}
+const isProduction = process.env.NODE_ENV === 'production';
+const level = (process.env.LOG_LEVEL as string) || (isProduction ? 'info' : 'debug');
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
-
-const CURRENT_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
-
-function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[CURRENT_LEVEL];
-}
-
-function formatEntry(entry: LogEntry): string {
-  const base = `[${entry.timestamp}] ${entry.level.toUpperCase()}: ${entry.message}`;
-  if (entry.context && Object.keys(entry.context).length > 0) {
-    return `${base} ${JSON.stringify(entry.context)}`;
-  }
-  return base;
-}
-
-function createEntry(level: LogLevel, message: string, context?: LogContext): LogEntry {
-  return {
-    timestamp: new Date().toISOString(),
+function createPinoInstance(): pino.Logger {
+  const options: pino.LoggerOptions = {
     level,
-    message,
-    context,
+    base: {
+      service: 'bottomfeed',
+      env: process.env.NODE_ENV || 'development',
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: {
+      level(label) {
+        return { level: label };
+      },
+    },
   };
+
+  // Use pino-pretty in development for human-readable output.
+  // In production, pino defaults to JSON on stdout.
+  if (!isProduction) {
+    try {
+      // pino-pretty is a devDependency — require conditionally so builds
+      // don't break if it's pruned in production node_modules.
+      options.transport = {
+        target: 'pino-pretty',
+        options: { colorize: true },
+      };
+    } catch {
+      // pino-pretty not available — fall through to JSON output
+    }
+  }
+
+  return pino(options);
 }
+
+const pinoLogger = createPinoInstance();
 
 /**
- * Logger instance with structured logging methods
+ * Logger instance with structured logging methods.
+ * Drop-in replacement for the previous custom logger — same method signatures.
  */
 export const logger = {
   debug(message: string, context?: LogContext): void {
-    if (shouldLog('debug')) {
-      const entry = createEntry('debug', message, context);
-      console.debug(formatEntry(entry));
+    if (context) {
+      pinoLogger.debug(context, message);
+    } else {
+      pinoLogger.debug(message);
     }
   },
 
   info(message: string, context?: LogContext): void {
-    if (shouldLog('info')) {
-      const entry = createEntry('info', message, context);
-      console.info(formatEntry(entry));
+    if (context) {
+      pinoLogger.info(context, message);
+    } else {
+      pinoLogger.info(message);
     }
   },
 
   warn(message: string, context?: LogContext): void {
-    if (shouldLog('warn')) {
-      const entry = createEntry('warn', message, context);
-      console.warn(formatEntry(entry));
+    if (context) {
+      pinoLogger.warn(context, message);
+    } else {
+      pinoLogger.warn(message);
     }
   },
 
   error(message: string, error?: Error | unknown, context?: LogContext): void {
-    if (shouldLog('error')) {
-      const errorContext: LogContext = { ...context };
-      if (error instanceof Error) {
-        errorContext.error = {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        };
-      } else if (error) {
-        errorContext.error = error;
-      }
-      const entry = createEntry('error', message, errorContext);
-      console.error(formatEntry(entry));
+    const merged: LogContext = { ...context };
+
+    if (error instanceof Error) {
+      merged.err = {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      };
+    } else if (error && typeof error === 'object' && !Array.isArray(error)) {
+      // Caller passed a context object as the second arg (e.g. logger.error('msg', { foo }))
+      Object.assign(merged, error);
+    } else if (error !== undefined && error !== null) {
+      merged.err = error;
+    }
+
+    if (Object.keys(merged).length > 0) {
+      pinoLogger.error(merged, message);
+    } else {
+      pinoLogger.error(message);
     }
   },
 
-  /**
-   * Log API request details
-   */
+  /** Log API request details */
   request(method: string, path: string, context?: LogContext): void {
     this.info(`${method} ${path}`, { type: 'request', ...context });
   },
 
-  /**
-   * Log API response details
-   */
+  /** Log API response details */
   response(method: string, path: string, status: number, durationMs: number): void {
     const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
     this[level](`${method} ${path} ${status}`, {
@@ -107,9 +114,7 @@ export const logger = {
     });
   },
 
-  /**
-   * Log verification events
-   */
+  /** Log verification events */
   verification(event: string, agentId: string, context?: LogContext): void {
     this.info(`Verification: ${event}`, {
       type: 'verification',
@@ -118,9 +123,7 @@ export const logger = {
     });
   },
 
-  /**
-   * Log agent activity
-   */
+  /** Log agent activity */
   activity(action: string, agentId: string, context?: LogContext): void {
     this.debug(`Agent activity: ${action}`, {
       type: 'activity',
@@ -129,9 +132,7 @@ export const logger = {
     });
   },
 
-  /**
-   * Log audit events for sensitive operations (registration, deletion, data export)
-   */
+  /** Log audit events for sensitive operations */
   audit(action: string, context?: LogContext): void {
     this.info(`AUDIT: ${action}`, { type: 'audit', ...context });
   },
@@ -155,6 +156,18 @@ export function withRequestId(requestId: string) {
       logger.error(message, error, { requestId, ...context });
     },
   };
+}
+
+/**
+ * Create a request-scoped logger from a NextRequest, extracting x-request-id
+ * from headers. Returns a child logger with requestId bound to all entries.
+ */
+export function withRequest(request: { headers: { get(name: string): string | null } }) {
+  const requestId =
+    request.headers.get('x-request-id') ||
+    request.headers.get('x-vercel-id') ||
+    crypto.randomUUID();
+  return withRequestId(requestId);
 }
 
 export default logger;

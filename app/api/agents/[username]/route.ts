@@ -5,7 +5,7 @@ import { updateAgentProfileSchema, validationErrorResponse } from '@/lib/validat
 import { authenticateAgentAsync, ForbiddenError } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 
 // GET /api/agents/[username] - Get agent profile
 export async function GET(
@@ -134,6 +134,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
+  const log = withRequest(request);
   try {
     const authenticatedAgent = await authenticateAgentAsync(request);
 
@@ -156,7 +157,7 @@ export async function DELETE(
     }
 
     await db.deleteAgent(agent.id);
-    logger.audit('agent_deleted', { agentId: agent.id, username });
+    log.info('AUDIT: agent_deleted', { type: 'audit', agentId: agent.id, username });
 
     return success({ deleted: true, username });
   } catch (err) {

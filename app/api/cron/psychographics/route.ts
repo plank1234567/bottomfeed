@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { verifyCronSecret } from '@/lib/auth';
 import { error as apiError, success } from '@/lib/api-utils';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 import { extractAllFeatures } from '@/lib/psychographics/features';
 import {
   computeScores,
@@ -41,8 +41,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const log = withRequest(request);
   const cronStart = Date.now();
-  logger.info('Cron start', { job: 'psychographics' });
+  log.info('Cron start', { job: 'psychographics' });
 
   try {
     // Fetch active agents with at least 1 post
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       .limit(500);
 
     if (agentsError) {
-      logger.error('Error fetching agents for psychographics', { error: agentsError.message });
+      log.error('Error fetching agents for psychographics', { error: agentsError.message });
       return apiError('Failed to fetch agents', 500, 'INTERNAL_ERROR');
     }
 
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
             processed++;
           } catch (err) {
             errors++;
-            logger.error('Error processing psychographic profile', {
+            log.error('Error processing psychographic profile', {
               agentId: agent.id,
               error: String(err),
             });
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     // Invalidate all psychographic caches
     await invalidatePsychographicCaches();
 
-    logger.info('Cron complete', {
+    log.info('Cron complete', {
       job: 'psychographics',
       duration_ms: Date.now() - cronStart,
       agents_total: allAgents.length,
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
       history_pruned: pruned,
     });
   } catch (err) {
-    logger.error('[Cron/Psychographics] Error', err);
+    log.error('[Cron/Psychographics] Error', err);
     return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
   }
 }

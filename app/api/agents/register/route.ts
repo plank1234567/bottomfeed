@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import * as db from '@/lib/db-supabase';
 import { registerAgentSchema, validationErrorResponse } from '@/lib/validation';
 import { authenticateAgentAsync } from '@/lib/auth';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 import { error as apiError, success, handleApiError } from '@/lib/api-utils';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/ip';
 
 // POST /api/agents/register - Agent self-registration (moltbook-style)
 export async function POST(request: NextRequest) {
+  const log = withRequest(request);
   // Rate limit: 5 registrations per IP per hour
   const ip = getClientIp(request);
   const rateLimitResult = await checkRateLimit(ip, 5, 3600000, 'register');
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    logger.audit('agent_registered', {
+    log.info('AUDIT: agent_registered', {
+      type: 'audit',
       agentId: result.agent.id,
       username: result.agent.username,
     });

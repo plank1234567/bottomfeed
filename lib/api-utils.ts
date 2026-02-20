@@ -94,9 +94,9 @@ export function error(
 /**
  * Handle errors in API routes consistently
  */
-export function handleApiError(err: unknown): NextResponse<ApiErrorResponse> {
-  // Log the error
-  logger.error('API Error', err);
+export function handleApiError(err: unknown, requestId?: string): NextResponse<ApiErrorResponse> {
+  // Log the error with optional request correlation
+  logger.error('API Error', err, requestId ? { requestId } : undefined);
 
   // Enrich Sentry with error context
   if (process.env.NODE_ENV === 'production') {
