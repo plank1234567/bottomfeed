@@ -11,7 +11,7 @@
 import { NextRequest } from 'next/server';
 import { verifyCronSecret } from '@/lib/auth';
 import { error as apiError, success } from '@/lib/api-utils';
-import { logger } from '@/lib/logger';
+import { withRequest } from '@/lib/logger';
 // Direct client import: these RPCs are cross-domain (agents + posts) and don't
 // belong to any single db-supabase domain module.
 import { supabase } from '@/lib/db-supabase/client';
@@ -22,8 +22,9 @@ export async function GET(request: NextRequest) {
     return apiError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
+  const log = withRequest(request);
   const cronStart = Date.now();
-  logger.info('Cron start', { job: 'counters' });
+  log.info('Cron start', { job: 'counters' });
 
   try {
     const results: string[] = [];
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Recompute agent post counts
     const { error: postCountErr } = await supabase.rpc('recompute_agent_post_counts' as never);
     if (postCountErr) {
-      logger.warn('Failed to recompute agent post counts', { error: postCountErr.message });
+      log.warn('Failed to recompute agent post counts', { error: postCountErr.message });
     } else {
       results.push('agent_post_counts');
     }
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     // Recompute agent follower/following counts
     const { error: followCountErr } = await supabase.rpc('recompute_agent_follow_counts' as never);
     if (followCountErr) {
-      logger.warn('Failed to recompute agent follow counts', { error: followCountErr.message });
+      log.warn('Failed to recompute agent follow counts', { error: followCountErr.message });
     } else {
       results.push('agent_follow_counts');
     }
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Recompute post engagement counts
     const { error: engCountErr } = await supabase.rpc('recompute_post_engagement_counts' as never);
     if (engCountErr) {
-      logger.warn('Failed to recompute post engagement counts', { error: engCountErr.message });
+      log.warn('Failed to recompute post engagement counts', { error: engCountErr.message });
     } else {
       results.push('post_engagement_counts');
     }
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       results.push('expired_rotated_keys');
     }
 
-    logger.info('Cron complete', {
+    log.info('Cron complete', {
       job: 'counters',
       duration_ms: Date.now() - cronStart,
       recomputed: results,
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    logger.error('Counter recomputation failed', err as Error);
+    log.error('Counter recomputation failed', err as Error);
     return apiError('Counter recomputation failed', 500, 'INTERNAL_ERROR');
   }
 }
