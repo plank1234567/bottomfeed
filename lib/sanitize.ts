@@ -2,96 +2,60 @@
  * Content Sanitization Utilities
  * Protects against XSS attacks by sanitizing user-generated content
  *
- * Uses simple HTML entity encoding that works in both client and server environments
- * without requiring jsdom during build time.
+ * Uses DOMPurify (via isomorphic-dompurify for SSR compatibility) for robust
+ * HTML sanitization that handles encoding bypasses, mutation XSS, and malformed HTML.
  */
 
-/**
- * Strip all HTML tags from a string
- */
-function stripTags(str: string): string {
-  if (!str) return '';
-  return str.replace(/<[^>]*>/g, '');
-}
+import DOMPurify from 'isomorphic-dompurify';
 
-/**
- * Configuration for different sanitization contexts
- */
-// Note: No `g` flag — regex with `g` is stateful (lastIndex), which causes
-// alternating true/false when called repeatedly in .test() inside a loop.
-const ALLOWED_TAGS_REGEX = /<\/?(?:b|i|em|strong|a|br|p|ul|ol|li|code|pre)(?:\s[^>]*)?\/?>/i;
+// Configure DOMPurify for post content
+const POST_CONTENT_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'br', 'p', 'ul', 'ol', 'li', 'code', 'pre'],
+  ALLOWED_ATTR: ['href', 'rel', 'target'],
+  ALLOW_DATA_ATTR: false,
+};
+
+// Flag to gate the hook — only active during sanitizePostContent calls.
+// Avoids addHook/removeHooks churn and the sledgehammer of removeHooks
+// which would destroy hooks registered by other code.
+let _inPostContentSanitize = false;
+
+// Registered once at module load. Only does work when _inPostContentSanitize is true,
+// so sanitizePlainText and other callers pass through untouched.
+DOMPurify.addHook('afterSanitizeAttributes', node => {
+  if (!_inPostContentSanitize) return;
+  if (node.tagName === 'A') {
+    node.setAttribute('rel', 'noopener noreferrer');
+    node.setAttribute('target', '_blank');
+
+    // Validate href via sanitizeUrl logic
+    const href = node.getAttribute('href') || '';
+    const cleanHref = sanitizeUrl(href);
+    if (cleanHref === '') {
+      // Dangerous or invalid href — remove the node entirely
+      node.removeAttribute('href');
+      // Replace anchor with its text content
+      const text = node.textContent || '';
+      if (node.parentNode) {
+        node.parentNode.replaceChild(node.ownerDocument!.createTextNode(text), node);
+      }
+    } else {
+      node.setAttribute('href', cleanHref);
+    }
+  }
+});
 
 /**
  * Sanitize post content - allows basic formatting, strips dangerous elements
  */
 export function sanitizePostContent(content: string): string {
   if (!content) return '';
-
-  // First strip all HTML tags for safety
-  // In a production environment, you might want to use a more sophisticated
-  // HTML sanitizer that preserves safe formatting
-  let sanitized = content;
-
-  // Remove script tags and their contents
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-
-  // Remove style tags and their contents
-  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-
-  // Remove event handlers (onclick, onerror, etc.)
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]+/gi, '');
-
-  // Remove javascript: and data: URLs
-  sanitized = sanitized.replace(/javascript:/gi, 'blocked:');
-  sanitized = sanitized.replace(/data:/gi, 'blocked:');
-  sanitized = sanitized.replace(/vbscript:/gi, 'blocked:');
-
-  // Remove iframe, object, embed tags
-  sanitized = sanitized.replace(/<\/?(?:iframe|object|embed|form|input)[^>]*>/gi, '');
-
-  // Escape remaining potentially dangerous characters in non-tag content
-  // This preserves the structure but ensures no XSS
-  sanitized = sanitized
-    .split(/(<[^>]+>)/g)
-    .map((part, i) => {
-      // Odd indices are tags, even are content
-      if (i % 2 === 0) {
-        // Content - escape special characters but preserve basic structure
-        return part;
-      }
-      // Tag - keep allowed tags, strip others
-      if (ALLOWED_TAGS_REGEX.test(part)) {
-        // For anchor tags, validate href and ensure they open in new tab safely
-        if (part.toLowerCase().startsWith('<a ')) {
-          const hrefMatch = part.match(/href\s*=\s*["']([^"']*)["']/i);
-          if (hrefMatch) {
-            const rawHref = hrefMatch[1] ?? '';
-            const cleanHref = sanitizeUrl(rawHref);
-            if (cleanHref === '') {
-              // Dangerous href — strip the tag, keep only inner text
-              return '';
-            }
-            // Replace the original href with the sanitized version
-            part = part.replace(hrefMatch[0], `href="${cleanHref}"`);
-          } else {
-            // No href attribute found — strip the anchor tag
-            return '';
-          }
-          if (!part.includes('rel=')) {
-            part = part.replace(/>$/, ' rel="noopener noreferrer">');
-          }
-          if (!part.includes('target=')) {
-            part = part.replace(/>$/, ' target="_blank">');
-          }
-        }
-        return part;
-      }
-      return '';
-    })
-    .join('');
-
-  return sanitized.trim();
+  _inPostContentSanitize = true;
+  try {
+    return DOMPurify.sanitize(content, POST_CONTENT_CONFIG).trim();
+  } finally {
+    _inPostContentSanitize = false;
+  }
 }
 
 /**
@@ -100,11 +64,9 @@ export function sanitizePostContent(content: string): string {
  */
 export function sanitizePlainText(text: string): string {
   if (!text) return '';
-  // Strip all HTML tags
-  let sanitized = stripTags(text);
-  // Remove any remaining HTML entities that might be malicious
-  sanitized = sanitized.replace(/&(?!(?:amp|lt|gt|quot|#039);)/g, '&amp;');
-  return sanitized.trim();
+  // Use DOMPurify with no allowed tags to safely strip all HTML
+  // (regex-based stripping is bypassable with malformed/nested tags)
+  return DOMPurify.sanitize(text, { ALLOWED_TAGS: [] }).trim();
 }
 
 /**

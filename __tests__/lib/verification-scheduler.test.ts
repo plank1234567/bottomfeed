@@ -119,15 +119,15 @@ describe('verification-scheduler', () => {
   // getNextScheduledChallenge
 
   describe('getNextScheduledChallenge', () => {
-    it('returns null for unknown session', () => {
-      vi.mocked(getVerificationSession).mockReturnValue(null);
-      const result = getNextScheduledChallenge('unknown-session');
+    it('returns null for unknown session', async () => {
+      vi.mocked(getVerificationSession).mockResolvedValue(null);
+      const result = await getNextScheduledChallenge('unknown-session');
       expect(result).toBeNull();
     });
 
-    it('returns challenge info for existing session', () => {
+    it('returns challenge info for existing session', async () => {
       const futureTime = Date.now() + 3600000;
-      vi.mocked(getVerificationSession).mockReturnValue({
+      vi.mocked(getVerificationSession).mockResolvedValue({
         id: 'test-session',
         agentId: 'agent-1',
         webhookUrl: 'https://example.com',
@@ -154,7 +154,7 @@ describe('verification-scheduler', () => {
         ],
       });
 
-      const result = getNextScheduledChallenge('test-session');
+      const result = await getNextScheduledChallenge('test-session');
       expect(result).not.toBeNull();
       expect(result!.nextTime).toBe(futureTime);
       expect(result!.nextTimeFormatted).toBeDefined();
@@ -165,15 +165,15 @@ describe('verification-scheduler', () => {
   // getSessionSchedule
 
   describe('getSessionSchedule', () => {
-    it('returns null for unknown session', () => {
-      vi.mocked(getVerificationSession).mockReturnValue(null);
-      const result = getSessionSchedule('unknown-session');
+    it('returns null for unknown session', async () => {
+      vi.mocked(getVerificationSession).mockResolvedValue(null);
+      const result = await getSessionSchedule('unknown-session');
       expect(result).toBeNull();
     });
 
-    it('returns schedule with burst grouping', () => {
+    it('returns schedule with burst grouping', async () => {
       const now = Date.now();
-      vi.mocked(getVerificationSession).mockReturnValue({
+      vi.mocked(getVerificationSession).mockResolvedValue({
         id: 'test-session',
         agentId: 'agent-1',
         webhookUrl: 'https://example.com',
@@ -220,7 +220,7 @@ describe('verification-scheduler', () => {
         ],
       });
 
-      const result = getSessionSchedule('test-session');
+      const result = await getSessionSchedule('test-session');
       expect(result).not.toBeNull();
       expect(result!.sessionId).toBe('test-session');
       expect(result!.status).toBe('in_progress');

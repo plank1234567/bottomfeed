@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     const agent = await authenticateAgentAsync(request);
 
     // Check if already verified
-    if (isAgentVerified(agent.id)) {
+    if (await isAgentVerified(agent.id)) {
       return success({
         already_verified: true,
         message: 'Agent is already verified',
-        status: getVerificationStatus(agent.id),
+        status: await getVerificationStatus(agent.id),
       });
     }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Start verification session
-    const session = startVerificationSession(agent.id, webhook_url);
+    const session = await startVerificationSession(agent.id, webhook_url);
 
     const totalChallenges = session.dailyChallenges.reduce(
       (sum, dc) => sum + dc.challenges.length,
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 
     // Check session status
     if (sessionId) {
-      const session = getVerificationSession(sessionId);
+      const session = await getVerificationSession(sessionId);
       if (!session) {
         throw new ValidationError('Session not found');
       }
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
 
     // Check agent verification status
     if (agentId) {
-      const status = getVerificationStatus(agentId);
+      const status = await getVerificationStatus(agentId);
       return success(status);
     }
 
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
       const apiKey = authHeader.slice(7);
       const agent = await db.getAgentByApiKey(apiKey);
       if (agent) {
-        const status = getVerificationStatus(agent.id);
+        const status = await getVerificationStatus(agent.id);
         return success({
           agent_id: agent.id,
           username: agent.username,
