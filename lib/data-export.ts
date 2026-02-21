@@ -126,8 +126,8 @@ export interface ModelComparisonExample {
 /**
  * Export data for RLHF reward model training
  */
-export function exportRLHFData(): RLHFExample[] {
-  const responses = VerificationDB.getAllChallengeResponses();
+export async function exportRLHFData(): Promise<RLHFExample[]> {
+  const responses = await VerificationDB.getAllChallengeResponses();
   const examples: RLHFExample[] = [];
 
   // Get preference elicitation responses
@@ -179,8 +179,8 @@ export function exportRLHFData(): RLHFExample[] {
 /**
  * Export data for hallucination classifier training
  */
-export function exportHallucinationData(): HallucinationExample[] {
-  const responses = VerificationDB.getAllChallengeResponses();
+export async function exportHallucinationData(): Promise<HallucinationExample[]> {
+  const responses = await VerificationDB.getAllChallengeResponses();
   const examples: HallucinationExample[] = [];
 
   const hallucinationResponses = responses.filter(
@@ -224,8 +224,8 @@ export function exportHallucinationData(): HallucinationExample[] {
 /**
  * Export data for chain-of-thought training
  */
-export function exportChainOfThoughtData(): CoTExample[] {
-  const responses = VerificationDB.getAllChallengeResponses();
+export async function exportChainOfThoughtData(): Promise<CoTExample[]> {
+  const responses = await VerificationDB.getAllChallengeResponses();
   const examples: CoTExample[] = [];
 
   const reasoningResponses = responses.filter(
@@ -260,8 +260,8 @@ export function exportChainOfThoughtData(): CoTExample[] {
 /**
  * Export data for safety alignment research
  */
-export function exportSafetyData(): SafetyExample[] {
-  const responses = VerificationDB.getAllChallengeResponses();
+export async function exportSafetyData(): Promise<SafetyExample[]> {
+  const responses = await VerificationDB.getAllChallengeResponses();
   const examples: SafetyExample[] = [];
 
   const safetyResponses = responses.filter(
@@ -296,8 +296,8 @@ export function exportSafetyData(): SafetyExample[] {
 /**
  * Export model comparison data (same prompt, different models)
  */
-export function exportModelComparisonData(): ModelComparisonExample[] {
-  const responses = VerificationDB.getAllChallengeResponses();
+export async function exportModelComparisonData(): Promise<ModelComparisonExample[]> {
+  const responses = await VerificationDB.getAllChallengeResponses();
   const examples: ModelComparisonExample[] = [];
 
   // Group responses by template_id (same question)
@@ -310,7 +310,7 @@ export function exportModelComparisonData(): ModelComparisonExample[] {
   }
 
   // Find templates with multiple different models
-  const agentStats = VerificationDB.getAllAgentStats();
+  const agentStats = await VerificationDB.getAllAgentStats();
   const agentModels = new Map<string, string>();
   for (const stat of agentStats) {
     if (stat.detectedModel) {
@@ -351,7 +351,7 @@ export function exportModelComparisonData(): ModelComparisonExample[] {
 /**
  * Export all data in a comprehensive format
  */
-export function exportAllTrainingData(): {
+export async function exportAllTrainingData(): Promise<{
   rlhf: RLHFExample[];
   hallucination: HallucinationExample[];
   chain_of_thought: CoTExample[];
@@ -365,9 +365,9 @@ export function exportAllTrainingData(): {
     unique_models: number;
     date_range: { earliest: number; latest: number };
   };
-} {
-  const allResponses = VerificationDB.getAllChallengeResponses();
-  const agentStats = VerificationDB.getAllAgentStats();
+}> {
+  const allResponses = await VerificationDB.getAllChallengeResponses();
+  const agentStats = await VerificationDB.getAllAgentStats();
 
   // Calculate statistics
   const byCategory: Record<string, number> = {};
@@ -385,11 +385,11 @@ export function exportAllTrainingData(): {
   const uniqueModels = new Set(agentStats.map(a => a.detectedModel).filter(Boolean));
 
   return {
-    rlhf: exportRLHFData(),
-    hallucination: exportHallucinationData(),
-    chain_of_thought: exportChainOfThoughtData(),
-    safety: exportSafetyData(),
-    model_comparison: exportModelComparisonData(),
+    rlhf: await exportRLHFData(),
+    hallucination: await exportHallucinationData(),
+    chain_of_thought: await exportChainOfThoughtData(),
+    safety: await exportSafetyData(),
+    model_comparison: await exportModelComparisonData(),
     statistics: {
       total_responses: allResponses.length,
       by_category: byCategory,
@@ -407,26 +407,26 @@ export function exportAllTrainingData(): {
 /**
  * Export raw data for custom analysis
  */
-export function exportRawData(): {
+export async function exportRawData(): Promise<{
   responses: VerificationDB.StoredChallengeResponse[];
   detections: VerificationDB.StoredModelDetection[];
   sessions: VerificationDB.StoredVerificationSession[];
   agent_stats: VerificationDB.AgentVerificationStats[];
   spot_checks: VerificationDB.SpotCheckRecord[];
-} {
+}> {
   return {
-    responses: VerificationDB.getAllChallengeResponses(),
-    detections: VerificationDB.getAllModelDetections(),
-    sessions: VerificationDB.getAllVerificationSessions(),
-    agent_stats: VerificationDB.getAllAgentStats(),
-    spot_checks: VerificationDB.getAllSpotChecks(),
+    responses: await VerificationDB.getAllChallengeResponses(),
+    detections: await VerificationDB.getAllModelDetections(),
+    sessions: await VerificationDB.getAllVerificationSessions(),
+    agent_stats: await VerificationDB.getAllAgentStats(),
+    spot_checks: await VerificationDB.getAllSpotChecks(),
   };
 }
 
 /**
  * Get data value summary (what the data is worth)
  */
-export function getDataValueSummary(): {
+export async function getDataValueSummary(): Promise<{
   critical_data_points: number;
   high_value_data_points: number;
   medium_value_data_points: number;
@@ -438,8 +438,8 @@ export function getDataValueSummary(): {
     safety_examples: number;
     comparison_examples: number;
   };
-} {
-  const responses = VerificationDB.getAllChallengeResponses();
+}> {
+  const responses = await VerificationDB.getAllChallengeResponses();
 
   const critical = responses.filter(r => r.dataValue === 'critical').length;
   const high = responses.filter(r => r.dataValue === 'high').length;
@@ -460,11 +460,11 @@ export function getDataValueSummary(): {
     medium_value_data_points: medium,
     use_cases_covered: Array.from(useCases),
     training_ready: {
-      rlhf_examples: exportRLHFData().length,
-      hallucination_examples: exportHallucinationData().length,
-      cot_examples: exportChainOfThoughtData().length,
-      safety_examples: exportSafetyData().length,
-      comparison_examples: exportModelComparisonData().length,
+      rlhf_examples: (await exportRLHFData()).length,
+      hallucination_examples: (await exportHallucinationData()).length,
+      cot_examples: (await exportChainOfThoughtData()).length,
+      safety_examples: (await exportSafetyData()).length,
+      comparison_examples: (await exportModelComparisonData()).length,
     },
   };
 }

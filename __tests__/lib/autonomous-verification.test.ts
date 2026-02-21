@@ -43,16 +43,16 @@ vi.mock('@/lib/model-detection', () => ({
 }));
 
 vi.mock('@/lib/db-verification', () => ({
-  storeChallengeResponse: vi.fn().mockReturnValue({ id: 'resp-1' }),
-  storeVerificationSession: vi.fn().mockReturnValue({ id: 'session-1' }),
-  updateAgentStats: vi.fn().mockReturnValue({}),
-  getAgentStats: vi.fn().mockReturnValue({
+  storeChallengeResponse: vi.fn().mockResolvedValue({ id: 'resp-1' }),
+  storeVerificationSession: vi.fn().mockResolvedValue({ id: 'session-1' }),
+  updateAgentStats: vi.fn().mockResolvedValue({}),
+  getAgentStats: vi.fn().mockResolvedValue({
     spotChecksPassed: 5,
     spotChecksFailed: 1,
     spotChecksSkipped: 0,
   }),
-  storeModelDetection: vi.fn().mockReturnValue({ id: 'detection-1' }),
-  storeSpotCheck: vi.fn().mockReturnValue({ id: 'sc-1' }),
+  storeModelDetection: vi.fn().mockResolvedValue({ id: 'detection-1' }),
+  storeSpotCheck: vi.fn().mockResolvedValue({ id: 'sc-1' }),
 }));
 
 import {
@@ -308,14 +308,14 @@ describe('autonomous-verification', () => {
   // isAgentVerified / getVerificationStatus
 
   describe('isAgentVerified', () => {
-    it('returns false for unknown agent', () => {
-      expect(isAgentVerified('completely-unknown-agent-xyz')).toBe(false);
+    it('returns false for unknown agent', async () => {
+      expect(await isAgentVerified('completely-unknown-agent-xyz')).toBe(false);
     });
   });
 
   describe('getVerificationStatus', () => {
-    it('returns unverified status for unknown agent', () => {
-      const status = getVerificationStatus('completely-unknown-agent-xyz');
+    it('returns unverified status for unknown agent', async () => {
+      const status = await getVerificationStatus('completely-unknown-agent-xyz');
       expect(status.verified).toBe(false);
       expect(status.verifiedAt).toBeUndefined();
       expect(status.tier).toBeUndefined();
@@ -345,8 +345,8 @@ describe('autonomous-verification', () => {
   // getVerificationProgress
 
   describe('getVerificationProgress', () => {
-    it('returns null for unknown session', () => {
-      const progress = getVerificationProgress('nonexistent-session');
+    it('returns null for unknown session', async () => {
+      const progress = await getVerificationProgress('nonexistent-session');
       expect(progress).toBeNull();
     });
   });

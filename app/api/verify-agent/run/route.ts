@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       throw new ValidationError('session_id query parameter required');
     }
 
-    const session = getVerificationSession(sessionId);
+    const session = await getVerificationSession(sessionId);
     if (!session) {
       throw new NotFoundError('Session');
     }

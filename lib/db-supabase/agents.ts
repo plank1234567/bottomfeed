@@ -28,36 +28,27 @@ export async function createAgent(
   const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
   const keyHash = hashApiKey(apiKey);
 
-  const { data: agent, error } = await supabase
-    .from('agents')
-    .insert({
-      username: username.toLowerCase(),
-      display_name: displayName,
-      bio,
-      avatar_url: avatarUrl,
-      model,
-      provider,
-      capabilities,
-      personality,
-      is_verified: false,
-      status: 'online',
-      website_url: websiteUrl,
-      github_url: githubUrl,
-      claim_status: 'pending_claim',
+  const { data, error } = await supabase
+    .rpc('create_agent_atomic', {
+      p_username: username.toLowerCase(),
+      p_display_name: displayName,
+      p_bio: bio,
+      p_avatar_url: avatarUrl,
+      p_model: model,
+      p_provider: provider,
+      p_capabilities: capabilities,
+      p_personality: personality,
+      p_website_url: websiteUrl || null,
+      p_github_url: githubUrl || null,
+      p_key_hash: keyHash,
     })
-    .select()
     .single();
 
+  const agent = data as Agent | null;
   if (error || !agent) {
     logger.error('Create agent error', error);
     return null;
   }
-
-  const { error: keyError } = await supabase.from('api_keys').insert({
-    key_hash: keyHash,
-    agent_id: agent.id,
-  });
-  if (keyError) throw new Error(`Failed to insert API key: ${keyError.message}`);
 
   logger.audit('agent_created', { agent_id: agent.id, username: agent.username });
   return { agent: agent as Agent, apiKey };
@@ -90,37 +81,24 @@ export async function registerAgent(
   const keyHash = hashApiKey(apiKey);
   const verificationCode = `reef-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-  const { data: agent, error } = await supabase
-    .from('agents')
-    .insert({
-      username,
-      display_name: name,
-      bio: description,
-      model: model || 'unknown',
-      provider: provider || 'unknown',
-      is_verified: false,
-      reputation_score: 50,
-      claim_status: 'pending_claim',
+  const { data, error } = await supabase
+    .rpc('register_agent_atomic', {
+      p_username: username,
+      p_display_name: name,
+      p_bio: description,
+      p_model: model || 'unknown',
+      p_provider: provider || 'unknown',
+      p_reputation_score: 50,
+      p_key_hash: keyHash,
+      p_verification_code: verificationCode,
     })
-    .select()
     .single();
 
+  const agent = data as Agent | null;
   if (error || !agent) {
     logger.error('Register agent error', error);
     return null;
   }
-
-  const { error: keyError } = await supabase.from('api_keys').insert({
-    key_hash: keyHash,
-    agent_id: agent.id,
-  });
-  if (keyError) throw new Error(`Failed to insert API key: ${keyError.message}`);
-
-  const { error: claimError } = await supabase.from('pending_claims').insert({
-    agent_id: agent.id,
-    verification_code: verificationCode,
-  });
-  if (claimError) throw new Error(`Failed to insert pending claim: ${claimError.message}`);
 
   logger.audit('agent_registered', { agent_id: agent.id, username: agent.username });
   return {
@@ -292,21 +270,20 @@ export async function claimAgent(
   verificationCode: string,
   twitterHandle: string
 ): Promise<Agent | null> {
-  const claim = await getPendingClaim(verificationCode);
-  if (!claim) return null;
+  const cleanHandle = twitterHandle.replace(/^@/, '').toLowerCase();
 
-  const { data: agent } = await supabase
-    .from('agents')
-    .update({
-      claim_status: 'claimed',
-      twitter_handle: twitterHandle.replace(/^@/, '').toLowerCase(),
-      reputation_score: 100,
+  const { data, error } = await supabase
+    .rpc('claim_agent_atomic', {
+      p_verification_code: verificationCode,
+      p_twitter_handle: cleanHandle,
     })
-    .eq('id', claim.agent_id)
-    .select()
     .maybeSingle();
 
-  await supabase.from('pending_claims').delete().eq('verification_code', verificationCode);
+  const agent = data as Agent | null;
+  if (error) {
+    logger.error('Claim agent error', error);
+    return null;
+  }
 
   if (agent) {
     logger.audit('agent_claimed', { agent_id: agent.id, twitter_handle: twitterHandle });
@@ -335,27 +312,20 @@ export async function createAgentViaTwitter(
   const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
   const keyHash = hashApiKey(apiKey);
 
-  const { data: agent, error } = await supabase
-    .from('agents')
-    .insert({
-      username,
-      display_name: displayName || `@${cleanHandle}`,
-      bio: bio || `AI agent verified via X @${cleanHandle}`,
-      model: model || 'unknown',
-      provider: provider || 'unknown',
-      is_verified: false,
-      twitter_handle: cleanHandle,
-      claim_status: 'claimed',
+  const { data, error } = await supabase
+    .rpc('create_agent_twitter_atomic', {
+      p_username: username,
+      p_display_name: displayName || `@${cleanHandle}`,
+      p_bio: bio || `AI agent verified via X @${cleanHandle}`,
+      p_model: model || 'unknown',
+      p_provider: provider || 'unknown',
+      p_twitter_handle: cleanHandle,
+      p_key_hash: keyHash,
     })
-    .select()
     .single();
 
+  const agent = data as Agent | null;
   if (error || !agent) return null;
-
-  await supabase.from('api_keys').insert({
-    key_hash: keyHash,
-    agent_id: agent.id,
-  });
 
   logger.audit('agent_created_via_twitter', {
     agent_id: agent.id,

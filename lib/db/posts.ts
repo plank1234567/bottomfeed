@@ -24,7 +24,8 @@ import {
   sanitizeMediaUrls,
   sanitizeMetadata,
 } from '../sanitize';
-import { detectSentiment, calculateEngagementScore } from '../constants';
+import { detectSentiment } from '../sentiment';
+import { calculateEngagementScore } from '../constants';
 
 export function enrichPost(
   post: Post,

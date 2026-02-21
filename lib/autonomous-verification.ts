@@ -1,6 +1,4 @@
 import crypto from 'crypto';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { logger } from '@/lib/logger';
 import { safeFetch } from '@/lib/validation';
 import {
@@ -20,6 +18,7 @@ import {
   generateVerificationChallenges,
   generateSpotCheckChallenge as generateDynamicSpotCheck,
 } from '@/lib/challenge-generator';
+import * as VerificationPersistence from '@/lib/db-supabase/verification';
 import type { TrustTier } from '@/types';
 
 // Re-export TrustTier for backwards compatibility with existing imports
@@ -148,57 +147,7 @@ const MAX_FAILURES_IN_WINDOW = 10;
 const MAX_FAILURE_RATE = 0.25; // 25%
 const MIN_CHECKS_FOR_RATE = 10; // Need at least 10 checks to use rate-based revocation
 
-// File-based persistence for dev (in production, use Redis/database)
-const SESSION_DATA_FILE = path.join(process.cwd(), '.data', 'verification-sessions.json');
-
-interface PersistedSessionData {
-  verificationSessions: [string, VerificationSession][];
-  verifiedAgents: [
-    string,
-    {
-      verifiedAt: number;
-      webhookUrl: string;
-      lastSpotCheck?: number;
-      spotCheckHistory: SpotCheckResult[];
-      trustTier?: TrustTier;
-      consecutiveDaysOnline?: number;
-      lastConsecutiveCheck?: number;
-      tierHistory?: { tier: TrustTier; achievedAt: number }[];
-      currentDaySkips?: number;
-      currentDayStart?: number;
-    },
-  ][];
-  pendingSpotChecks: [string, SpotCheck][];
-}
-
-async function loadSessionData(): Promise<PersistedSessionData | null> {
-  try {
-    const data = await fs.readFile(SESSION_DATA_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
-      logger.error('Error loading session data', e instanceof Error ? e : new Error(String(e)));
-    }
-  }
-  return null;
-}
-
-async function saveSessionData() {
-  try {
-    const dir = path.dirname(SESSION_DATA_FILE);
-    await fs.mkdir(dir, { recursive: true });
-    const data: PersistedSessionData = {
-      verificationSessions: Array.from(verificationSessions.entries()),
-      verifiedAgents: Array.from(verifiedAgents.entries()),
-      pendingSpotChecks: Array.from(pendingSpotChecks.entries()),
-    };
-    await fs.writeFile(SESSION_DATA_FILE, JSON.stringify(data, null, 2));
-  } catch (e) {
-    logger.error('Error saving session data', e instanceof Error ? e : new Error(String(e)));
-  }
-}
-
-// Storage (in production, use Redis/database)
+// In-memory cache (Maps) — database is source of truth via write-through pattern
 const verificationSessions = new Map<string, VerificationSession>();
 const verifiedAgents = new Map<
   string,
@@ -206,40 +155,135 @@ const verifiedAgents = new Map<
     verifiedAt: number;
     webhookUrl: string;
     lastSpotCheck?: number;
-    spotCheckHistory: SpotCheckResult[]; // Rolling history for 30-day window
+    spotCheckHistory: SpotCheckResult[];
     trustTier: TrustTier;
-    consecutiveDaysOnline: number; // Days with challenges answered (1 skip/day allowed)
-    lastConsecutiveCheck: number; // Timestamp of last day counted
+    consecutiveDaysOnline: number;
+    lastConsecutiveCheck: number;
     tierHistory: { tier: TrustTier; achievedAt: number }[];
-    currentDaySkips: number; // Skips in current day (resets daily)
-    currentDayStart: number; // Start of current tracking day
+    currentDaySkips: number;
+    currentDayStart: number;
   }
 >();
 const pendingSpotChecks = new Map<string, SpotCheck>();
 
-// Initialize from persisted data
-const _initPromise = loadSessionData().then(persistedSessionData => {
-  if (persistedSessionData) {
-    persistedSessionData.verificationSessions.forEach(([k, v]) => verificationSessions.set(k, v));
-    // Handle migration of old data without tier fields
-    persistedSessionData.verifiedAgents.forEach(([k, v]) =>
-      verifiedAgents.set(k, {
-        ...v,
-        trustTier: v.trustTier || 'spawn',
-        consecutiveDaysOnline: v.consecutiveDaysOnline || 0,
-        lastConsecutiveCheck: v.lastConsecutiveCheck || v.verifiedAt,
-        tierHistory: v.tierHistory || [{ tier: 'spawn' as TrustTier, achievedAt: v.verifiedAt }],
-        currentDaySkips: v.currentDaySkips || 0,
-        currentDayStart: v.currentDayStart || Date.now(),
-      })
+// Write-through: persist state to database. Awaited by callers to ensure
+// durability for critical verification data. Errors are logged but not rethrown
+// to avoid breaking the hot path — the in-memory cache remains authoritative
+// for the current process lifetime.
+async function persistSession(sessionId: string): Promise<void> {
+  const session = verificationSessions.get(sessionId);
+  if (!session) return;
+  try {
+    await VerificationPersistence.saveSession({
+      id: session.id,
+      agent_id: session.agentId,
+      webhook_url: session.webhookUrl,
+      status: session.status,
+      current_day: session.currentDay,
+      daily_challenges: session.dailyChallenges,
+      started_at: session.startedAt,
+      completed_at: session.completedAt ?? null,
+      failure_reason: session.failureReason ?? null,
+    });
+  } catch (e) {
+    logger.error(
+      'Failed to persist verification session',
+      e instanceof Error ? e : new Error(String(e))
     );
-    persistedSessionData.pendingSpotChecks.forEach(([k, v]) => pendingSpotChecks.set(k, v));
-    logger.debug('Loaded verification session data', {
+  }
+}
+
+async function persistVerifiedAgent(agentId: string): Promise<void> {
+  const agent = verifiedAgents.get(agentId);
+  if (!agent) return;
+  try {
+    await VerificationPersistence.saveVerifiedAgent(agentId, agent);
+  } catch (e) {
+    logger.error('Failed to persist verified agent', e instanceof Error ? e : new Error(String(e)));
+  }
+}
+
+async function persistSpotCheck(spotCheckId: string): Promise<void> {
+  const sc = pendingSpotChecks.get(spotCheckId);
+  if (!sc) return;
+  try {
+    await VerificationPersistence.saveSpotCheck({
+      id: sc.id,
+      agent_id: sc.agentId,
+      challenge: sc.challenge,
+      scheduled_for: sc.scheduledFor,
+      completed_at: sc.completedAt ?? null,
+      passed: sc.passed ?? null,
+    });
+  } catch (e) {
+    logger.error('Failed to persist spot check', e instanceof Error ? e : new Error(String(e)));
+  }
+}
+
+// Initialize from database (replaces file-based persistence)
+const _initPromise = Promise.all([
+  VerificationPersistence.loadVerificationSessions(),
+  VerificationPersistence.loadVerifiedAgents(),
+  VerificationPersistence.loadPendingSpotChecks(),
+])
+  .then(([sessions, agents, spotChecks]) => {
+    for (const row of sessions) {
+      verificationSessions.set(row.id, {
+        id: row.id,
+        agentId: row.agent_id,
+        webhookUrl: row.webhook_url,
+        status: row.status,
+        currentDay: row.current_day,
+        dailyChallenges: row.daily_challenges as DailyChallenge[],
+        startedAt: row.started_at,
+        completedAt: row.completed_at ?? undefined,
+        failureReason: row.failure_reason ?? undefined,
+      });
+    }
+    for (const row of agents) {
+      verifiedAgents.set(row.agent_id, {
+        verifiedAt: row.verified_at,
+        webhookUrl: row.webhook_url,
+        lastSpotCheck: row.last_spot_check ?? undefined,
+        spotCheckHistory: row.spot_check_history || [],
+        trustTier: (row.trust_tier as TrustTier) || 'spawn',
+        consecutiveDaysOnline: row.consecutive_days_online || 0,
+        lastConsecutiveCheck: row.last_consecutive_check || row.verified_at,
+        tierHistory: row.tier_history || [
+          { tier: 'spawn' as TrustTier, achievedAt: row.verified_at },
+        ],
+        currentDaySkips: row.current_day_skips || 0,
+        currentDayStart: row.current_day_start || Date.now(),
+      });
+    }
+    for (const row of spotChecks) {
+      pendingSpotChecks.set(row.id, {
+        id: row.id,
+        agentId: row.agent_id,
+        challenge: row.challenge as Challenge,
+        scheduledFor: row.scheduled_for,
+        completedAt: row.completed_at ?? undefined,
+        passed: row.passed ?? undefined,
+      });
+    }
+    logger.debug('Loaded verification state from database', {
       sessions: verificationSessions.size,
       verifiedAgents: verifiedAgents.size,
+      spotChecks: pendingSpotChecks.size,
     });
-  }
-});
+  })
+  .catch(e => {
+    logger.error(
+      'Failed to load verification state from database',
+      e instanceof Error ? e : new Error(String(e))
+    );
+  });
+
+// Guard: ensures database state is loaded before accessing Maps.
+// Awaiting a resolved promise is essentially free (~microtask).
+async function ensureInitialized(): Promise<void> {
+  await _initPromise;
+}
 
 // Helper: Get spot check stats for rolling window
 function getSpotCheckStats(agentId: string): {
@@ -314,15 +358,16 @@ function calculateTierFromDays(consecutiveDays: number): TrustTier {
 
 // Update agent's consecutive day count and potentially upgrade tier
 // Allows 1 skip per day grace for brief downtime (restarts, etc.)
-export function updateConsecutiveDays(
+export async function updateConsecutiveDays(
   agentId: string,
   challengeAnswered: boolean
-): {
+): Promise<{
   newTier: TrustTier;
   consecutiveDays: number;
   tierChanged: boolean;
   skipsToday: number;
-} | null {
+} | null> {
+  await ensureInitialized();
   const agent = verifiedAgents.get(agentId);
   if (!agent) return null;
 
@@ -386,7 +431,7 @@ export function updateConsecutiveDays(
     });
   }
 
-  saveSessionData();
+  await persistVerifiedAgent(agentId);
 
   return {
     newTier,
@@ -397,12 +442,13 @@ export function updateConsecutiveDays(
 }
 
 // Get agent's current tier info
-export function getAgentTier(agentId: string): {
+export async function getAgentTier(agentId: string): Promise<{
   tier: TrustTier;
   consecutiveDays: number;
   tierInfo: ReturnType<typeof getTierInfo>;
   daysUntilNextTier: number | null;
-} | null {
+} | null> {
+  await ensureInitialized();
   const agent = verifiedAgents.get(agentId);
   if (!agent) return null;
 
@@ -628,7 +674,11 @@ export function analyzeAutonomy(session: VerificationSession): AutonomyAnalysis 
 }
 
 // Start a verification session (3-day verification)
-export function startVerificationSession(agentId: string, webhookUrl: string): VerificationSession {
+export async function startVerificationSession(
+  agentId: string,
+  webhookUrl: string
+): Promise<VerificationSession> {
+  await ensureInitialized();
   const sessionId = crypto.randomUUID();
   const now = Date.now();
   const THREE_DAYS_MS = VERIFICATION_DAYS * MS_PER_DAY;
@@ -724,7 +774,7 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
   };
 
   verificationSessions.set(sessionId, session);
-  saveSessionData();
+  await persistSession(sessionId);
 
   // Log session details with data value breakdown
   const criticalCount = generatedChallenges.filter(c => c.dataValue === 'critical').length;
@@ -745,7 +795,10 @@ export function startVerificationSession(agentId: string, webhookUrl: string): V
 }
 
 // Get session by ID
-export function getVerificationSession(sessionId: string): VerificationSession | null {
+export async function getVerificationSession(
+  sessionId: string
+): Promise<VerificationSession | null> {
+  await ensureInitialized();
   return verificationSessions.get(sessionId) || null;
 }
 
@@ -834,7 +887,7 @@ export async function sendChallenge(
   challenge.sentAt = Date.now();
 
   // Helper to store response in verification database with parsed data
-  const storeResponse = (responseTime: number | null) => {
+  const storeResponse = async (responseTime: number | null) => {
     if (agentId) {
       // Parse response using v2 high-value extraction if possible
       if (challenge.response && challenge.templateId) {
@@ -857,7 +910,7 @@ export async function sendChallenge(
         }
       }
 
-      VerificationDB.storeChallengeResponse({
+      await VerificationDB.storeChallengeResponse({
         sessionId,
         agentId,
         challengeType: challenge.category || challenge.type,
@@ -926,13 +979,13 @@ export async function sendChallenge(
         // Server error or unreachable - agent might be offline
         challenge.status = 'skipped';
         challenge.failureReason = `Server unavailable (HTTP ${response.status})`;
-        storeResponse(null);
+        await storeResponse(null);
         return { status: 'skipped', error: challenge.failureReason };
       }
       // Client error (4xx) - actual failure
       challenge.status = 'failed';
       challenge.failureReason = `HTTP ${response.status}`;
-      storeResponse(responseTime);
+      await storeResponse(responseTime);
       return { status: 'failed', error: `Webhook returned ${response.status}` };
     }
 
@@ -944,7 +997,7 @@ export async function sendChallenge(
     if (responseTime > RESPONSE_TIMEOUT_MS) {
       challenge.status = 'failed';
       challenge.failureReason = `Too slow: ${responseTime}ms (max ${RESPONSE_TIMEOUT_MS}ms)`;
-      storeResponse(responseTime);
+      await storeResponse(responseTime);
       return { status: 'failed', responseTime, error: 'Response too slow' };
     }
 
@@ -952,7 +1005,7 @@ export async function sendChallenge(
     if (!challenge.response || challenge.response.length < 10) {
       challenge.status = 'failed';
       challenge.failureReason = 'Response too short or empty';
-      storeResponse(responseTime);
+      await storeResponse(responseTime);
       return { status: 'failed', responseTime, error: 'Invalid response' };
     }
 
@@ -961,13 +1014,13 @@ export async function sendChallenge(
     if (!qualityCheck.valid) {
       challenge.status = 'failed';
       challenge.failureReason = qualityCheck.reason;
-      storeResponse(responseTime);
+      await storeResponse(responseTime);
       return { status: 'failed', responseTime, error: qualityCheck.reason };
     }
 
     challenge.status = 'passed';
     challenge.responseTimeMs = responseTime; // Track for variance analysis
-    storeResponse(responseTime);
+    await storeResponse(responseTime);
     return { status: 'passed', responseTime };
   } catch (error: unknown) {
     // Network errors, timeouts = agent offline, mark as SKIPPED
@@ -976,14 +1029,14 @@ export async function sendChallenge(
     if (err.name === 'AbortError' || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
       challenge.status = 'skipped';
       challenge.failureReason = 'Agent offline or unreachable';
-      storeResponse(null);
+      await storeResponse(null);
       return { status: 'skipped', error: challenge.failureReason };
     }
 
     // Other errors = actual failure
     challenge.status = 'failed';
     challenge.failureReason = err.message || 'Unknown error';
-    storeResponse(null);
+    await storeResponse(null);
     return { status: 'failed', error: challenge.failureReason };
   }
 }
@@ -995,6 +1048,7 @@ export async function processPendingChallenges(sessionId: string): Promise<{
   failed: number;
   skipped: number;
 }> {
+  await ensureInitialized();
   const session = verificationSessions.get(sessionId);
   if (!session) throw new Error('Session not found');
 
@@ -1038,14 +1092,14 @@ export async function processPendingChallenges(sessionId: string): Promise<{
 
   if (pendingChallenges.length === 0 || now >= verificationEndTime) {
     // Calculate final results
-    finalizeVerification(sessionId);
+    await finalizeVerification(sessionId);
   }
 
   return { processed, passed, failed, skipped };
 }
 
 // Finalize verification and determine pass/fail
-function finalizeVerification(sessionId: string): void {
+async function finalizeVerification(sessionId: string): Promise<void> {
   const session = verificationSessions.get(sessionId);
   if (!session) return;
 
@@ -1065,7 +1119,7 @@ function finalizeVerification(sessionId: string): void {
   const claimedModel = agent?.model || null;
 
   // Helper to store session to database
-  const storeSessionToDb = (
+  const storeSessionToDb = async (
     status: 'passed' | 'failed',
     failureReason: string | null,
     modelStatus: VerificationDB.ModelVerificationStatus,
@@ -1073,7 +1127,7 @@ function finalizeVerification(sessionId: string): void {
     confidence: number | null,
     scores: { model: string; score: number }[]
   ) => {
-    VerificationDB.storeVerificationSession({
+    await VerificationDB.storeVerificationSession({
       agentId: session.agentId,
       agentUsername: agent?.username || 'unknown',
       claimedModel,
@@ -1094,7 +1148,7 @@ function finalizeVerification(sessionId: string): void {
     });
 
     // Update agent stats
-    VerificationDB.updateAgentStats(session.agentId, {
+    await VerificationDB.updateAgentStats(session.agentId, {
       verificationPassed: status === 'passed',
       verifiedAt: status === 'passed' ? Date.now() : null,
       claimedModel,
@@ -1120,8 +1174,8 @@ function finalizeVerification(sessionId: string): void {
     session.completedAt = Date.now();
     session.failureReason = `Too few challenge responses. Attempted ${attemptedChallenges.length}/${totalChallenges} (${Math.round(attemptRate * 100)}%). Need at least ${MIN_ATTEMPT_RATE * 100}%.`;
     updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
-    storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
-    saveSessionData();
+    await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
+    await persistSession(sessionId);
     return;
   }
 
@@ -1142,8 +1196,8 @@ function finalizeVerification(sessionId: string): void {
       session.completedAt = Date.now();
       session.failureReason = `Missing successful responses on day(s): ${daysWithoutPasses.join(', ')}. Need at least ${MIN_PASSES_PER_DAY} pass per day.`;
       updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
-      storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
-      saveSessionData();
+      await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
+      await persistSession(sessionId);
       return;
     }
   }
@@ -1155,8 +1209,8 @@ function finalizeVerification(sessionId: string): void {
     session.completedAt = Date.now();
     session.failureReason = `Passed ${passedChallenges.length}/${attemptedChallenges.length} attempted challenges (${Math.round(passRate * 100)}%). Need ${PASS_RATE_REQUIRED * 100}%.`;
     updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
-    storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
-    saveSessionData();
+    await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
+    await persistSession(sessionId);
     return;
   }
 
@@ -1175,8 +1229,8 @@ function finalizeVerification(sessionId: string): void {
       session.completedAt = Date.now();
       session.failureReason = `Autonomy check failed (score: ${autonomyAnalysis.score}/100). ${autonomyAnalysis.reasons.join(' ')}`;
       updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
-      storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
-      saveSessionData();
+      await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
+      await persistSession(sessionId);
       return;
     }
 
@@ -1222,7 +1276,8 @@ function finalizeVerification(sessionId: string): void {
     currentDaySkips: 0,
     currentDayStart: Date.now(),
   });
-  saveSessionData();
+  await persistVerifiedAgent(session.agentId);
+  await persistSession(sessionId);
 
   logger.verification('Agent verified', session.agentId, {
     tier: initialTier,
@@ -1286,7 +1341,7 @@ function finalizeVerification(sessionId: string): void {
       );
 
       // Store model detection to database
-      VerificationDB.storeModelDetection({
+      await VerificationDB.storeModelDetection({
         agentId: session.agentId,
         sessionId,
         timestamp: Date.now(),
@@ -1322,7 +1377,7 @@ function finalizeVerification(sessionId: string): void {
   }
 
   // Store verified session to database
-  storeSessionToDb('passed', null, modelStatus, detectedModel, confidence, allScores);
+  await storeSessionToDb('passed', null, modelStatus, detectedModel, confidence, allScores);
 
   // Calculate and update average response time for agent
   const responseTimes = allChallenges
@@ -1331,7 +1386,7 @@ function finalizeVerification(sessionId: string): void {
 
   if (responseTimes.length > 0) {
     const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-    VerificationDB.updateAgentStats(session.agentId, {
+    await VerificationDB.updateAgentStats(session.agentId, {
       avgResponseTimeMs: avgResponseTime,
       totalResponsesCollected: responseTimes.length,
     });
@@ -1344,6 +1399,7 @@ export async function runVerificationSession(sessionId: string): Promise<{
   passed: boolean;
   session: VerificationSession;
 }> {
+  await ensureInitialized();
   const session = verificationSessions.get(sessionId);
   if (!session) throw new Error('Session not found');
 
@@ -1409,7 +1465,7 @@ export async function runVerificationSession(sessionId: string): Promise<{
   }
 
   // Finalize
-  finalizeVerification(sessionId);
+  await finalizeVerification(sessionId);
 
   // Re-fetch session to get updated status
   const finalSession = verificationSessions.get(sessionId)!;
@@ -1417,7 +1473,7 @@ export async function runVerificationSession(sessionId: string): Promise<{
 }
 
 // Get verification progress
-export function getVerificationProgress(sessionId: string): {
+export async function getVerificationProgress(sessionId: string): Promise<{
   totalChallenges: number;
   attempted: number;
   passed: number;
@@ -1426,7 +1482,8 @@ export function getVerificationProgress(sessionId: string): {
   pending: number;
   passRate: number;
   daysRemaining: number;
-} | null {
+} | null> {
+  await ensureInitialized();
   const session = verificationSessions.get(sessionId);
   if (!session) return null;
 
@@ -1457,12 +1514,13 @@ export function getVerificationProgress(sessionId: string): {
 }
 
 // Check if an agent is verified
-export function isAgentVerified(agentId: string): boolean {
+export async function isAgentVerified(agentId: string): Promise<boolean> {
+  await ensureInitialized();
   return verifiedAgents.has(agentId);
 }
 
 // Get verification status
-export function getVerificationStatus(agentId: string): {
+export async function getVerificationStatus(agentId: string): Promise<{
   verified: boolean;
   verifiedAt?: number;
   spotChecksPassed?: number;
@@ -1483,7 +1541,8 @@ export function getVerificationStatus(agentId: string): {
     daysUntilNextTier: number | null;
     nextTier: TrustTier | null;
   };
-} {
+}> {
+  await ensureInitialized();
   const status = verifiedAgents.get(agentId);
   if (!status) return { verified: false };
 
@@ -1531,7 +1590,8 @@ export function getVerificationStatus(agentId: string): {
 }
 
 // Schedule a random spot check
-export function scheduleSpotCheck(agentId: string): SpotCheck | null {
+export async function scheduleSpotCheck(agentId: string): Promise<SpotCheck | null> {
+  await ensureInitialized();
   const agentStatus = verifiedAgents.get(agentId);
   if (!agentStatus) return null;
 
@@ -1543,6 +1603,7 @@ export function scheduleSpotCheck(agentId: string): SpotCheck | null {
   };
 
   pendingSpotChecks.set(spotCheck.id, spotCheck);
+  await persistSpotCheck(spotCheck.id);
   return spotCheck;
 }
 
@@ -1553,6 +1614,7 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
   responseTime?: number;
   error?: string;
 }> {
+  await ensureInitialized();
   const spotCheck = pendingSpotChecks.get(spotCheckId);
   if (!spotCheck) return { passed: false, skipped: false, error: 'Spot check not found' };
 
@@ -1563,7 +1625,7 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
   let responseContent: string | null = null;
 
   // Helper to record result and check for revocation
-  const recordAndCheckRevocation = (
+  const recordAndCheckRevocation = async (
     passed: boolean,
     skipped: boolean,
     responseTime: number | null,
@@ -1572,12 +1634,13 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     if (!skipped) {
       agentStatus.spotCheckHistory.push({ timestamp: Date.now(), passed });
       agentStatus.lastSpotCheck = Date.now();
+      await persistVerifiedAgent(spotCheck.agentId);
       recordSpotCheckResult(spotCheck.agentId, passed);
 
       // Update agent stats in verification DB
-      const currentStats = VerificationDB.getAgentStats(spotCheck.agentId);
+      const currentStats = await VerificationDB.getAgentStats(spotCheck.agentId);
       if (currentStats) {
-        VerificationDB.updateAgentStats(spotCheck.agentId, {
+        await VerificationDB.updateAgentStats(spotCheck.agentId, {
           spotChecksPassed: currentStats.spotChecksPassed + (passed ? 1 : 0),
           spotChecksFailed: currentStats.spotChecksFailed + (passed ? 0 : 1),
           lastSpotCheck: Date.now(),
@@ -1588,6 +1651,7 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       const stats = getSpotCheckStats(spotCheck.agentId);
       if (stats.shouldRevoke) {
         verifiedAgents.delete(spotCheck.agentId);
+        await VerificationPersistence.deleteVerifiedAgent(spotCheck.agentId);
         updateAgentVerificationStatus(spotCheck.agentId, false);
         logger.verification('Verification revoked', spotCheck.agentId, {
           failures: stats.failed,
@@ -1597,16 +1661,16 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       }
     } else {
       // Track skipped checks too
-      const currentStats = VerificationDB.getAgentStats(spotCheck.agentId);
+      const currentStats = await VerificationDB.getAgentStats(spotCheck.agentId);
       if (currentStats) {
-        VerificationDB.updateAgentStats(spotCheck.agentId, {
+        await VerificationDB.updateAgentStats(spotCheck.agentId, {
           spotChecksSkipped: currentStats.spotChecksSkipped + 1,
         });
       }
     }
 
     // Store spot check to verification DB
-    VerificationDB.storeSpotCheck({
+    await VerificationDB.storeSpotCheck({
       agentId: spotCheck.agentId,
       timestamp: Date.now(),
       passed,
@@ -1652,21 +1716,21 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     // Server errors = offline, skip (don't count)
     if (!response.ok) {
       if (response.status >= 500 || response.status === 0) {
-        recordAndCheckRevocation(false, true, responseTime, 'Agent offline');
+        await recordAndCheckRevocation(false, true, responseTime, 'Agent offline');
         return { passed: false, skipped: true, responseTime, error: 'Agent offline' };
       }
 
       // 4xx errors = actual failure
-      recordAndCheckRevocation(false, false, responseTime, 'Failed spot check');
+      await recordAndCheckRevocation(false, false, responseTime, 'Failed spot check');
       // Failed spot check resets consecutive days (can't upgrade tier)
-      updateConsecutiveDays(spotCheck.agentId, false);
+      await updateConsecutiveDays(spotCheck.agentId, false);
       return { passed: false, skipped: false, responseTime, error: 'Failed spot check' };
     }
 
     // Too slow = failure
     if (responseTime > RESPONSE_TIMEOUT_MS) {
-      recordAndCheckRevocation(false, false, responseTime, 'Response too slow');
-      updateConsecutiveDays(spotCheck.agentId, false);
+      await recordAndCheckRevocation(false, false, responseTime, 'Response too slow');
+      await updateConsecutiveDays(spotCheck.agentId, false);
       return { passed: false, skipped: false, responseTime, error: 'Response too slow' };
     }
 
@@ -1674,21 +1738,21 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     responseContent = data.response || data.answer || data.content || null;
 
     if (!responseContent || responseContent.length < 10) {
-      recordAndCheckRevocation(false, false, responseTime, 'Invalid response');
-      updateConsecutiveDays(spotCheck.agentId, false);
+      await recordAndCheckRevocation(false, false, responseTime, 'Invalid response');
+      await updateConsecutiveDays(spotCheck.agentId, false);
       return { passed: false, skipped: false, responseTime, error: 'Invalid response' };
     }
 
     // Success!
     spotCheck.passed = true;
     spotCheck.completedAt = Date.now();
-    recordAndCheckRevocation(true, false, responseTime, null);
+    await recordAndCheckRevocation(true, false, responseTime, null);
 
     // Update consecutive days (may upgrade tier)
-    updateConsecutiveDays(spotCheck.agentId, true);
+    await updateConsecutiveDays(spotCheck.agentId, true);
 
     // Also store the response as a challenge response for model detection training
-    VerificationDB.storeChallengeResponse({
+    await VerificationDB.storeChallengeResponse({
       sessionId: `spotcheck-${spotCheck.id}`,
       agentId: spotCheck.agentId,
       challengeType: spotCheck.challenge.type,
@@ -1707,28 +1771,31 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     // Network errors = offline, skip
     const err = error as { name?: string; code?: string; message?: string };
     if (err.name === 'AbortError' || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
-      recordAndCheckRevocation(false, true, null, 'Agent offline or unreachable');
+      await recordAndCheckRevocation(false, true, null, 'Agent offline or unreachable');
       return { passed: false, skipped: true, error: 'Agent offline or unreachable' };
     }
 
     // Other errors = failure
     const errorMessage = err.message || 'Unknown error';
-    recordAndCheckRevocation(false, false, null, errorMessage);
+    await recordAndCheckRevocation(false, false, null, errorMessage);
     return { passed: false, skipped: false, error: errorMessage };
   }
 }
 
 // Revoke verification
-export function revokeVerification(agentId: string, reason: string): boolean {
+export async function revokeVerification(agentId: string, reason: string): Promise<boolean> {
+  await ensureInitialized();
   if (!verifiedAgents.has(agentId)) return false;
   verifiedAgents.delete(agentId);
+  await VerificationPersistence.deleteVerifiedAgent(agentId);
   updateAgentVerificationStatus(agentId, false);
   logger.verification('Verification revoked', agentId, { reason });
   return true;
 }
 
 // Get all pending spot checks (for a cron job to process)
-export function getPendingSpotChecks(): SpotCheck[] {
+export async function getPendingSpotChecks(): Promise<SpotCheck[]> {
+  await ensureInitialized();
   const now = Date.now();
   return Array.from(pendingSpotChecks.values()).filter(
     sc => sc.scheduledFor <= now && !sc.completedAt
@@ -1736,7 +1803,8 @@ export function getPendingSpotChecks(): SpotCheck[] {
 }
 
 // Get all sessions needing processing (for a cron job)
-export function getSessionsNeedingProcessing(): VerificationSession[] {
+export async function getSessionsNeedingProcessing(): Promise<VerificationSession[]> {
+  await ensureInitialized();
   const now = Date.now();
   return Array.from(verificationSessions.values()).filter(session => {
     if (session.status === 'passed' || session.status === 'failed') return false;
@@ -1748,11 +1816,12 @@ export function getSessionsNeedingProcessing(): VerificationSession[] {
 }
 
 // FOR TESTING: Reschedule the next pending burst to happen now
-export function rescheduleNextBurstForTesting(sessionId: string): {
+export async function rescheduleNextBurstForTesting(sessionId: string): Promise<{
   success: boolean;
   rescheduledCount: number;
   newTime: string;
-} | null {
+} | null> {
+  await ensureInitialized();
   const session = verificationSessions.get(sessionId);
   if (!session) return null;
 
@@ -1781,7 +1850,7 @@ export function rescheduleNextBurstForTesting(sessionId: string): {
     challenge.scheduledFor = newTime;
   }
 
-  saveSessionData();
+  await persistSession(sessionId);
 
   logger.debug('Rescheduled challenges for testing', {
     count: burstChallenges.length,

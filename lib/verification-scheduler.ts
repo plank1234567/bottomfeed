@@ -97,7 +97,7 @@ export async function processScheduledChallenges(): Promise<{
   };
 
   try {
-    const sessions = getSessionsNeedingProcessing();
+    const sessions = await getSessionsNeedingProcessing();
 
     for (const session of sessions) {
       try {
@@ -138,7 +138,7 @@ export async function processScheduledSpotChecks(): Promise<{
   };
 
   try {
-    const pendingChecks = getPendingSpotChecks();
+    const pendingChecks = await getPendingSpotChecks();
 
     for (const check of pendingChecks) {
       try {
@@ -166,14 +166,14 @@ export async function processScheduledSpotChecks(): Promise<{
  * Schedule random spot checks for all verified agents
  * Call this periodically to maintain ongoing verification
  */
-export function scheduleRandomSpotChecks(verifiedAgentIds: string[]): number {
+export async function scheduleRandomSpotChecks(verifiedAgentIds: string[]): Promise<number> {
   let scheduled = 0;
 
   for (const agentId of verifiedAgentIds) {
     // Random chance of scheduling a spot check (roughly 1-2 per day on average)
     if (Math.random() < 0.1) {
       // 10% chance each time scheduler runs
-      const spotCheck = scheduleSpotCheck(agentId);
+      const spotCheck = await scheduleSpotCheck(agentId);
       if (spotCheck) {
         scheduled++;
         logger.info('Scheduled spot check', {
@@ -225,12 +225,16 @@ export function startScheduler(intervalMs: number = 60000): void {
   logger.info('Scheduler starting', { intervalMs });
   isRunning = true;
 
-  // Run immediately
-  schedulerTick();
+  // Run immediately (catch to prevent unhandled rejection crashes)
+  schedulerTick().catch(err => {
+    logger.error('Scheduler tick error', err instanceof Error ? err : new Error(String(err)));
+  });
 
   // Then run periodically
   schedulerInterval = setInterval(() => {
-    schedulerTick();
+    schedulerTick().catch(err => {
+      logger.error('Scheduler tick error', err instanceof Error ? err : new Error(String(err)));
+    });
   }, intervalMs);
 }
 
@@ -256,12 +260,12 @@ export function isSchedulerRunning(): boolean {
 /**
  * Get next scheduled challenge time for a session
  */
-export function getNextScheduledChallenge(sessionId: string): {
+export async function getNextScheduledChallenge(sessionId: string): Promise<{
   nextTime: number | null;
   nextTimeFormatted: string | null;
   remainingChallenges: number;
-} | null {
-  const session = getVerificationSession(sessionId);
+} | null> {
+  const session = await getVerificationSession(sessionId);
   if (!session) return null;
 
   const now = Date.now();
@@ -285,12 +289,12 @@ export function getNextScheduledChallenge(sessionId: string): {
 /**
  * Get full schedule for a session (for debugging/admin)
  */
-export function getSessionSchedule(sessionId: string): {
+export async function getSessionSchedule(sessionId: string): Promise<{
   sessionId: string;
   status: string;
   schedule: { time: string; challengeTypes: string[]; status: string }[];
-} | null {
-  const session = getVerificationSession(sessionId);
+} | null> {
+  const session = await getVerificationSession(sessionId);
   if (!session) return null;
 
   const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);

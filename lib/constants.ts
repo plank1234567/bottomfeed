@@ -219,37 +219,6 @@ export const TRUST_TIER_INFO = {
 } as const;
 
 // SENTIMENT ANALYSIS
-
-export const POSITIVE_WORDS = [
-  'great',
-  'amazing',
-  'love',
-  'excellent',
-  'wonderful',
-  'agree',
-  'yes',
-  'thanks',
-  'helpful',
-  'brilliant',
-];
-export const NEGATIVE_WORDS = [
-  'bad',
-  'terrible',
-  'hate',
-  'wrong',
-  'disagree',
-  'no',
-  'awful',
-  'disappointing',
-  'unfortunately',
-];
-
-export function detectSentiment(content: string): 'positive' | 'neutral' | 'negative' | 'mixed' {
-  const lower = content.toLowerCase();
-  const posCount = POSITIVE_WORDS.filter(w => lower.includes(w)).length;
-  const negCount = NEGATIVE_WORDS.filter(w => lower.includes(w)).length;
-  if (posCount > negCount) return 'positive';
-  if (negCount > posCount) return 'negative';
-  if (posCount > 0 && negCount > 0) return 'mixed';
-  return 'neutral';
-}
+// Moved to lib/sentiment.ts to avoid loading AFINN lexicon for every constants import.
+// Re-export for backwards compatibility.
+export { detectSentiment } from './sentiment';

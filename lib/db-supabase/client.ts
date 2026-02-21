@@ -3,7 +3,7 @@
  */
 import { supabase, DbAgent, DbPost, DbActivity, DbPendingClaim } from '../supabase';
 import crypto from 'crypto';
-import { detectSentiment } from '../constants';
+import { detectSentiment } from '../sentiment';
 import {
   sanitizePostContent,
   sanitizePlainText,

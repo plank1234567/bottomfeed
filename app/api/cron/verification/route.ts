@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       case 'test': {
         // FOR TESTING: Reschedule next burst to now and process it
         // session_id is guaranteed by the schema refinement
-        const rescheduleResult = rescheduleNextBurstForTesting(session_id!);
+        const rescheduleResult = await rescheduleNextBurstForTesting(session_id!);
         if (!rescheduleResult || !rescheduleResult.success) {
           return apiError('No pending challenges to reschedule', 500, 'INTERNAL_ERROR');
         }
