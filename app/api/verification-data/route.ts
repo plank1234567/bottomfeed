@@ -64,22 +64,22 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case 'stats':
-        data = VerificationDB.getGlobalStats();
+        data = await VerificationDB.getGlobalStats();
         break;
 
       case 'sessions':
         const sessions = agentId
-          ? VerificationDB.getAgentVerificationSessions(agentId)
-          : VerificationDB.getAllVerificationSessions();
+          ? await VerificationDB.getAgentVerificationSessions(agentId)
+          : await VerificationDB.getAllVerificationSessions();
         data = { items: sessions.slice(0, limit), total: sessions.length };
         break;
 
       case 'responses':
         let responses = agentId
-          ? VerificationDB.getAgentChallengeResponses(agentId)
+          ? await VerificationDB.getAgentChallengeResponses(agentId)
           : model
-            ? VerificationDB.getResponsesByModel(model)
-            : VerificationDB.getAllChallengeResponses();
+            ? await VerificationDB.getResponsesByModel(model)
+            : await VerificationDB.getAllChallengeResponses();
 
         // Apply filters
         if (category) {
@@ -94,20 +94,20 @@ export async function GET(request: NextRequest) {
 
       case 'detections':
         const detections = agentId
-          ? VerificationDB.getAgentModelDetections(agentId)
-          : VerificationDB.getAllModelDetections();
+          ? await VerificationDB.getAgentModelDetections(agentId)
+          : await VerificationDB.getAllModelDetections();
         data = { items: detections.slice(0, limit), total: detections.length };
         break;
 
       case 'spotchecks':
         const spotchecks = agentId
-          ? VerificationDB.getAgentSpotChecks(agentId)
-          : VerificationDB.getAllSpotChecks();
+          ? await VerificationDB.getAgentSpotChecks(agentId)
+          : await VerificationDB.getAllSpotChecks();
         data = { items: spotchecks.slice(0, limit), total: spotchecks.length };
         break;
 
       case 'agents':
-        let agents = VerificationDB.getAllAgentStats();
+        let agents = await VerificationDB.getAllAgentStats();
         if (model) {
           agents = agents.filter(a => a.detectedModel?.toLowerCase() === model.toLowerCase());
         }
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 
       case 'mismatches':
         data = {
-          items: VerificationDB.getModelMismatches().slice(0, limit),
+          items: (await VerificationDB.getModelMismatches()).slice(0, limit),
         };
         break;
 
@@ -126,16 +126,16 @@ export async function GET(request: NextRequest) {
           throw new ValidationError('Search query required (use ?q=...)');
         }
         data = {
-          items: VerificationDB.searchResponses(query).slice(0, limit),
+          items: (await VerificationDB.searchResponses(query)).slice(0, limit),
         };
         break;
 
       case 'export':
-        data = DataExport.exportRawData();
+        data = await DataExport.exportRawData();
         break;
 
       case 'export-rlhf':
-        const rlhfData = DataExport.exportRLHFData();
+        const rlhfData = await DataExport.exportRLHFData();
         if (format === 'jsonl') {
           return new NextResponse(rlhfData.map(d => JSON.stringify(d)).join('\n'), {
             headers: {
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'export-hallucination':
-        const halData = DataExport.exportHallucinationData();
+        const halData = await DataExport.exportHallucinationData();
         if (format === 'jsonl') {
           return new NextResponse(halData.map(d => JSON.stringify(d)).join('\n'), {
             headers: {
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'export-cot':
-        const cotData = DataExport.exportChainOfThoughtData();
+        const cotData = await DataExport.exportChainOfThoughtData();
         if (format === 'jsonl') {
           return new NextResponse(cotData.map(d => JSON.stringify(d)).join('\n'), {
             headers: {
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'export-safety':
-        const safetyData = DataExport.exportSafetyData();
+        const safetyData = await DataExport.exportSafetyData();
         if (format === 'jsonl') {
           return new NextResponse(safetyData.map(d => JSON.stringify(d)).join('\n'), {
             headers: {
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'export-comparison':
-        const compData = DataExport.exportModelComparisonData();
+        const compData = await DataExport.exportModelComparisonData();
         if (format === 'jsonl') {
           return new NextResponse(compData.map(d => JSON.stringify(d)).join('\n'), {
             headers: {
@@ -200,11 +200,11 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'export-all':
-        data = DataExport.exportAllTrainingData();
+        data = await DataExport.exportAllTrainingData();
         break;
 
       case 'data-value':
-        data = DataExport.getDataValueSummary();
+        data = await DataExport.getDataValueSummary();
         break;
 
       default:

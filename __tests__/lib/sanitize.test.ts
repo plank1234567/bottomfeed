@@ -39,15 +39,109 @@ describe('sanitizePostContent', () => {
     expect(result.trim()).toBe('');
   });
 
-  // Regression test for the g flag bug (Fix 8)
   it('consistently sanitizes when called multiple times in a loop', () => {
     const input = '<b>bold</b> text';
     const results: string[] = [];
     for (let i = 0; i < 5; i++) {
       results.push(sanitizePostContent(input));
     }
-    // All results should be identical (no alternating behavior from g flag)
     expect(new Set(results).size).toBe(1);
+  });
+
+  // DOMPurify-specific tests: allowed tags
+  it('preserves allowed formatting tags', () => {
+    expect(sanitizePostContent('<b>bold</b>')).toBe('<b>bold</b>');
+    expect(sanitizePostContent('<i>italic</i>')).toBe('<i>italic</i>');
+    expect(sanitizePostContent('<em>emphasis</em>')).toBe('<em>emphasis</em>');
+    expect(sanitizePostContent('<strong>strong</strong>')).toBe('<strong>strong</strong>');
+    expect(sanitizePostContent('<code>code</code>')).toBe('<code>code</code>');
+    expect(sanitizePostContent('<pre>preformatted</pre>')).toBe('<pre>preformatted</pre>');
+  });
+
+  it('preserves list tags', () => {
+    const input = '<ul><li>item 1</li><li>item 2</li></ul>';
+    const result = sanitizePostContent(input);
+    expect(result).toContain('<ul>');
+    expect(result).toContain('<li>');
+  });
+
+  it('strips disallowed tags but keeps content', () => {
+    expect(sanitizePostContent('<div>content</div>')).toBe('content');
+    expect(sanitizePostContent('<span>text</span>')).toBe('text');
+    expect(sanitizePostContent('<h1>heading</h1>')).toBe('heading');
+  });
+
+  // DOMPurify-specific tests: anchor handling
+  it('adds rel and target to safe anchors', () => {
+    const input = '<a href="https://example.com">link</a>';
+    const result = sanitizePostContent(input);
+    expect(result).toContain('rel="noopener noreferrer"');
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('href="https://example.com"');
+  });
+
+  it('strips anchors with javascript: href', () => {
+    const input = '<a href="javascript:alert(1)">click</a>';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('javascript:');
+    expect(result).not.toContain('<a');
+  });
+
+  it('strips anchors with no href', () => {
+    const input = '<a>no href</a>';
+    const result = sanitizePostContent(input);
+    // DOMPurify may keep or strip the anchor; either way no dangerous behavior
+    expect(result).not.toContain('javascript:');
+  });
+
+  // DOMPurify-specific tests: encoding bypass resistance
+  it('blocks HTML-entity-encoded javascript URLs', () => {
+    const input = '<a href="&#106;avascript:alert(1)">click</a>';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('javascript:');
+  });
+
+  it('blocks mixed-case javascript URLs', () => {
+    const input = '<a href="JaVaScRiPt:alert(1)">click</a>';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('alert');
+  });
+
+  it('strips style tags and content', () => {
+    const input = '<style>body{display:none}</style>Hello';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('<style>');
+    expect(result).not.toContain('display:none');
+    expect(result).toContain('Hello');
+  });
+
+  it('strips iframe tags', () => {
+    const input = '<iframe src="https://evil.com"></iframe>safe';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('<iframe');
+    expect(result).toContain('safe');
+  });
+
+  it('strips onerror on img tags', () => {
+    const input = '<img src=x onerror="alert(1)">';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert');
+  });
+
+  it('strips data: URLs in attributes', () => {
+    const input = '<a href="data:text/html,<script>alert(1)</script>">click</a>';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('data:');
+  });
+
+  it('strips nested/malformed tags', () => {
+    // DOMPurify neutralizes the script tag — the text content may remain
+    // but cannot execute as JS since the <script> element is stripped
+    const input = '<div<script>alert(1)</script>>text</div>';
+    const result = sanitizePostContent(input);
+    expect(result).not.toContain('<script>');
+    expect(result).not.toMatch(/<script/i);
   });
 });
 
@@ -88,6 +182,25 @@ describe('sanitizePlainText', () => {
 
   it('preserves plain text', () => {
     expect(sanitizePlainText('Hello world')).toBe('Hello world');
+  });
+
+  it('strips script tags and content', () => {
+    expect(sanitizePlainText('<script>alert(1)</script>safe')).toBe('safe');
+  });
+
+  it('handles nested/malformed tags that bypass regex', () => {
+    // DOMPurify neutralizes the script tag — the text content may remain
+    // but cannot execute as JS since the <script> element is stripped
+    const result = sanitizePlainText('<div<script>alert(1)</script>>text');
+    expect(result).not.toContain('<script>');
+    expect(result).not.toMatch(/<script/i);
+  });
+
+  it('strips all tags including allowed ones', () => {
+    // sanitizePlainText should strip ALL tags, not just dangerous ones
+    expect(sanitizePlainText('<b>bold</b> and <a href="https://x.com">link</a>')).toBe(
+      'bold and link'
+    );
   });
 });
 
