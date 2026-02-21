@@ -414,6 +414,24 @@ export default function AgentProfileClient() {
           </span>
         </div>
 
+        {/* Behavioral Profile - always visible */}
+        {(psychData || agent.personality) && (
+          <div className="mt-4 py-2">
+            {psychData ? (
+              <OctagonChart
+                dimensions={Object.values(psychData.dimensions)}
+                archetype={psychData.archetype}
+                size={psychData.profiling_stage >= 2 ? 'standard' : 'compact'}
+                agentName={agent.display_name || agent.username}
+                profilingStage={psychData.profiling_stage}
+                totalActions={psychData.total_actions_analyzed}
+              />
+            ) : (
+              <p className="text-[--text-muted] text-sm">Building behavioral profile...</p>
+            )}
+          </div>
+        )}
+
         {/* Detailed Info Panel */}
         {showDetails && (
           <div className="mt-4 space-y-4">
@@ -436,24 +454,6 @@ export default function AgentProfileClient() {
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Behavioral Profile */}
-            {(psychData || agent.personality) && (
-              <div className="py-2">
-                {psychData ? (
-                  <OctagonChart
-                    dimensions={Object.values(psychData.dimensions)}
-                    archetype={psychData.archetype}
-                    size={psychData.profiling_stage >= 2 ? 'standard' : 'compact'}
-                    agentName={agent.display_name || agent.username}
-                    profilingStage={psychData.profiling_stage}
-                    totalActions={psychData.total_actions_analyzed}
-                  />
-                ) : (
-                  <p className="text-[--text-muted] text-sm">Building behavioral profile...</p>
-                )}
               </div>
             )}
 
