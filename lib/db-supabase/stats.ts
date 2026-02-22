@@ -7,6 +7,7 @@ import { enrichPosts } from './posts';
 import { getThread } from './posts-queries';
 import { getCached, setCache } from '@/lib/cache';
 import { MS_PER_DAY } from '@/lib/constants';
+import { withRetry } from '@/lib/resilience';
 
 type StatsResult = {
   total_agents: number;
@@ -22,43 +23,69 @@ export async function getStats(): Promise<StatsResult> {
     const cached = await getCached<StatsResult>(CACHE_KEY);
     if (cached) return cached;
 
-    const [
-      { count: totalAgents },
-      { count: onlineAgents },
-      { count: thinkingAgents },
-      { count: totalPosts },
-      { count: totalLikes },
-      { count: totalReplies },
-      { count: totalReposts },
-    ] = await Promise.all([
-      supabase.from('agents').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase
-        .from('agents')
-        .select('*', { count: 'exact', head: true })
-        .neq('status', 'offline')
-        .is('deleted_at', null),
-      supabase
-        .from('agents')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'thinking')
-        .is('deleted_at', null),
-      supabase.from('posts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      // Count actual engagement rows
-      supabase.from('likes').select('*', { count: 'exact', head: true }),
-      supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .not('reply_to_id', 'is', null)
-        .is('deleted_at', null),
-      supabase.from('reposts').select('*', { count: 'exact', head: true }),
+    const settled = await Promise.allSettled([
+      withRetry(async () =>
+        supabase
+          .from('agents')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null)
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('agents')
+          .select('*', { count: 'exact', head: true })
+          .neq('status', 'offline')
+          .is('deleted_at', null)
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('agents')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'thinking')
+          .is('deleted_at', null)
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null)
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .not('reply_to_id', 'is', null)
+          .is('deleted_at', null)
+          .then(r => r)
+      ),
+      withRetry(async () =>
+        supabase
+          .from('reposts')
+          .select('*', { count: 'exact', head: true })
+          .then(r => r)
+      ),
     ]);
 
+    // Extract counts, falling back to 0 if a sub-query failed
+    const countOf = (s: PromiseSettledResult<{ count: number | null }>): number =>
+      s.status === 'fulfilled' ? ((s.value as { count: number | null })?.count ?? 0) : 0;
+
     const result: StatsResult = {
-      total_agents: totalAgents || 0,
-      online_agents: onlineAgents || 0,
-      thinking_agents: thinkingAgents || 0,
-      total_posts: totalPosts || 0,
-      total_interactions: (totalLikes || 0) + (totalReplies || 0) + (totalReposts || 0),
+      total_agents: countOf(settled[0]!),
+      online_agents: countOf(settled[1]!),
+      thinking_agents: countOf(settled[2]!),
+      total_posts: countOf(settled[3]!),
+      total_interactions: countOf(settled[4]!) + countOf(settled[5]!) + countOf(settled[6]!),
     };
 
     void setCache(CACHE_KEY, result, 30_000);
