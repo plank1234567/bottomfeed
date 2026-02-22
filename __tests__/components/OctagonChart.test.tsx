@@ -229,80 +229,80 @@ describe('OctagonChart', () => {
     expect(screen.getByText(/1,247 analyzed actions/)).toBeTruthy();
   });
 
-  // Neural feature tests
+  // Chart element tests
 
-  it('renders dendrite stubs in standard mode', () => {
+  it('renders score extension lines in standard mode', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
-    // Each of the 8 node groups should contain a dendrite <line> element
+    // Each of the 8 node groups should contain a score extension <line> element
     const nodeGroups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
     expect(nodeGroups.length).toBe(8);
-    // Each group has a line for the dendrite stub
+    // Each group has a line for the score extension
     for (const group of nodeGroups) {
       const lines = group.querySelectorAll('line');
       expect(lines.length).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('does not render dendrites in micro mode', () => {
+  it('does not render score extensions in micro mode', () => {
     const { container } = render(<OctagonChart dimensions={mockDimensions} size="micro" />);
     // Micro mode has no node groups with pointer cursor
     const nodeGroups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
     expect(nodeGroups.length).toBe(0);
-    // No dendrite lines (only grid spokes)
+    // No extension lines (only grid spokes)
     const lines = container.querySelectorAll('svg.octagon-chart-svg line');
-    // In micro: 8 spokes only (no mesh, no dendrites)
+    // In micro: 8 spokes only (no mesh, no extensions)
     expect(lines.length).toBe(8);
   });
 
-  it('renders membrane rings (stroke-only circles) on nodes in standard mode', () => {
+  it('renders outer rings (stroke-only circles) on nodes in standard mode', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
     const nodeGroups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
     for (const group of nodeGroups) {
-      // Membrane ring: circle with fill="none" and a stroke
+      // Outer ring: circle with fill="none" and a stroke
       const circles = group.querySelectorAll('circle');
-      const membraneRings = Array.from(circles).filter(
+      const outerRings = Array.from(circles).filter(
         c => c.getAttribute('fill') === 'none' && c.getAttribute('stroke-width')
       );
-      expect(membraneRings.length).toBeGreaterThanOrEqual(1);
+      expect(outerRings.length).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('renders neuron ripple on high-score nodes when animations active', () => {
+  it('renders node pulse on high-score nodes when animations active', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
     // mockDimensions has IH=80, CE=90, ST=75 which are >= 75
     // Average confidence ~0.64 > 0.5, so animations are active
-    const ripples = container.querySelectorAll('.oct-neuron-ripple');
+    const ripples = container.querySelectorAll('.oct-node-pulse');
     expect(ripples.length).toBeGreaterThanOrEqual(2); // at least IH(80) and CE(90)
   });
 
-  it('does not render neuron ripple when animations are inactive', () => {
+  it('does not render node pulse when animations are inactive', () => {
     const lowConfDims: PsychographicDimension[] = mockDimensions.map(d => ({
       ...d,
       confidence: 0.1, // low confidence = animations off
     }));
     const { container } = render(<OctagonChart dimensions={lowConfDims} size="standard" />);
-    const ripples = container.querySelectorAll('.oct-neuron-ripple');
+    const ripples = container.querySelectorAll('.oct-node-pulse');
     expect(ripples.length).toBe(0);
   });
 
-  it('renders neural mesh lines when confidence is above threshold', () => {
+  it('renders decorative gridlines when confidence is above threshold', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
-    // Neural mesh: dashed lines inside the grid area
+    // Decorative gridlines: dashed lines inside the grid area
     // Rendered when globalConfidence > 0.3 (avg ~0.64 here)
-    // 5 mesh lines with strokeDasharray="2 4"
+    // 5 gridlines with strokeDasharray="2 4"
     const dashedLines = container.querySelectorAll('svg.octagon-chart-svg line[stroke-dasharray]');
     expect(dashedLines.length).toBe(5);
   });
 
-  it('does not render neural mesh when confidence is too low', () => {
+  it('does not render decorative gridlines when confidence is too low', () => {
     const lowConfDims: PsychographicDimension[] = mockDimensions.map(d => ({
       ...d,
       confidence: 0.1,
@@ -312,45 +312,45 @@ describe('OctagonChart', () => {
     expect(dashedLines.length).toBe(0);
   });
 
-  it('renders synapse fire animation class on co-activation pathways', () => {
+  it('renders path flow animation class on co-activation pathways', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
-    // With high enough confidence and scores, pathways should have oct-synapse-fire
-    const synapsePaths = container.querySelectorAll('.oct-synapse-fire');
-    expect(synapsePaths.length).toBeGreaterThan(0);
+    // With high enough confidence and scores, pathways should have oct-path-flow
+    const flowPaths = container.querySelectorAll('.oct-path-flow');
+    expect(flowPaths.length).toBeGreaterThan(0);
   });
 
-  it('does not render synapse fire when animations inactive', () => {
+  it('does not render path flow when animations inactive', () => {
     const lowConfDims: PsychographicDimension[] = mockDimensions.map(d => ({
       ...d,
       confidence: 0.1,
     }));
     const { container } = render(<OctagonChart dimensions={lowConfDims} size="standard" />);
-    const synapsePaths = container.querySelectorAll('.oct-synapse-fire');
-    expect(synapsePaths.length).toBe(0);
+    const flowPaths = container.querySelectorAll('.oct-path-flow');
+    expect(flowPaths.length).toBe(0);
   });
 
-  it('renders nucleus glow gradient definition', () => {
+  it('renders center highlight gradient definition', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} />
     );
     expect(container.querySelector('[id$="-nucleus"]')).toBeTruthy();
   });
 
-  it('renders nucleus glow circles on nodes in standard mode', () => {
+  it('renders center highlight circles on nodes in standard mode', () => {
     const { container } = render(
       <OctagonChart dimensions={mockDimensions} archetype={mockArchetype} size="standard" />
     );
     const nodeGroups = container.querySelectorAll('svg.octagon-chart-svg g[style*="pointer"]');
     for (const group of nodeGroups) {
       const circles = group.querySelectorAll('circle');
-      // Should have a nucleus circle using the gradient fill
-      const nuclei = Array.from(circles).filter(c => {
+      // Should have a center highlight circle using the gradient fill
+      const highlights = Array.from(circles).filter(c => {
         const fill = c.getAttribute('fill');
         return fill !== null && fill.includes('url(#') && fill.includes('nucleus');
       });
-      expect(nuclei.length).toBe(1);
+      expect(highlights.length).toBe(1);
     }
   });
 

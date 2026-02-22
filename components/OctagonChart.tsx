@@ -420,7 +420,7 @@ function OctagonChartInner({
               <stop offset="0%" stopColor={DIMENSION_META[0]!.color} stopOpacity="0.15" />
               <stop offset="100%" stopColor={DIMENSION_META[4]!.color} stopOpacity="0.02" />
             </radialGradient>
-            {/* Nucleus glow */}
+            {/* Center highlight */}
             <radialGradient id={svgId('nucleus')}>
               <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
               <stop offset="50%" stopColor="#fff" stopOpacity="0.3" />
@@ -491,7 +491,7 @@ function OctagonChartInner({
             );
           })}
 
-          {/* === Layer 1.5: Neural mesh — tissue texture === */}
+          {/* === Layer 1.5: Decorative gridlines === */}
           {!isMicro && globalConfidence > 0.3 && (
             <g opacity={Math.min(globalConfidence * 0.4, 0.15)}>
               {[
@@ -546,11 +546,11 @@ function OctagonChartInner({
                     strokeWidth={width}
                     opacity={opacity}
                     strokeDasharray={animationsActive ? '2 6' : 'none'}
-                    className={animationsActive ? 'oct-synapse-fire' : ''}
+                    className={animationsActive ? 'oct-path-flow' : ''}
                     style={
                       {
                         transition: 'opacity 0.4s ease',
-                        '--synapse-dur': `${3 + pi * 0.7}s`,
+                        '--flow-dur': `${3 + pi * 0.7}s`,
                       } as React.CSSProperties
                     }
                   />
@@ -615,8 +615,8 @@ function OctagonChartInner({
             const nodeOpacity = Math.max(0.5, d.confidence) * (nodeActive ? 1 : 0.4);
             const angle = (Math.PI * 2 * i) / N - Math.PI / 2;
             const stubLen = 5 + (d.score / 100) * 4;
-            const dendX = p.x + Math.cos(angle) * stubLen;
-            const dendY = p.y + Math.sin(angle) * stubLen;
+            const extX = p.x + Math.cos(angle) * stubLen;
+            const extY = p.y + Math.sin(angle) * stubLen;
 
             return (
               <g
@@ -626,20 +626,20 @@ function OctagonChartInner({
                 style={{ cursor: isMicro ? 'default' : 'pointer', transition: 'opacity 0.4s ease' }}
                 opacity={nodeActive ? 1 : 0.4}
               >
-                {/* Dendrite stub — axon extension */}
+                {/* Score extension line */}
                 {!isMicro && (
                   <line
                     x1={p.x}
                     y1={p.y}
-                    x2={dendX}
-                    y2={dendY}
+                    x2={extX}
+                    y2={extY}
                     stroke={meta.color}
                     strokeWidth="0.8"
                     strokeLinecap="round"
                     opacity={d.confidence * 0.35}
                   />
                 )}
-                {/* Neuron ripple — expanding membrane pulse */}
+                {/* Node pulse — expanding ring */}
                 {!isMicro && d.score >= 75 && animationsActive && (
                   <circle
                     cx={p.x}
@@ -648,11 +648,11 @@ function OctagonChartInner({
                     fill="none"
                     stroke={meta.color}
                     strokeWidth="0.5"
-                    className="oct-neuron-ripple"
-                    style={{ '--ripple-dur': `${2.5 + i * 0.4}s` } as React.CSSProperties}
+                    className="oct-node-pulse"
+                    style={{ '--pulse-dur': `${2.5 + i * 0.4}s` } as React.CSSProperties}
                   />
                 )}
-                {/* Membrane ring */}
+                {/* Outer ring */}
                 {!isMicro && (
                   <circle
                     cx={p.x}
@@ -665,7 +665,7 @@ function OctagonChartInner({
                     style={{ transition: 'all 0.3s ease' }}
                   />
                 )}
-                {/* Soma body — score-scaled, confidence-opaque */}
+                {/* Data point — score-scaled, confidence-opaque */}
                 <circle
                   cx={p.x}
                   cy={p.y}
@@ -681,7 +681,7 @@ function OctagonChartInner({
                     } as React.CSSProperties
                   }
                 />
-                {/* Nucleus glow */}
+                {/* Center highlight */}
                 {!isMicro && (
                   <circle
                     cx={p.x}

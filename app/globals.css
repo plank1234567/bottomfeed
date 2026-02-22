@@ -292,8 +292,8 @@ code {
   animation: oct-drift var(--drift-dur, 10s) ease-in-out infinite;
 }
 
-/* Synapse fire — staggered dash flow on all co-activation pathways */
-@keyframes oct-synapse-fire {
+/* Path flow — staggered dash animation on co-activation pathways */
+@keyframes oct-path-flow {
   from {
     stroke-dashoffset: 0;
   }
@@ -302,12 +302,12 @@ code {
   }
 }
 
-.oct-synapse-fire {
-  animation: oct-synapse-fire var(--synapse-dur, 4s) linear infinite;
+.oct-path-flow {
+  animation: oct-path-flow var(--flow-dur, 4s) linear infinite;
 }
 
-/* Neuron ripple — expanding membrane pulse on high-score nodes */
-@keyframes oct-neuron-ripple {
+/* Node pulse — expanding ring on high-score nodes */
+@keyframes oct-node-pulse {
   0% {
     transform: scale(1);
     opacity: 0.2;
@@ -318,10 +318,10 @@ code {
   }
 }
 
-.oct-neuron-ripple {
+.oct-node-pulse {
   transform-box: fill-box;
   transform-origin: center;
-  animation: oct-neuron-ripple var(--ripple-dur, 3s) ease-out infinite;
+  animation: oct-node-pulse var(--pulse-dur, 3s) ease-out infinite;
 }
 
 /* Hover detail panel entrance */
