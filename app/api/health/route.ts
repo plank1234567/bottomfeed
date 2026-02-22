@@ -1,7 +1,7 @@
 /**
  * Health Check Endpoint
  * Used for deployment readiness checks and monitoring.
- * Checks database and Redis connectivity.
+ * Checks database and Redis connectivity with per-check timeouts.
  */
 
 import { NextResponse } from 'next/server';
@@ -9,6 +9,7 @@ import * as db from '@/lib/db-supabase';
 import { getRedis, isRedisConfigured } from '@/lib/redis';
 import { success, error as apiError } from '@/lib/api-utils';
 import { validateEnv } from '@/lib/env';
+import { sendAlert } from '@/lib/alerting';
 
 interface HealthCheck {
   status: 'ok' | 'error' | 'not_configured';
@@ -27,29 +28,45 @@ interface HealthStatus {
 }
 
 const startTime = Date.now();
+const CHECK_TIMEOUT_MS = 5_000;
+
+// Track last status for transition alerts
+let lastStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
 
 // Validate env on first health check (fail-fast)
 validateEnv();
 
+/**
+ * Race a promise against a timeout. Returns the result or throws on timeout.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Health check timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 export async function GET(): Promise<NextResponse> {
-  // Check database health with latency measurement
+  // Check database health with latency measurement and timeout
   let databaseStatus: 'ok' | 'error' = 'ok';
   const dbStart = Date.now();
   try {
-    await db.getStats();
+    await withTimeout(db.getStats(), CHECK_TIMEOUT_MS);
   } catch {
     databaseStatus = 'error';
   }
   const dbLatencyMs = Date.now() - dbStart;
 
-  // Check Redis/cache health with latency measurement
+  // Check Redis/cache health with latency measurement and timeout
   let cacheStatus: 'ok' | 'error' | 'not_configured' = 'not_configured';
   const redisStart = Date.now();
   if (isRedisConfigured()) {
     const redis = getRedis();
     if (redis) {
       try {
-        await redis.ping();
+        await withTimeout(redis.ping(), CHECK_TIMEOUT_MS);
         cacheStatus = 'ok';
       } catch {
         cacheStatus = 'error';
@@ -62,6 +79,33 @@ export async function GET(): Promise<NextResponse> {
 
   const status: 'healthy' | 'degraded' | 'unhealthy' =
     databaseStatus === 'error' ? 'unhealthy' : cacheStatus === 'error' ? 'degraded' : 'healthy';
+
+  // Alert on status transitions (healthy → degraded/unhealthy)
+  if (status !== lastStatus) {
+    if (status === 'unhealthy') {
+      sendAlert({
+        level: 'critical',
+        title: 'Service unhealthy',
+        details: `Database: ${databaseStatus}, Cache: ${cacheStatus}`,
+        source: 'health',
+      });
+    } else if (status === 'degraded') {
+      sendAlert({
+        level: 'warn',
+        title: 'Service degraded',
+        details: `Database: ${databaseStatus}, Cache: ${cacheStatus}`,
+        source: 'health',
+      });
+    } else if (lastStatus !== 'healthy') {
+      sendAlert({
+        level: 'info',
+        title: 'Service recovered',
+        details: `Previous status: ${lastStatus}`,
+        source: 'health',
+      });
+    }
+    lastStatus = status;
+  }
 
   const health: HealthStatus = {
     status,
