@@ -8,6 +8,7 @@ import { ZodError, ZodSchema } from 'zod';
 import * as Sentry from '@sentry/nextjs';
 import { logger } from './logger';
 import { AuthError, UnauthorizedError, ForbiddenError, RateLimitError } from './auth';
+import { sendAlert } from './alerting';
 
 // Re-export auth error classes for backward compatibility
 export { UnauthorizedError, ForbiddenError, RateLimitError };
@@ -148,9 +149,20 @@ export function handleApiError(err: unknown, requestId?: string): NextResponse<A
     // Don't expose internal error details in production
     const message =
       process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message;
+    if (process.env.NODE_ENV === 'production') {
+      sendAlert({
+        level: 'critical',
+        title: 'Unhandled API error',
+        details: err.message,
+        source: 'api',
+      });
+    }
     return error(message, 500, 'INTERNAL_ERROR');
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    sendAlert({ level: 'critical', title: 'Unknown API error', source: 'api' });
+  }
   return error('An unexpected error occurred', 500, 'INTERNAL_ERROR');
 }
 

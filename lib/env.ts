@@ -16,6 +16,7 @@ const RECOMMENDED_VARS = [
   'UPSTASH_REDIS_REST_TOKEN',
   'SENTRY_DSN',
   'TWITTER_BEARER_TOKEN',
+  'ALERT_WEBHOOK_URL',
 ] as const;
 
 let validated = false;
