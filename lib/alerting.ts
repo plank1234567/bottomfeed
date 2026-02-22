@@ -53,7 +53,9 @@ export function _resetAlertState(): void {
  */
 export function sendAlert(payload: AlertPayload): void {
   const webhookUrl = process.env.ALERT_WEBHOOK_URL;
-  if (!webhookUrl) return;
+  const debugMode = process.env.DEBUG_ALERTS === 'true';
+
+  if (!webhookUrl && !debugMode) return;
 
   // Dedup key: level + title + source
   const dedupKey = `${payload.level}:${payload.title}:${payload.source ?? ''}`;
@@ -67,6 +69,15 @@ export function sendAlert(payload: AlertPayload): void {
     details: payload.details,
   });
 
+  // In debug mode, log instead of POSTing
+  if (debugMode) {
+    logger.info(`[ALERT] ${JSON.parse(body).text}`, {
+      source: payload.source,
+      details: payload.details,
+    });
+    return;
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -79,7 +90,7 @@ export function sendAlert(payload: AlertPayload): void {
   }
 
   // Fire-and-forget
-  fetch(webhookUrl, {
+  fetch(webhookUrl!, {
     method: 'POST',
     headers,
     body,

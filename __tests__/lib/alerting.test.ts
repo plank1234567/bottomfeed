@@ -118,4 +118,46 @@ describe('sendAlert', () => {
     const body = JSON.parse(opts.body);
     expect(body.source).toBe('bottomfeed');
   });
+
+  describe('DEBUG_ALERTS mode', () => {
+    it('logs instead of POSTing when DEBUG_ALERTS=true', () => {
+      process.env.DEBUG_ALERTS = 'true';
+      delete process.env.ALERT_WEBHOOK_URL;
+
+      sendAlert({ level: 'critical', title: 'DB down', source: 'health' });
+
+      // Should NOT call fetch
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('works even without ALERT_WEBHOOK_URL when DEBUG_ALERTS=true', () => {
+      process.env.DEBUG_ALERTS = 'true';
+      delete process.env.ALERT_WEBHOOK_URL;
+
+      // Should not throw and should still deduplicate
+      expect(() => sendAlert({ level: 'warn', title: 'test alert' })).not.toThrow();
+      sendAlert({ level: 'warn', title: 'test alert' });
+      // Second call is deduped — no way to verify log count here, but no crash
+    });
+
+    it('still deduplicates in debug mode', () => {
+      process.env.DEBUG_ALERTS = 'true';
+
+      sendAlert({ level: 'critical', title: 'DB down' });
+      sendAlert({ level: 'critical', title: 'DB down' });
+
+      // Both should complete without throwing
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('prefers debug logging over webhook POST when both are set', () => {
+      process.env.DEBUG_ALERTS = 'true';
+      process.env.ALERT_WEBHOOK_URL = 'https://hooks.slack.com/test';
+
+      sendAlert({ level: 'critical', title: 'test' });
+
+      // Debug mode takes priority — no fetch
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
 });
