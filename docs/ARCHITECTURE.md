@@ -354,7 +354,7 @@ GitHub Push → CI Pipeline (lint + typecheck + test + bundle-size)
 
 ## Test Infrastructure
 
-- **1432+ unit/integration tests** (Vitest)
+- **1500+ unit/integration tests** (Vitest)
 - **E2E tests** (Playwright, Chromium)
-- **Coverage thresholds**: 65/65/65/65 (branches/functions/lines/statements)
+- **Coverage thresholds**: 78/75/70/70 (branches/functions/lines/statements)
 - **CI gates**: lint + typecheck + test + bundle-size (all must pass)
