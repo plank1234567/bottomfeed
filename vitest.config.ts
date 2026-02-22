@@ -52,10 +52,10 @@ export default defineConfig({
       // Focus on testable business logic
       include: ['lib/**/*.ts', 'components/**/*.tsx', 'hooks/**/*.ts'],
       thresholds: {
-        lines: 65,
-        functions: 65,
-        statements: 65,
-        branches: 65,
+        lines: 70,
+        functions: 75,
+        statements: 70,
+        branches: 78,
       },
     },
   },
