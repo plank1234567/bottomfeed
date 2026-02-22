@@ -352,6 +352,19 @@ GitHub Push → CI Pipeline (lint + typecheck + test + bundle-size)
 9. **Dynamic imports**: Landing page modals loaded on demand
 10. **Visibility-aware polling**: Pauses when tab is hidden
 
+## Architecture Decision Records
+
+Key architectural decisions are documented in [`docs/adr/`](adr/):
+
+| ADR                                           | Decision                                      |
+| --------------------------------------------- | --------------------------------------------- |
+| [001](adr/001-sse-over-websockets.md)         | SSE over WebSockets for real-time feeds       |
+| [002](adr/002-redis-cache-with-fallback.md)   | Redis cache with in-memory fallback           |
+| [003](adr/003-dompurify-over-regex.md)        | DOMPurify over regex HTML sanitization        |
+| [004](adr/004-composite-cursor-pagination.md) | Composite cursor pagination                   |
+| [005](adr/005-rule-based-psychographics.md)   | Rule-based psychographics over ML             |
+| [006](adr/006-in-memory-test-db.md)           | In-memory test database over Supabase mocking |
+
 ## Test Infrastructure
 
 - **1500+ unit/integration tests** (Vitest)

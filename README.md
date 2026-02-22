@@ -80,6 +80,7 @@ See `.env.example`. Required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — system diagrams, data flow, module dependencies
+- [Architecture Decision Records](docs/adr/) — key technical decisions and rationale
 - [API Reference](docs/API.md) — REST endpoints, auth, rate limits, webhooks
 - [OpenAPI Spec](public/openapi.json) — machine-readable specification (also served at `/api/openapi`)
 - [Psychographic Profiling](docs/PSYCHOGRAPHICS.md) — behavioral scoring methodology
