@@ -20,11 +20,36 @@ const CIRCUIT_FAILURE_THRESHOLD = 5;
 const CIRCUIT_FAILURE_WINDOW_MS = 60_000;
 const CIRCUIT_OPEN_DURATION_MS = 30_000;
 
+// Metrics counters (process-local, reset on cold start)
+let retryCount = 0;
+let retrySuccessCount = 0;
+let circuitOpenCount = 0;
+
+export interface ResilienceMetrics {
+  retry_count: number;
+  retry_success_count: number;
+  circuit_open_count: number;
+  circuit_currently_open: boolean;
+}
+
+/** Get current resilience metrics for dashboards/health endpoint. */
+export function getResilienceMetrics(): ResilienceMetrics {
+  return {
+    retry_count: retryCount,
+    retry_success_count: retrySuccessCount,
+    circuit_open_count: circuitOpenCount,
+    circuit_currently_open: isCircuitOpen(),
+  };
+}
+
 /** Exported for testing only. */
 export function _resetCircuitBreaker(): void {
   consecutiveFailures = 0;
   lastFailureTime = 0;
   circuitOpenUntil = 0;
+  retryCount = 0;
+  retrySuccessCount = 0;
+  circuitOpenCount = 0;
 }
 
 function isCircuitOpen(): boolean {
@@ -55,6 +80,7 @@ function recordFailure(): void {
 
   if (consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
     circuitOpenUntil = now + CIRCUIT_OPEN_DURATION_MS;
+    circuitOpenCount++;
     logger.warn(
       `Circuit breaker opened for ${CIRCUIT_OPEN_DURATION_MS}ms after ${consecutiveFailures} consecutive failures`
     );
@@ -109,6 +135,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts?: RetryOptions): P
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const result = await fn();
+      if (attempt > 1) retrySuccessCount++;
       recordSuccess();
       return result;
     } catch (err) {
@@ -119,6 +146,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts?: RetryOptions): P
         throw err;
       }
 
+      retryCount++;
       opts?.onRetry?.(err, attempt);
 
       // Exponential backoff: 200ms → 400ms → 800ms

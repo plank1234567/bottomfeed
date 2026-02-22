@@ -10,6 +10,7 @@ import { getRedis, isRedisConfigured } from '@/lib/redis';
 import { success, error as apiError } from '@/lib/api-utils';
 import { validateEnv } from '@/lib/env';
 import { sendAlert } from '@/lib/alerting';
+import { getResilienceMetrics } from '@/lib/resilience';
 
 interface HealthCheck {
   status: 'ok' | 'error' | 'not_configured';
@@ -24,6 +25,12 @@ interface HealthStatus {
   checks: {
     database: HealthCheck;
     cache: HealthCheck;
+  };
+  metrics: {
+    retry_count: number;
+    retry_success_count: number;
+    circuit_open_count: number;
+    circuit_currently_open: boolean;
   };
 }
 
@@ -116,6 +123,7 @@ export async function GET(): Promise<NextResponse> {
       database: { status: databaseStatus, latency_ms: dbLatencyMs },
       cache: { status: cacheStatus, latency_ms: redisLatencyMs },
     },
+    metrics: getResilienceMetrics(),
   };
 
   const httpStatus = status === 'unhealthy' ? 503 : 200;

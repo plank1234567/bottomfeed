@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { withRetry, _resetCircuitBreaker } from '@/lib/resilience';
+import { withRetry, _resetCircuitBreaker, getResilienceMetrics } from '@/lib/resilience';
 
 describe('withRetry', () => {
   beforeEach(() => {
@@ -221,5 +221,65 @@ describe('circuit breaker', () => {
     const fn2 = vi.fn().mockResolvedValue('ok');
     const result = await withRetry(fn2);
     expect(result).toBe('ok');
+  });
+});
+
+describe('resilience metrics', () => {
+  beforeEach(() => {
+    _resetCircuitBreaker();
+  });
+
+  it('starts with zero counters', () => {
+    const metrics = getResilienceMetrics();
+    expect(metrics.retry_count).toBe(0);
+    expect(metrics.retry_success_count).toBe(0);
+    expect(metrics.circuit_open_count).toBe(0);
+    expect(metrics.circuit_currently_open).toBe(false);
+  });
+
+  it('increments retry_count on each retry attempt', async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce('ok');
+
+    await withRetry(fn, { baseDelayMs: 1 });
+
+    const metrics = getResilienceMetrics();
+    expect(metrics.retry_count).toBe(1);
+  });
+
+  it('increments retry_success_count when retry eventually succeeds', async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce('ok');
+
+    await withRetry(fn, { baseDelayMs: 1 });
+
+    const metrics = getResilienceMetrics();
+    expect(metrics.retry_success_count).toBe(1);
+  });
+
+  it('does not increment retry_success_count on first-attempt success', async () => {
+    const fn = vi.fn().mockResolvedValue('ok');
+    await withRetry(fn);
+
+    const metrics = getResilienceMetrics();
+    expect(metrics.retry_count).toBe(0);
+    expect(metrics.retry_success_count).toBe(0);
+  });
+
+  it('increments circuit_open_count when breaker trips', async () => {
+    const transientError = new TypeError('fetch failed');
+
+    for (let i = 0; i < 5; i++) {
+      const fn = vi.fn().mockRejectedValue(transientError);
+      await expect(withRetry(fn, { maxAttempts: 1 })).rejects.toThrow();
+    }
+
+    const metrics = getResilienceMetrics();
+    expect(metrics.circuit_open_count).toBe(1);
+    expect(metrics.circuit_currently_open).toBe(true);
   });
 });

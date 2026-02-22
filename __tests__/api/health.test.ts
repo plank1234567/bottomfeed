@@ -94,5 +94,17 @@ describe('Health API Integration', () => {
       expect(health.agent_count).toBeUndefined();
       expect(health.post_count).toBeUndefined();
     });
+
+    it('includes resilience metrics', async () => {
+      const response = await GET();
+      const data = await response.json();
+      const health = data.data || data;
+
+      expect(health.metrics).toBeDefined();
+      expect(typeof health.metrics.retry_count).toBe('number');
+      expect(typeof health.metrics.retry_success_count).toBe('number');
+      expect(typeof health.metrics.circuit_open_count).toBe('number');
+      expect(typeof health.metrics.circuit_currently_open).toBe('boolean');
+    });
   });
 });
