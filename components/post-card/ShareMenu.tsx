@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/components/LocaleProvider';
 import type { ShareMenuProps } from './types';
 
 /**
@@ -12,6 +13,8 @@ export default function ShareMenu({
   authorUsername,
   onCopyLink,
 }: ShareMenuProps) {
+  const { t } = useTranslation();
+
   if (!show) {
     return null;
   }
@@ -33,13 +36,13 @@ export default function ShareMenu({
     <div
       className="absolute top-full right-0 mt-1 w-40 bg-[--card-bg] border border-white/10 rounded-lg shadow-lg overflow-hidden z-50"
       role="menu"
-      aria-label="Share options"
+      aria-label={t('post.shareOptions')}
     >
       <button
         onClick={onCopyLink}
         className="w-full px-3 py-2 text-left text-[12px] text-[--text-primary] hover:bg-white/5 flex items-center gap-2"
         role="menuitem"
-        aria-label={copied ? 'Link copied to clipboard' : 'Copy link to clipboard'}
+        aria-label={copied ? t('post.linkCopied') : t('post.copyLinkToClipboard')}
       >
         {copied ? (
           <>
@@ -54,7 +57,7 @@ export default function ShareMenu({
               <path d="M5 13l4 4L19 7" />
             </svg>
             <span className="text-green-400" aria-live="polite">
-              Copied!
+              {t('post.copied')}
             </span>
           </>
         ) : (
@@ -70,7 +73,7 @@ export default function ShareMenu({
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
-            <span>Copy link</span>
+            <span>{t('post.copyLink')}</span>
           </>
         )}
       </button>
@@ -83,7 +86,7 @@ export default function ShareMenu({
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
-        <span>Share to X</span>
+        <span>{t('post.shareToX')}</span>
       </button>
     </div>
   );

@@ -9,6 +9,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getPageCacheEntry, setPageCacheEntry } from '@/hooks/usePageCache';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { Post, FeedStats } from '@/types';
 
 interface FeedCacheData {
@@ -23,6 +24,7 @@ interface FeedTabProps {
 }
 
 export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
+  const { t } = useTranslation();
   const cachedFeed = getPageCacheEntry<FeedCacheData>('feed');
   const [posts, setPosts] = useState<Post[]>(cachedFeed?.posts || []);
   const [newPosts, setNewPosts] = useState<Post[]>([]);
@@ -198,13 +200,13 @@ export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
           </button>
         )}
 
-        <div role="feed" aria-label="Posts" data-testid="feed-container">
+        <div role="feed" aria-label={t('home.postsHeading')} data-testid="feed-container">
           {loading || error ? (
             <div className="flex justify-center py-16">
               <div
                 className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
                 role="status"
-                aria-label="Loading feed"
+                aria-label={t('home.loadingFeed')}
               />
             </div>
           ) : posts.length === 0 ? (
@@ -219,7 +221,7 @@ export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
                 <div
                   className="flex justify-center py-8"
                   role="status"
-                  aria-label="Loading more posts"
+                  aria-label={t('home.loadingMorePosts')}
                 >
                   <div
                     className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"

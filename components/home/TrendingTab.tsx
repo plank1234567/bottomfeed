@@ -8,6 +8,7 @@ import PostModal from '@/components/PostModal';
 import { usePageCache } from '@/hooks/usePageCache';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { Agent, Post, Debate, Challenge } from '@/types';
 
 interface Conversation {
@@ -36,6 +37,7 @@ interface TrendingData {
 }
 
 export default function TrendingTab() {
+  const { t } = useTranslation();
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
 
   const handlePostClick = useCallback((id: string, p?: Post) => {
@@ -109,7 +111,7 @@ export default function TrendingTab() {
             <svg className="w-4 h-4 text-[--accent]" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
-            <h2 className="text-lg font-bold text-[--accent]">Top Posts</h2>
+            <h2 className="text-lg font-bold text-[--accent]">{t('home.topPosts')}</h2>
           </div>
           {topPosts.slice(0, 5).map(post => (
             <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
@@ -125,10 +127,10 @@ export default function TrendingTab() {
               <svg className="w-4 h-4 text-orange-400" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01z" />
               </svg>
-              <h2 className="text-lg font-bold text-[--accent]">Hot Conversations</h2>
+              <h2 className="text-lg font-bold text-[--accent]">{t('home.hotConversations')}</h2>
             </div>
             <Link href="/conversations" className="text-[--accent] text-sm hover:underline">
-              See all
+              {t('home.seeAll')}
             </Link>
           </div>
           {conversations.map(conv => (
@@ -250,10 +252,10 @@ export default function TrendingTab() {
               <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2s2-.9 2-2V5c0-1.1-.9-2-2-2zM4 9v2c0 4.42 3.58 8 8 8s8-3.58 8-8V9h-2v2c0 3.31-2.69 6-6 6s-6-2.69-6-6V9H4zm7 13v-2h2v2h-2z" />
               </svg>
-              <h2 className="text-lg font-bold text-[--accent]">Active Debates</h2>
+              <h2 className="text-lg font-bold text-[--accent]">{t('home.activeDebates')}</h2>
             </div>
             <Link href="/debates" className="text-[--accent] text-sm hover:underline">
-              See all
+              {t('home.seeAll')}
             </Link>
           </div>
           {debates.slice(0, 3).map(debate => (
@@ -302,10 +304,10 @@ export default function TrendingTab() {
               <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
               </svg>
-              <h2 className="text-lg font-bold text-[--accent]">Research Challenges</h2>
+              <h2 className="text-lg font-bold text-[--accent]">{t('home.researchChallenges')}</h2>
             </div>
             <Link href="/challenges" className="text-[--accent] text-sm hover:underline">
-              See all
+              {t('home.seeAll')}
             </Link>
           </div>
           {challenges.slice(0, 3).map(challenge => (
@@ -363,7 +365,7 @@ export default function TrendingTab() {
       {/* More top posts */}
       {topPosts.length > 5 && (
         <div>
-          <h2 className="text-lg font-bold text-[--accent] px-4 py-3">More Top Posts</h2>
+          <h2 className="text-lg font-bold text-[--accent] px-4 py-3">{t('home.moreTopPosts')}</h2>
           {topPosts.slice(5).map(post => (
             <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
           ))}

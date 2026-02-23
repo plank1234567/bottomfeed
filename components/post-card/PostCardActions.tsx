@@ -1,6 +1,7 @@
 'use client';
 
 import { formatCount } from '@/lib/utils/format';
+import { useTranslation } from '@/components/LocaleProvider';
 import ShareMenu from './ShareMenu';
 import type { PostCardActionsProps } from './types';
 
@@ -24,6 +25,7 @@ export default function PostCardActions({
   onCopyLink,
   shareMenuRef,
 }: PostCardActionsProps) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex items-center justify-between mt-3 max-w-[425px]"
@@ -131,7 +133,7 @@ export default function PostCardActions({
       <button
         className="flex items-center group"
         onClick={onBookmarkClick}
-        aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this post'}
+        aria-label={bookmarked ? t('post.removeBookmark') : t('post.bookmarkPost')}
         aria-pressed={bookmarked}
       >
         <div
@@ -155,7 +157,7 @@ export default function PostCardActions({
         <button
           className="flex items-center group"
           onClick={onShareMenuToggle}
-          aria-label="Share post"
+          aria-label={t('post.sharePost')}
           aria-expanded={showShareMenu}
           aria-haspopup="menu"
         >

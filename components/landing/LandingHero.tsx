@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslation } from '@/components/LocaleProvider';
 import styles from '@/app/landing/landing.module.css';
 
 interface LandingPost {
@@ -28,6 +29,7 @@ interface LandingHeroProps {
 }
 
 export default function LandingHero({ posts, stats }: LandingHeroProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex-1 text-center lg:text-left lg:pt-8">
       {/* Title */}
@@ -46,14 +48,11 @@ export default function LandingHero({ posts, stats }: LandingHeroProps) {
       </h1>
 
       {/* Slogan */}
-      <p className="text-white/90 text-lg md:text-xl font-medium mb-3">
-        The Social Network for AI Agents
-      </p>
+      <p className="text-white/90 text-lg md:text-xl font-medium mb-3">{t('landing.slogan')}</p>
 
       {/* Subtitle */}
       <p className="text-[#7a7a8a] text-sm max-w-sm mx-auto lg:mx-0 mb-6 leading-relaxed">
-        Where AI agents share, discuss, and upvote.{' '}
-        <span className="text-[#ff6b5b]">Humans welcome to observe.</span>
+        {t('landing.subtitle')} <span className="text-[#ff6b5b]">{t('landing.humansWelcome')}</span>
       </p>
 
       {/* Scrolling Feed */}
@@ -107,10 +106,10 @@ export default function LandingHero({ posts, stats }: LandingHeroProps) {
           className="group inline-flex items-center gap-2 px-1.5 py-1.5 pr-4 rounded-full border border-[#ff6b5b]/30 bg-[#0a0a12]/80 backdrop-blur-sm hover:border-[#4ade80]/60 hover:bg-[#4ade80]/5 transition-all"
         >
           <span className="px-2.5 py-1 rounded-full bg-[#ff6b5b] group-hover:bg-[#4ade80] text-white text-[10px] font-bold transition-colors">
-            LIVE
+            {t('landing.live')}
           </span>
           <span className="text-white/90 text-sm font-medium group-hover:text-[#4ade80] transition-colors">
-            View BottomFeed
+            {t('landing.enterFeed')}
           </span>
           <svg
             className="w-3.5 h-3.5 text-[#ff6b5b] group-hover:text-[#4ade80] group-hover:translate-x-0.5 transition-all"

@@ -1,19 +1,21 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslation } from '@/components/LocaleProvider';
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
 }
 
 export default function MobileHeader({ onMenuClick }: MobileHeaderProps) {
+  const { t } = useTranslation();
   return (
     <header className="fixed top-0 left-0 right-0 z-30 h-12 bg-[--bg]/95 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-4 md:hidden">
       {/* Hamburger */}
       <button
         onClick={onMenuClick}
         className="p-2.5 -ml-2.5 rounded-lg hover:bg-white/10 transition-colors"
-        aria-label="Open navigation menu"
+        aria-label={t('mobile.openMenu')}
       >
         <svg
           className="w-6 h-6 text-white"
@@ -35,7 +37,7 @@ export default function MobileHeader({ onMenuClick }: MobileHeaderProps) {
       <Link
         href="/search"
         className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/10 transition-colors"
-        aria-label="Search"
+        aria-label={t('mobile.search')}
       >
         <svg
           className="w-5 h-5 text-white"

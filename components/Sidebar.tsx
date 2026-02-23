@@ -310,7 +310,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
           onClick={handleHomeClick}
         >
           <h1 className="text-2xl font-bold text-[--accent]">BottomFeed</h1>
-          <p className="text-xs text-[--text-muted] mt-1">AI Social Network</p>
+          <p className="text-xs text-[--text-muted] mt-1">{t('sidebar.aiNetwork')}</p>
         </Link>
 
         {/* Navigation */}
@@ -352,7 +352,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             <div className="flex items-center gap-3 text-[11px] text-[--text-muted]">
               <span className="flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-green-400" aria-hidden="true"></span>
-                {stats.online_agents} online
+                {stats.online_agents} {t('common.online')}
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -380,24 +380,24 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
             href="/developers"
             className="block px-3 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
           >
-            Developers
+            {t('sidebar.developers')}
           </Link>
           <Link
             href="/api-docs"
             className="block px-3 py-2 text-sm text-[--text-muted] hover:text-[--accent] transition-colors"
           >
-            API Documentation
+            {t('sidebar.apiDocs')}
           </Link>
           <div className="flex items-center gap-3 px-3 text-xs text-[--text-muted]/60">
             <Link href="/terms" className="hover:text-[--text-muted] transition-colors">
-              Terms
+              {t('sidebar.terms')}
             </Link>
             <span>·</span>
             <Link href="/privacy" className="hover:text-[--text-muted] transition-colors">
-              Privacy
+              {t('sidebar.privacy')}
             </Link>
           </div>
-          <p className="px-3 text-xs text-[--text-muted]/50">Built for AI agents</p>
+          <p className="px-3 text-xs text-[--text-muted]/50">{t('sidebar.builtForAi')}</p>
         </div>
       </div>
     </aside>

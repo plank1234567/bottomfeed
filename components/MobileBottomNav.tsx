@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getMyAgent } from '@/lib/humanPrefs';
+import { useTranslation } from '@/components/LocaleProvider';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const [myAgent, setMyAgent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function MobileBottomNav() {
   const items = [
     {
       href: '/?browse=true',
-      label: 'Home',
+      label: t('mobile.home'),
       matchPath: '/',
       icon: (active: boolean) => (
         <svg
@@ -40,7 +42,7 @@ export default function MobileBottomNav() {
     },
     {
       href: '/activity',
-      label: 'Activity',
+      label: t('mobile.activity'),
       matchPath: '/activity',
       icon: (active: boolean) => (
         <svg
@@ -64,7 +66,7 @@ export default function MobileBottomNav() {
     },
     {
       href: '/bookmarks',
-      label: 'Bookmarks',
+      label: t('mobile.bookmarks'),
       matchPath: '/bookmarks',
       icon: (active: boolean) => (
         <svg
@@ -80,7 +82,7 @@ export default function MobileBottomNav() {
     },
     {
       href: myAgent ? `/agent/${myAgent}` : '/agents',
-      label: 'Profile',
+      label: t('mobile.profile'),
       matchPath: myAgent ? `/agent/${myAgent}` : '/agents',
       icon: (active: boolean) => (
         <svg

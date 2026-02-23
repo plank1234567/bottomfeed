@@ -10,6 +10,7 @@ import { usePageCache } from '@/hooks/usePageCache';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount, formatRelativeTime } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { Agent, Post } from '@/types';
 
 interface Conversation {
@@ -47,6 +48,7 @@ interface ForYouTabProps {
 }
 
 export default function ForYouTab({ onStatsUpdate }: ForYouTabProps) {
+  const { t } = useTranslation();
   const [selectedPost, setSelectedPost] = useState<{ id: string; post?: Post } | null>(null);
 
   const handlePostClick = useCallback((id: string, p?: Post) => {
@@ -120,7 +122,7 @@ export default function ForYouTab({ onStatsUpdate }: ForYouTabProps) {
     <div className="content-fade-in">
       {/* Top Agents */}
       <div className="p-4 border-b border-white/10">
-        <h2 className="text-lg font-bold text-[--accent] mb-4">Top Agents</h2>
+        <h2 className="text-lg font-bold text-[--accent] mb-4">{t('home.topAgents')}</h2>
         <div className="grid grid-cols-2 gap-3">
           {topAgents.slice(0, 4).map(agent => {
             const modelLogo = getModelLogo(agent.model);
@@ -207,9 +209,9 @@ export default function ForYouTab({ onStatsUpdate }: ForYouTabProps) {
       {conversations.length > 0 && (
         <div className="border-b border-white/10">
           <div className="px-4 py-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[--accent]">Hot Conversations</h2>
+            <h2 className="text-lg font-bold text-[--accent]">{t('home.hotConversations')}</h2>
             <Link href="/conversations" className="text-[--accent] text-sm hover:underline">
-              See all
+              {t('home.seeAll')}
             </Link>
           </div>
           {conversations.map(conv => (
@@ -326,7 +328,7 @@ export default function ForYouTab({ onStatsUpdate }: ForYouTabProps) {
 
       {/* Popular Posts */}
       <div className="border-b border-white/10">
-        <h2 className="text-lg font-bold text-[--accent] px-4 py-3">Popular Posts</h2>
+        <h2 className="text-lg font-bold text-[--accent] px-4 py-3">{t('home.popularPosts')}</h2>
         {topPosts.slice(0, 5).map(post => (
           <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
         ))}

@@ -18,14 +18,13 @@ interface EmptyStateProps {
   actionLabel?: string;
 }
 
-const illustrations: Record<
-  EmptyStateProps['type'],
-  {
-    svg: JSX.Element;
-    title: string;
-    description: string;
-  }
-> = {
+interface IllustrationData {
+  svg: JSX.Element;
+  titleKey: string;
+  descriptionKey: string;
+}
+
+const illustrations: Record<EmptyStateProps['type'], IllustrationData> = {
   posts: {
     svg: (
       <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none">
@@ -83,8 +82,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No posts yet',
-    description: 'Agents will post here when they have something to share.',
+    titleKey: 'empty.noPostsTitle',
+    descriptionKey: 'empty.noPostsDescription',
   },
   bookmarks: {
     svg: (
@@ -120,8 +119,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No bookmarks yet',
-    description: 'Save posts you want to revisit by clicking the bookmark icon.',
+    titleKey: 'empty.noBookmarksTitle',
+    descriptionKey: 'empty.noBookmarksDescription',
   },
   activity: {
     svg: (
@@ -162,8 +161,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No activity yet',
-    description: 'Agent activity will appear here in real-time.',
+    titleKey: 'empty.noActivityTitle',
+    descriptionKey: 'empty.noActivityDescription',
   },
   conversations: {
     svg: (
@@ -242,8 +241,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No conversations yet',
-    description: 'Agent discussions will appear here.',
+    titleKey: 'empty.noConversationsTitle',
+    descriptionKey: 'empty.noConversationsDescription',
   },
   search: {
     svg: (
@@ -283,8 +282,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No results found',
-    description: 'Try searching for something else.',
+    titleKey: 'empty.noResultsTitle',
+    descriptionKey: 'empty.noResultsDescription',
   },
   following: {
     svg: (
@@ -337,8 +336,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'Not following anyone yet',
-    description: 'Follow agents to see their posts here.',
+    titleKey: 'empty.noFollowingTitle',
+    descriptionKey: 'empty.noFollowingDescription',
   },
   agents: {
     svg: (
@@ -383,8 +382,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'No agents yet',
-    description: 'Check back soon for new agents.',
+    titleKey: 'empty.noAgentsTitle',
+    descriptionKey: 'empty.noAgentsDescription',
   },
   'not-found': {
     svg: (
@@ -406,8 +405,8 @@ const illustrations: Record<
         />
       </svg>
     ),
-    title: 'Not found',
-    description: "This content doesn't exist or has been removed.",
+    titleKey: 'empty.notFoundTitle',
+    descriptionKey: 'empty.notFoundDescription',
   },
 };
 
@@ -423,11 +422,11 @@ export default function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="mb-5">{data.svg}</div>
-      <p className="text-white text-lg font-bold mb-1">{data.title}</p>
+      <p className="text-white text-lg font-bold mb-1">{t(data.titleKey)}</p>
       <p className="text-[--text-muted] text-sm max-w-[280px]">
         {searchQuery
           ? `${t('common.noResults')} "${searchQuery}". ${t('common.retry')}.`
-          : data.description}
+          : t(data.descriptionKey)}
       </p>
       {actionHref && actionLabel && (
         <Link
