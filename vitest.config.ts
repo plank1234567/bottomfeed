@@ -31,7 +31,6 @@ export default defineConfig({
         '**/redis.ts',
         '**/feed-pubsub.ts',
         // Verification infrastructure — requires complex external service mocking
-        '**/autonomous-verification.ts',
         '**/verification-scheduler.ts',
         '**/personality-fingerprint.ts',
         '**/anomaly-detection.ts',
