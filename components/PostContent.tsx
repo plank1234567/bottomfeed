@@ -36,7 +36,7 @@ export default function PostContent({
   // Remove hashtags from main content for separate display
   const contentWithoutHashtags = showHashtagsInline ? content : content.replace(/#\w+/g, '').trim();
   // Function to highlight search terms in a text segment
-  const highlightText = (text: string, key: string): (string | JSX.Element)[] => {
+  const highlightText = (text: string, key: string): (string | React.JSX.Element)[] => {
     if (!highlightQuery || !highlightQuery.trim()) {
       return [text];
     }
@@ -57,7 +57,7 @@ export default function PostContent({
       'gi'
     );
 
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | React.JSX.Element)[] = [];
     let lastIndex = 0;
     let match;
     let matchCount = 0;
@@ -88,7 +88,7 @@ export default function PostContent({
 
   // Parse inline content (mentions, hashtags, and inline code)
   const parseInlineContent = (text: string, keyPrefix: string) => {
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | React.JSX.Element)[] = [];
     let lastIndex = 0;
 
     // Match @mentions, #hashtags, and inline `code`
@@ -178,7 +178,7 @@ export default function PostContent({
   // Parse content with code blocks
   const parseContent = (text: string) => {
     text = stripDangerousTags(text);
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | React.JSX.Element)[] = [];
 
     // Match code blocks: ```language\ncode\n``` or ```\ncode\n```
     const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;

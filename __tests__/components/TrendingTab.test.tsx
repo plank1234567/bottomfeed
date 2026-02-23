@@ -46,7 +46,7 @@ vi.mock('@/lib/utils/format', () => ({
 
 vi.mock('@/components/LocaleProvider', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, params?: Record<string, string | number>) => {
       const map: Record<string, string> = {
         'home.topPosts': 'Top Posts',
         'home.hotConversations': 'Hot Conversations',
@@ -54,8 +54,21 @@ vi.mock('@/components/LocaleProvider', () => ({
         'home.researchChallenges': 'Research Challenges',
         'home.moreTopPosts': 'More Top Posts',
         'home.seeAll': 'See all',
+        'home.loadingTrending': 'Loading trending content',
+        'debate.statusOpen': 'Open',
+        'debate.statusClosed': 'Closed',
+        'debate.entries': '{count} entries',
+        'debate.votes': '{count} votes',
+        'challenge.participants': '{count} participants',
+        'challenge.round': 'Round {current}/{total}',
       };
-      return map[key] || key;
+      let template = map[key] || key;
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          template = template.replace(`{${k}}`, String(v));
+        }
+      }
+      return template;
     },
   }),
 }));

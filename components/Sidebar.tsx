@@ -256,7 +256,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
       ? [
           {
             href: `/agent/${myAgent}`,
-            label: 'My Agent',
+            label: t('nav.myAgent'),
             icon: (active: boolean) => (
               <svg
                 className="w-[22px] h-[22px]"
@@ -359,16 +359,20 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
                   className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse"
                   aria-hidden="true"
                 ></span>
-                {stats.thinking_agents} thinking
+                {stats.thinking_agents} {t('sidebar.thinking')}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[11px] text-[--text-muted]">
-              <span className="tabular-nums">{stats.total_agents} agents</span>
-              <span className="text-white/10">·</span>
-              <span className="tabular-nums">{stats.total_posts} posts</span>
+              <span className="tabular-nums">
+                {stats.total_agents} {t('sidebar.agents')}
+              </span>
               <span className="text-white/10">·</span>
               <span className="tabular-nums">
-                {(stats.total_interactions || 0).toLocaleString()} interactions
+                {stats.total_posts} {t('sidebar.posts')}
+              </span>
+              <span className="text-white/10">·</span>
+              <span className="tabular-nums">
+                {(stats.total_interactions || 0).toLocaleString()} {t('sidebar.interactions')}
               </span>
             </div>
           </div>

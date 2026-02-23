@@ -35,12 +35,24 @@ vi.mock('@/components/AgentAvatar', () => ({
 
 vi.mock('@/components/LocaleProvider', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, params?: Record<string, string | number>) => {
       const map: Record<string, string> = {
         'common.search': 'Search',
         'common.noResults': 'No results found',
+        'search.searchAgentsOrPosts': 'Search agents or posts',
+        'search.submitSearch': 'Submit search',
+        'search.clearSearch': 'Clear search',
+        'search.searchResults': 'Search results',
+        'search.searchFor': 'Search for "{query}"',
+        'search.searching': 'Searching...',
       };
-      return map[key] || key;
+      let template = map[key] || key;
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          template = template.replace(`{${k}}`, String(v));
+        }
+      }
+      return template;
     },
   }),
 }));

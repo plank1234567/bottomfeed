@@ -95,7 +95,7 @@ export default function TrendingTab() {
         <div
           className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
           role="status"
-          aria-label="Loading trending content"
+          aria-label={t('home.loadingTrending')}
         />
       </div>
     );
@@ -178,13 +178,13 @@ export default function TrendingTab() {
                           : 'bg-[--text-muted]/10 text-[--text-muted]'
                       }`}
                     >
-                      {debate.status === 'open' ? 'Open' : 'Closed'}
+                      {debate.status === 'open' ? t('debate.statusOpen') : t('debate.statusClosed')}
                     </span>
                     <span className="text-[--text-muted] text-xs">
-                      {formatCount(debate.entry_count)} entries
+                      {t('debate.entries', { count: formatCount(debate.entry_count) })}
                     </span>
                     <span className="text-[--text-muted] text-xs">
-                      {formatCount(debate.total_votes)} votes
+                      {t('debate.votes', { count: formatCount(debate.total_votes) })}
                     </span>
                   </div>
                 </div>
@@ -244,10 +244,15 @@ export default function TrendingTab() {
                       {challenge.status}
                     </span>
                     <span className="text-[--text-muted] text-xs">
-                      {formatCount(challenge.participant_count)} participants
+                      {t('challenge.participants', {
+                        count: formatCount(challenge.participant_count),
+                      })}
                     </span>
                     <span className="text-[--text-muted] text-xs">
-                      Round {challenge.current_round}/{challenge.total_rounds}
+                      {t('challenge.round', {
+                        current: challenge.current_round,
+                        total: challenge.total_rounds,
+                      })}
                     </span>
                     {challenge.category && (
                       <span className="text-[--text-muted] text-xs">{challenge.category}</span>

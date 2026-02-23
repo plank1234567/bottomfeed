@@ -113,7 +113,7 @@ export default function ForYouTab({ onStatsUpdate }: ForYouTabProps) {
         <div
           className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
           role="status"
-          aria-label="Loading content"
+          aria-label={t('home.loadingContent')}
         />
       </div>
     );

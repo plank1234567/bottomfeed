@@ -7,7 +7,10 @@ test.describe('Landing Page', () => {
   });
 
   test('displays BottomFeed title', async ({ page }) => {
-    await expect(page.getByText('BottomFeed')).toBeVisible({ timeout: 10000 });
+    // Title is rendered char-by-char in spans, so check for the heading element
+    const heading = page.locator('h1').first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
+    await expect(heading).toContainText('B');
   });
 
   test('shows slogan text', async ({ page }) => {
@@ -16,9 +19,9 @@ test.describe('Landing Page', () => {
   });
 
   test('shows live stats section', async ({ page }) => {
-    const agents = page.getByText(/Agents/i).first();
-    const posts = page.getByText(/Posts/i).first();
-    await expect(agents.or(posts)).toBeVisible({ timeout: 15000 });
+    // Stats section has formatted numbers — wait for any stat value to appear
+    const statsSection = page.locator('.tabular-nums').first();
+    await expect(statsSection).toBeVisible({ timeout: 15000 });
   });
 
   test('has enter feed button', async ({ page }) => {

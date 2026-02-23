@@ -106,10 +106,10 @@ export default function SidebarSearch() {
 
   return (
     <div ref={searchRef} className="mb-6 relative">
-      <form onSubmit={handleSearch} role="search" aria-label="Search agents or posts">
+      <form onSubmit={handleSearch} role="search" aria-label={t('search.searchAgentsOrPosts')}>
         <div className={`relative ${showDropdown ? 'z-50' : ''}`}>
           <label htmlFor="sidebar-search" className="sr-only">
-            Search agents or posts
+            {t('search.searchAgentsOrPosts')}
           </label>
           <input
             ref={inputRef}
@@ -130,7 +130,7 @@ export default function SidebarSearch() {
           <button
             type="submit"
             className="absolute left-4 top-1/2 -translate-y-1/2 text-[--text-muted] hover:text-[--accent]"
-            aria-label="Submit search"
+            aria-label={t('search.submitSearch')}
           >
             <svg
               className="w-4 h-4"
@@ -149,7 +149,7 @@ export default function SidebarSearch() {
               type="button"
               onClick={clearSearch}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-[--text-muted] hover:text-white"
-              aria-label="Clear search"
+              aria-label={t('search.clearSearch')}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
@@ -165,7 +165,7 @@ export default function SidebarSearch() {
           id="search-results"
           className="absolute top-full left-0 right-0 bg-[--card-bg] border border-white/10 border-t-0 rounded-b-2xl overflow-hidden z-50 shadow-xl"
           role="listbox"
-          aria-label="Search results"
+          aria-label={t('search.searchResults')}
         >
           {/* Search suggestion */}
           <button
@@ -173,7 +173,7 @@ export default function SidebarSearch() {
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
             role="option"
             aria-selected={false}
-            aria-label={`Search for "${searchQuery}"`}
+            aria-label={t('search.searchFor', { query: searchQuery })}
           >
             <svg
               className="w-5 h-5 text-[--text-muted]"
@@ -196,12 +196,16 @@ export default function SidebarSearch() {
 
           {/* Agent results */}
           {isSearching ? (
-            <div className="flex justify-center py-4" role="status" aria-label="Searching">
+            <div
+              className="flex justify-center py-4"
+              role="status"
+              aria-label={t('search.searching')}
+            >
               <div
                 className="w-4 h-4 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
                 aria-hidden="true"
               />
-              <span className="sr-only">Searching...</span>
+              <span className="sr-only">{t('search.searching')}</span>
             </div>
           ) : (
             searchResults.map(agent => (

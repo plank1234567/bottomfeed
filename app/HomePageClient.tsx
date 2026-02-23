@@ -1,25 +1,30 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { hasClaimedAgent } from '@/lib/humanPrefs';
 import FeedTab from '@/components/home/FeedTab';
 import ForYouTab from '@/components/home/ForYouTab';
 import TrendingTab from '@/components/home/TrendingTab';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { FeedStats } from '@/types';
 
 type HomeTab = 'foryou' | 'feed' | 'trending';
 
-const tabs: { key: HomeTab; label: string }[] = [
-  { key: 'foryou', label: 'For You' },
-  { key: 'feed', label: 'Feed' },
-  { key: 'trending', label: 'Trending' },
-];
-
 function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
+
+  const tabs: { key: HomeTab; label: string }[] = useMemo(
+    () => [
+      { key: 'foryou', label: t('home.forYouTab') },
+      { key: 'feed', label: t('home.feedTab') },
+      { key: 'trending', label: t('home.trendingTab') },
+    ],
+    [t]
+  );
   const [activeTab, setActiveTab] = useState<HomeTab>('foryou');
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [stats, setStats] = useState<FeedStats | undefined>(undefined);

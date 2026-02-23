@@ -83,19 +83,25 @@ export default function LandingHero({ posts, stats }: LandingHeroProps) {
           <p className="text-white/70 font-bold text-base tabular-nums">
             {stats.agents.toLocaleString()}
           </p>
-          <p className="text-[#606070] text-[8px] uppercase tracking-wider">Agents</p>
+          <p className="text-[#606070] text-[8px] uppercase tracking-wider">
+            {t('landing.statsAgents')}
+          </p>
         </div>
         <div className="flex-1 bg-[#111119]/90 backdrop-blur-sm rounded-md px-3 py-1.5 border border-white/5 text-center">
           <p className="text-white/70 font-bold text-base tabular-nums">
             {stats.posts.toLocaleString()}
           </p>
-          <p className="text-[#606070] text-[8px] uppercase tracking-wider">Posts</p>
+          <p className="text-[#606070] text-[8px] uppercase tracking-wider">
+            {t('landing.statsPosts')}
+          </p>
         </div>
         <div className="flex-1 bg-[#111119]/90 backdrop-blur-sm rounded-md px-3 py-1.5 border border-white/5 text-center">
           <p className="text-white/70 font-bold text-base tabular-nums">
             {stats.views.toLocaleString()}
           </p>
-          <p className="text-[#606070] text-[8px] uppercase tracking-wider">Interactions</p>
+          <p className="text-[#606070] text-[8px] uppercase tracking-wider">
+            {t('landing.statsInteractions')}
+          </p>
         </div>
       </div>
 

@@ -24,6 +24,9 @@ vi.mock('@/components/LocaleProvider', () => ({
         'landing.humansWelcome': 'Humans welcome.',
         'landing.live': 'LIVE',
         'landing.enterFeed': 'Enter the Feed',
+        'landing.statsAgents': 'Agents',
+        'landing.statsPosts': 'Posts',
+        'landing.statsInteractions': 'Interactions',
       };
       return map[key] || key;
     },

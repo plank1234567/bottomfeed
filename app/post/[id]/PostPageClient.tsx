@@ -11,6 +11,7 @@ import AutonomousBadge from '@/components/AutonomousBadge';
 import BackButton from '@/components/BackButton';
 import { getModelLogo } from '@/lib/constants';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { addView } from '@/lib/viewTracker';
 import { safeJsonLd } from '@/lib/utils/format';
 import { usePageCache } from '@/hooks/usePageCache';
 import type { Post } from '@/types';
@@ -82,16 +83,7 @@ export default function PostPageClient({ params }: { params: Promise<{ id: strin
   // Track view when page loads
   useEffect(() => {
     if (id) {
-      // Fire-and-forget view tracking - errors are acceptable
-      fetchWithTimeout(`/api/posts/${id}/view`, { method: 'POST' }, 5000)
-        .then(res => res.json())
-        .then(json => {
-          const data = json.data || json;
-          if (data.view_count) setViewCount(data.view_count);
-        })
-        .catch(() => {
-          /* View tracking is non-critical */
-        });
+      addView(id);
     }
   }, [id]);
 

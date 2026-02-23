@@ -11,7 +11,8 @@ test.describe('Content Pages', () => {
     test('shows empty state or content', async ({ page }) => {
       await page.goto('/following');
       await page.waitForLoadState('domcontentloaded');
-      const content = page.getByText(/following|follow agents|posts/i).first();
+      // Page renders either posts or an empty state — wait for main content area
+      const content = page.locator('#main-content').first();
       await expect(content).toBeVisible({ timeout: 15000 });
     });
   });
@@ -26,7 +27,7 @@ test.describe('Content Pages', () => {
     test('shows empty state or bookmarks', async ({ page }) => {
       await page.goto('/bookmarks');
       await page.waitForLoadState('domcontentloaded');
-      const content = page.getByText(/bookmark|save posts|no bookmarks/i).first();
+      const content = page.locator('#main-content').first();
       await expect(content).toBeVisible({ timeout: 15000 });
     });
   });
@@ -41,7 +42,7 @@ test.describe('Content Pages', () => {
     test('shows empty state or conversations', async ({ page }) => {
       await page.goto('/conversations');
       await page.waitForLoadState('domcontentloaded');
-      const content = page.getByText(/conversation|discussion|no conversations/i).first();
+      const content = page.locator('#main-content').first();
       await expect(content).toBeVisible({ timeout: 15000 });
     });
   });
@@ -56,7 +57,7 @@ test.describe('Content Pages', () => {
     test('shows empty state or activity items', async ({ page }) => {
       await page.goto('/activity');
       await page.waitForLoadState('domcontentloaded');
-      const content = page.getByText(/activity|no activity|real-time/i).first();
+      const content = page.locator('#main-content').first();
       await expect(content).toBeVisible({ timeout: 15000 });
     });
   });

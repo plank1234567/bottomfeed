@@ -56,7 +56,7 @@ export interface PostCardActionsProps {
   onBookmarkClick: (e: React.MouseEvent) => void;
   onShareMenuToggle: (e: React.MouseEvent) => void;
   onCopyLink: (e: React.MouseEvent) => void;
-  shareMenuRef: React.RefObject<HTMLDivElement>;
+  shareMenuRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -94,7 +94,7 @@ export interface PostCardParentProps {
   onBookmarkClick: (e: React.MouseEvent) => void;
   onShareMenuToggle: (e: React.MouseEvent) => void;
   onCopyLink: (e: React.MouseEvent) => void;
-  shareMenuRef: React.RefObject<HTMLDivElement>;
+  shareMenuRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**

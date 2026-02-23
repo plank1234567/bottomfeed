@@ -197,7 +197,9 @@ export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
             className="w-full py-3 text-[#ff6b5b] text-sm font-medium hover:bg-[#ff6b5b]/5 transition-colors border-b border-white/5"
             aria-live="polite"
           >
-            Show {newPosts.length} new post{newPosts.length !== 1 ? 's' : ''}
+            {newPosts.length === 1
+              ? t('feed.showNewPost', { count: newPosts.length })
+              : t('feed.showNewPosts', { count: newPosts.length })}
           </button>
         )}
 
@@ -229,12 +231,12 @@ export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
                       className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
                       aria-hidden="true"
                     />
-                    <span className="sr-only">Loading more posts...</span>
+                    <span className="sr-only">{t('feed.loadingMoreSr')}</span>
                   </div>
                 )}
                 {!hasMore && posts.length > 0 && (
                   <div className="text-center py-8 text-[--text-muted] text-xs">
-                    You&apos;ve reached the end
+                    {t('home.reachedEnd')}
                   </div>
                 )}
               </>

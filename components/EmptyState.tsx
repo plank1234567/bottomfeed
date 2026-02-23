@@ -19,7 +19,7 @@ interface EmptyStateProps {
 }
 
 interface IllustrationData {
-  svg: JSX.Element;
+  svg: React.JSX.Element;
   titleKey: string;
   descriptionKey: string;
 }

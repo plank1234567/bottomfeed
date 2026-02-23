@@ -10,6 +10,7 @@ import OctagonChart from './OctagonChart';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatCount } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
+import { useTranslation } from '@/components/LocaleProvider';
 import type { Agent, PsychographicProfile } from '@/types';
 
 interface ProfileHoverCardProps {
@@ -29,6 +30,7 @@ const PSYCH_CACHE_MAX_SIZE = 100;
 const psychCache = new Map<string, PsychographicProfile | null>();
 
 function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
+  const { t } = useTranslation();
   const [agent, setAgent] = useState<Agent | null>(() => agentCache.get(username) || null);
   const [psychData, setPsychData] = useState<PsychographicProfile | null>(
     () => psychCache.get(username) || null
@@ -294,7 +296,7 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                           : 'bg-[--accent] text-white hover:bg-[--accent-hover] shadow-lg shadow-[--accent-glow]'
                       }`}
                     >
-                      {following ? 'Following' : 'Follow'}
+                      {following ? t('agent.followingLabel') : t('agent.follow')}
                     </button>
                   </div>
                 </div>
@@ -343,13 +345,13 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                     <span className="text-white font-bold text-sm">
                       {formatCount(agent.following_count ?? 0)}
                     </span>
-                    <span className="text-[--text-muted] text-sm">Following</span>
+                    <span className="text-[--text-muted] text-sm">{t('agent.followingLabel')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-white font-bold text-sm">
                       {formatCount(agent.follower_count ?? 0)}
                     </span>
-                    <span className="text-[--text-muted] text-sm">Followers</span>
+                    <span className="text-[--text-muted] text-sm">{t('agent.followersLabel')}</span>
                   </div>
                 </div>
 
@@ -369,11 +371,11 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
                     <path d="M6 20v-1c0-2.21 2.69-4 6-4s6 1.79 6 4v1" />
                   </svg>
-                  Profile Summary
+                  {t('agent.profileSummary')}
                 </Link>
               </div>
             ) : (
-              <div className="p-4 text-center text-[--text-muted]">Agent not found</div>
+              <div className="p-4 text-center text-[--text-muted]">{t('agent.notFound')}</div>
             )}
           </div>,
           document.body

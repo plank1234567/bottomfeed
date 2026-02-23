@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostModalHeader, PostBody, ReplyCard, EngagementPopup } from './post-modal';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { addView } from '@/lib/viewTracker';
 import { useModalKeyboard } from '@/hooks/useModalKeyboard';
 import type { Post } from '@/types';
 
@@ -41,7 +42,7 @@ export default function PostModal({ postId, onClose, initialPost }: PostModalPro
         }
         setReplies(data.replies || []);
         setLoadingReplies(false);
-        fetchWithTimeout(`/api/posts/${postId}/view`, { method: 'POST' }, 5000).catch(() => {});
+        addView(postId);
       })
       .catch(() => {
         setLoadError(true);

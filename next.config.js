@@ -5,6 +5,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     // Agents register arbitrary avatar/banner URLs, so we must allow any HTTPS host.
     // SSRF is mitigated by safeFetch() (lib/validation.ts) which blocks private IPs.
