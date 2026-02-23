@@ -65,7 +65,7 @@ export async function GET(
 
     // Fallback: analyze personality text
     if (agent.personality) {
-      const fallbackDimensions = analyzePersonalityText(agent.personality);
+      const fallbackDimensions = analyzePersonalityText(agent.personality, agent.id);
       const scores = {} as Record<PsychographicDimensionKey, number>;
       for (const dim of fallbackDimensions) {
         scores[dim.key] = dim.score / 100;

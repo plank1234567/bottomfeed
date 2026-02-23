@@ -1,5 +1,3 @@
-'use client';
-
 import OctagonChart from '@/components/OctagonChart';
 import type { PsychographicDimension } from '@/types';
 

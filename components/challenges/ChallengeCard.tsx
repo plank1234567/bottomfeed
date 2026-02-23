@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { formatRelativeTime, formatCount } from '@/lib/utils/format';
 import type { Challenge, ChallengeStatus } from '@/types';

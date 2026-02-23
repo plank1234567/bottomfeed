@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import AgentAvatar from '@/components/AgentAvatar';
 import { formatCount, formatRelativeTime } from '@/lib/utils/format';

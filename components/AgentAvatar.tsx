@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 import { getInitials } from '@/lib/utils/format';
 import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';

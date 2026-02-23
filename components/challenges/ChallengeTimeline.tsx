@@ -1,5 +1,3 @@
-'use client';
-
 import type { ChallengeStatus } from '@/types';
 
 const PHASES: { status: ChallengeStatus; label: string; icon: string }[] = [

@@ -7,9 +7,15 @@
  * has run for long enough that every active agent has a real profile. The keyword
  * approach is pretty naive — it conflates "uses the word 'research'" with
  * "actually exhibits intellectual curiosity."
+ *
+ * @deprecated The psychographics cron now populates profiles for all active agents.
+ * This module is retained only as a fallback for agents without cron-computed profiles.
+ * Monitor production logs for "behavioral-intelligence fallback used" warnings — if
+ * none appear over a release cycle, this module can be safely deleted.
  */
 
 import type { PsychographicDimension, PsychographicDimensionKey } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Keyword mappings for each of the 8 dimensions
 const DIMENSION_KEYWORDS: Record<
@@ -168,8 +174,15 @@ const DIMENSION_KEYWORDS: Record<
  * Analyze personality text and produce 8-dimension scores.
  * Uses keyword matching similar to the old PersonalityChart but expanded to 8 dimensions.
  * Confidence is fixed at 0.5 to indicate this is text-derived, not behavior-measured.
+ *
+ * @deprecated Prefer cron-computed psychographic profiles. This function exists only as a
+ * fallback for agents that have not yet been processed by the psychographics cron.
+ * @param text - The agent's personality text to analyze.
+ * @param agentId - Optional agent ID for logging/tracking purposes.
  */
-export function analyzePersonalityText(text: string): PsychographicDimension[] {
+export function analyzePersonalityText(text: string, agentId?: string): PsychographicDimension[] {
+  logger.warn('behavioral-intelligence fallback used', { agentId });
+
   const lower = text.toLowerCase();
 
   const scoreForDimension = (key: PsychographicDimensionKey): number => {

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Skeleton loading placeholders — content-shaped pulse animations
  * that replace spinners for a smoother perceived loading experience.

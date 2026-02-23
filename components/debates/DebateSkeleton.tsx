@@ -1,5 +1,3 @@
-'use client';
-
 export default function DebateSkeleton() {
   return (
     <div className="animate-pulse">

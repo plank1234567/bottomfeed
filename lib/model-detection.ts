@@ -5,6 +5,24 @@
  * Different models have distinct "tells" - vocabulary, formatting, reasoning patterns.
  */
 
+// Note: Update config/model-patterns.json to add new model signatures
+import modelPatternsJson from '@/config/model-patterns.json';
+
+export interface ModelStyleTraits {
+  usesMarkdown: boolean;
+  usesEmoji: boolean;
+  verbosity: 'concise' | 'moderate' | 'verbose';
+  formality: 'casual' | 'balanced' | 'formal';
+  structuredLists: boolean;
+}
+
+export interface ModelPatternEntry {
+  provider: string;
+  phrases: string[];
+  avoids: string[];
+  styleTraits: ModelStyleTraits;
+}
+
 export interface ModelSignature {
   model: string;
   provider: string;
@@ -22,164 +40,11 @@ export interface DetectionResult {
 /** Boost applied when multiple model signals agree (calibration TBD). */
 const MULTI_SIGNAL_CONFIDENCE_BOOST = 0.5;
 
-// Known patterns for each model family
-// Note: these phrase lists go stale — consider pulling from a remote config or DB
-const MODEL_PATTERNS: Record<
+// Known patterns for each model family, loaded from external JSON config
+const MODEL_PATTERNS: Record<string, ModelPatternEntry> = modelPatternsJson as Record<
   string,
-  {
-    provider: string;
-    phrases: string[];
-    avoids: string[];
-    styleTraits: {
-      usesMarkdown: boolean;
-      usesEmoji: boolean;
-      verbosity: 'concise' | 'moderate' | 'verbose';
-      formality: 'casual' | 'balanced' | 'formal';
-      structuredLists: boolean;
-    };
-  }
-> = {
-  claude: {
-    provider: 'Anthropic',
-    phrases: [
-      'I appreciate',
-      'I should note',
-      'I want to be direct',
-      'I aim to',
-      "I'd be happy to",
-      'nuanced',
-      'thoughtful',
-      'I notice',
-      'let me think',
-      'I should clarify',
-      "I'll do my best",
-      'constitutional',
-      'harmless',
-      'helpful',
-    ],
-    avoids: ['as an AI language model', 'I cannot and will not', 'my knowledge cutoff'],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'moderate',
-      formality: 'balanced',
-      structuredLists: true,
-    },
-  },
-  gpt: {
-    provider: 'OpenAI',
-    phrases: [
-      'as an AI',
-      "I'm an AI",
-      'my training data',
-      'knowledge cutoff',
-      "I don't have access",
-      'I cannot browse',
-      'happy to help',
-      'feel free to',
-      'let me know if',
-      'Is there anything else',
-      'I hope this helps',
-      'Great question',
-    ],
-    avoids: ['I aim to be direct', 'constitutional AI'],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: true,
-      verbosity: 'verbose',
-      formality: 'casual',
-      structuredLists: true,
-    },
-  },
-  gemini: {
-    provider: 'Google',
-    phrases: [
-      "I'm a large language model",
-      'trained by Google',
-      'I can help you with',
-      "Here's what I found",
-      'Based on my understanding',
-      "I'm not able to",
-      "I don't have the ability",
-      'multimodal',
-    ],
-    avoids: ['constitutional', 'OpenAI'],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: true,
-      verbosity: 'moderate',
-      formality: 'balanced',
-      structuredLists: true,
-    },
-  },
-  llama: {
-    provider: 'Meta',
-    phrases: [
-      'open source',
-      "I'm Llama",
-      'Meta AI',
-      "I'm an AI assistant",
-      'community',
-      'research',
-    ],
-    avoids: ['OpenAI', 'Anthropic', 'Google'],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'moderate',
-      formality: 'balanced',
-      structuredLists: false,
-    },
-  },
-  mistral: {
-    provider: 'Mistral AI',
-    phrases: ['Mistral', 'efficient', 'I can assist', 'French', 'European'],
-    avoids: ['OpenAI', 'Anthropic'],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'concise',
-      formality: 'formal',
-      structuredLists: false,
-    },
-  },
-  deepseek: {
-    provider: 'DeepSeek',
-    phrases: ['DeepSeek', 'code', 'programming', 'algorithm', 'implementation'],
-    avoids: [],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'concise',
-      formality: 'formal',
-      structuredLists: true,
-    },
-  },
-  cohere: {
-    provider: 'Cohere',
-    phrases: ['Cohere', 'Command', 'enterprise', 'RAG', 'retrieval', 'grounded'],
-    avoids: [],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'moderate',
-      formality: 'formal',
-      structuredLists: true,
-    },
-  },
-  perplexity: {
-    provider: 'Perplexity AI',
-    phrases: ['search', 'sources', 'according to', 'based on', 'citations', 'reference'],
-    avoids: [],
-    styleTraits: {
-      usesMarkdown: true,
-      usesEmoji: false,
-      verbosity: 'moderate',
-      formality: 'balanced',
-      structuredLists: true,
-    },
-  },
-};
+  ModelPatternEntry
+>;
 
 /**
  * Analyze a single response for model indicators
