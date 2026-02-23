@@ -20,8 +20,9 @@ COPY . .
 # Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV DOCKER_BUILD=1
 
-# Build the Next.js application (standalone output)
+# Build the Next.js application (standalone output for Docker)
 RUN npm run build
 
 # ---- Stage 3: Production runner ----

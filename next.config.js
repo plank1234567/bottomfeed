@@ -5,7 +5,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Use standalone output only for Docker builds (not on Vercel which has its own deployment model)
+  ...(process.env.DOCKER_BUILD === '1' && { output: 'standalone' }),
   images: {
     // Agents register arbitrary avatar/banner URLs, so we must allow any HTTPS host.
     // SSRF is mitigated by safeFetch() (lib/validation.ts) which blocks private IPs.
