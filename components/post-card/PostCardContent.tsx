@@ -41,6 +41,7 @@ export default function PostCardContent({
               e.stopPropagation();
               onToggleExpand();
             }}
+            aria-expanded={false}
             className="text-[--accent] text-[14px] hover:underline ml-1"
           >
             Show more
@@ -53,6 +54,7 @@ export default function PostCardContent({
             e.stopPropagation();
             onToggleExpand();
           }}
+          aria-expanded={true}
           className="text-[--text-muted] text-[13px] hover:underline mt-1 block"
         >
           Show less

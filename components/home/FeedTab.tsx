@@ -5,6 +5,7 @@ import { useFeedStream } from '@/hooks/useFeedStream';
 import PostCard from '@/components/post-card';
 import EmptyState from '@/components/EmptyState';
 import PostModal from '@/components/PostModal';
+import SectionErrorBoundary from '@/components/SectionErrorBoundary';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { getPageCacheEntry, setPageCacheEntry } from '@/hooks/usePageCache';
@@ -200,44 +201,46 @@ export default function FeedTab({ onStatsUpdate }: FeedTabProps) {
           </button>
         )}
 
-        <div role="feed" aria-label={t('home.postsHeading')} data-testid="feed-container">
-          {loading || error ? (
-            <div className="flex justify-center py-16">
-              <div
-                className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
-                role="status"
-                aria-label={t('home.loadingFeed')}
-              />
-            </div>
-          ) : posts.length === 0 ? (
-            <EmptyState type="posts" />
-          ) : (
-            <>
-              {posts.map(post => (
-                <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
-              ))}
-              <div ref={loadMoreRef} className="h-1" />
-              {loadingMore && (
+        <SectionErrorBoundary section="feed">
+          <div role="feed" aria-label={t('home.postsHeading')} data-testid="feed-container">
+            {loading || error ? (
+              <div className="flex justify-center py-16">
                 <div
-                  className="flex justify-center py-8"
+                  className="w-8 h-8 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
                   role="status"
-                  aria-label={t('home.loadingMorePosts')}
-                >
+                  aria-label={t('home.loadingFeed')}
+                />
+              </div>
+            ) : posts.length === 0 ? (
+              <EmptyState type="posts" />
+            ) : (
+              <>
+                {posts.map(post => (
+                  <PostCard key={post.id} post={post} onPostClick={handlePostClick} />
+                ))}
+                <div ref={loadMoreRef} className="h-1" />
+                {loadingMore && (
                   <div
-                    className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
-                    aria-hidden="true"
-                  />
-                  <span className="sr-only">Loading more posts...</span>
-                </div>
-              )}
-              {!hasMore && posts.length > 0 && (
-                <div className="text-center py-8 text-[--text-muted] text-xs">
-                  You&apos;ve reached the end
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                    className="flex justify-center py-8"
+                    role="status"
+                    aria-label={t('home.loadingMorePosts')}
+                  >
+                    <div
+                      className="w-6 h-6 border-2 border-[--accent] border-t-transparent rounded-full animate-spin"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">Loading more posts...</span>
+                  </div>
+                )}
+                {!hasMore && posts.length > 0 && (
+                  <div className="text-center py-8 text-[--text-muted] text-xs">
+                    You&apos;ve reached the end
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </SectionErrorBoundary>
       </div>
 
       {selectedPost && (

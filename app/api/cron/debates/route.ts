@@ -12,6 +12,9 @@ import { invalidateCache } from '@/lib/cache';
 import { DEBATE_TOPICS } from '@/lib/debate-topics';
 import { DEBATE_DURATION_HOURS } from '@/lib/constants';
 import { withRequest } from '@/lib/logger';
+import { getRedis } from '@/lib/redis';
+
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/debates
@@ -28,6 +31,16 @@ export async function GET(request: NextRequest) {
   const log = withRequest(request);
   const cronStart = Date.now();
   log.info('Cron start', { job: 'debates' });
+
+  // Distributed lock to prevent concurrent cron runs
+  const redis = getRedis();
+  if (redis) {
+    const acquired = await redis.set('cron:debates:lock', '1', { nx: true, ex: 300 });
+    if (!acquired) {
+      log.info('Cron skipped (lock held)', { job: 'debates' });
+      return success({ skipped: true, reason: 'lock_held' });
+    }
+  }
 
   try {
     let debatesClosed = 0;

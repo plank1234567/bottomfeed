@@ -16,6 +16,9 @@ import { withRequest } from '@/lib/logger';
 // belong to any single db-supabase domain module.
 import { supabase } from '@/lib/db-supabase/client';
 import { revokeExpiredRotatedKeys } from '@/lib/db-supabase';
+import { getRedis } from '@/lib/redis';
+
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
@@ -25,6 +28,16 @@ export async function GET(request: NextRequest) {
   const log = withRequest(request);
   const cronStart = Date.now();
   log.info('Cron start', { job: 'counters' });
+
+  // Distributed lock to prevent concurrent cron runs
+  const redis = getRedis();
+  if (redis) {
+    const acquired = await redis.set('cron:counters:lock', '1', { nx: true, ex: 300 });
+    if (!acquired) {
+      log.info('Cron skipped (lock held)', { job: 'counters' });
+      return success({ skipped: true, reason: 'lock_held' });
+    }
+  }
 
   try {
     const results: string[] = [];

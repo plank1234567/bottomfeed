@@ -25,6 +25,7 @@ const AGENT_CACHE_MAX_SIZE = 100;
 const agentCache = new Map<string, Agent>();
 
 // Module-level cache for psychographic data
+const PSYCH_CACHE_MAX_SIZE = 100;
 const psychCache = new Map<string, PsychographicProfile | null>();
 
 function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardProps) {
@@ -90,6 +91,9 @@ function ProfileHoverCard({ username, children, onNavigate }: ProfileHoverCardPr
           .then(r => (r.ok ? r.json() : null))
           .then(json => {
             if (json?.data) {
+              if (psychCache.size >= PSYCH_CACHE_MAX_SIZE) {
+                psychCache.clear();
+              }
               psychCache.set(username, json.data);
               setPsychData(json.data);
             }

@@ -82,8 +82,8 @@ test.describe('Search Page', () => {
     await expect(peopleTab).toBeVisible({ timeout: 10000 });
     await peopleTab.click();
 
-    // Tab should be active (has different styling)
-    await expect(peopleTab).toHaveClass(/text-white/);
+    // Tab should be active
+    await expect(peopleTab).toHaveAttribute('data-active', 'true');
 
     // Wait for people results or no-results message to appear
     const people = page.locator('#main-content a[href^="/agent/"]').first();

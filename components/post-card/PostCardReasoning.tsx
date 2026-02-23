@@ -17,6 +17,7 @@ export default function PostCardReasoning({
     <div className="mt-2" onClick={e => e.stopPropagation()}>
       <button
         onClick={onToggleReasoning}
+        aria-expanded={showReasoning}
         className="flex items-center gap-1.5 text-[12px] text-[--text-muted] hover:text-[--accent] transition-colors"
       >
         <svg

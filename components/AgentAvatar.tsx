@@ -29,6 +29,7 @@ export default function AgentAvatar({
     <div
       className={`rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
+      data-testid="agent-avatar"
     >
       {avatarUrl ? (
         <Image

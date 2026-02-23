@@ -5,11 +5,7 @@
 import { supabase } from './client';
 import { invalidateCache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
-import {
-  getChallengeById,
-  getContributionById,
-  ACTIVE_CHALLENGES_CACHE_KEY,
-} from './challenges-queries';
+import { getChallengeById, ACTIVE_CHALLENGES_CACHE_KEY } from './challenges-queries';
 import type {
   Challenge,
   ChallengeParticipant,
@@ -274,25 +270,20 @@ export async function createContribution(
   return data as ChallengeContribution | null;
 }
 
-export async function voteContribution(contributionId: string): Promise<boolean> {
+export async function voteContribution(contributionId: string, agentId: string): Promise<boolean> {
+  // TODO: The RPC should enforce a unique constraint on (contribution_id, agent_id)
+  // to prevent duplicate votes at the database level. For now we pass agent_id
+  // so callers are forced to supply it, and we log it for audit traceability.
+  logger.info('Contribution vote', { contributionId, agentId });
+
   const { error } = await supabase.rpc('increment_contribution_votes', {
     contribution_id: contributionId,
+    agent_id: agentId,
   });
 
   if (error) {
-    // Fallback: manual increment if RPC not available
-    const contribution = await getContributionById(contributionId);
-    if (!contribution) return false;
-
-    const { error: updateError } = await supabase
-      .from('challenge_contributions')
-      .update({ vote_count: contribution.vote_count + 1 })
-      .eq('id', contributionId);
-
-    if (updateError) {
-      logger.error('Failed to vote on contribution', updateError);
-      return false;
-    }
+    logger.error('Failed to vote on contribution (RPC)', { error, contributionId, agentId });
+    return false;
   }
   return true;
 }
@@ -342,33 +333,15 @@ export async function updateHypothesisStatus(
 export async function voteHypothesis(hypothesisId: string, support: boolean): Promise<boolean> {
   const field = support ? 'supporting_agents' : 'opposing_agents';
 
-  // Try atomic increment via RPC first (prevents race condition).
+  // Atomic increment via RPC (prevents race condition).
   // The `as never` is because Supabase's generated types don't know about our custom RPCs.
   const { error: rpcError } = await supabase.rpc('increment_hypothesis_votes' as never, {
     hypothesis_id: hypothesisId,
     vote_field: field,
   });
 
-  if (!rpcError) return true;
-
-  // Fallback: use raw SQL-style increment via PostgREST
-  // First verify the hypothesis exists
-  const { data } = await supabase
-    .from('challenge_hypotheses')
-    .select(field)
-    .eq('id', hypothesisId)
-    .maybeSingle();
-
-  if (!data) return false;
-
-  const currentCount = (data as Record<string, number>)[field] ?? 0;
-  const { error } = await supabase
-    .from('challenge_hypotheses')
-    .update({ [field]: currentCount + 1 })
-    .eq('id', hypothesisId);
-
-  if (error) {
-    logger.error('Failed to vote on hypothesis', error);
+  if (rpcError) {
+    logger.error('Failed to vote on hypothesis (RPC)', rpcError);
     return false;
   }
   return true;
@@ -386,6 +359,17 @@ export async function voteHypothesisWithModel(
   reasoning?: string,
   confidence?: number
 ): Promise<boolean> {
+  // Block self-voting: proposer cannot vote on their own hypothesis
+  const { data: hypothesis } = await supabase
+    .from('challenge_hypotheses')
+    .select('proposed_by')
+    .eq('id', hypothesisId)
+    .maybeSingle();
+
+  if (hypothesis?.proposed_by === agentId) {
+    return false;
+  }
+
   const { error } = await supabase.from('challenge_hypothesis_votes').insert({
     hypothesis_id: hypothesisId,
     agent_id: agentId,

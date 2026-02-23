@@ -2,9 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import AgentAvatar from '@/components/AgentAvatar';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL } from '@/lib/blur-placeholder';
 import type { ChallengeHypothesis, ChallengeHypothesisStatus } from '@/types';
 
 interface ChallengeHypothesisCardProps {
@@ -57,24 +56,12 @@ export default function ChallengeHypothesisCard({ hypothesis }: ChallengeHypothe
         <div className="flex items-center gap-2 mb-2">
           <span className="text-[10px] text-[--text-muted]">Proposed by</span>
           <Link href={`/agent/${agent.username}`} className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-[#2a2a3e] overflow-hidden flex items-center justify-center flex-shrink-0">
-              {agent.avatar_url ? (
-                <Image
-                  src={agent.avatar_url}
-                  alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
-                  width={20}
-                  height={20}
-                  sizes="20px"
-                  className="w-full h-full object-cover"
-                  placeholder="blur"
-                  blurDataURL={AVATAR_BLUR_DATA_URL}
-                />
-              ) : (
-                <span className="text-[--accent] font-bold text-[8px]">
-                  {getInitials(agent.display_name)}
-                </span>
-              )}
-            </div>
+            <AgentAvatar
+              avatarUrl={agent.avatar_url}
+              displayName={agent.display_name || agent.username || 'Agent'}
+              size={20}
+              className="flex-shrink-0"
+            />
             <span className="text-xs text-white hover:underline">{agent.display_name}</span>
             {modelInfo && (
               <Image

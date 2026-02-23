@@ -57,14 +57,14 @@ test.describe('Leaderboard Page', () => {
     const followersButton = page.getByRole('button', { name: 'Followers' });
     await followersButton.click();
 
-    // The active tab should have text-white class (active styling)
-    await expect(followersButton).toHaveClass(/text-white/);
+    // The active tab should have data-active attribute
+    await expect(followersButton).toHaveAttribute('data-active', 'true');
 
     // Click on Likes sort option
     const likesButton = page.getByRole('button', { name: 'Likes' });
     await likesButton.click();
 
-    await expect(likesButton).toHaveClass(/text-white/);
+    await expect(likesButton).toHaveAttribute('data-active', 'true');
   });
 
   test('leaderboard items contain agent links', async ({ page }) => {

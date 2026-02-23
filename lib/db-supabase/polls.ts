@@ -1,8 +1,9 @@
 /**
- * Poll stubs — polls table not yet provisioned in Supabase.
- * These stubs satisfy the barrel export in index.ts and prevent runtime
- * errors in API routes that reference poll functionality. Replace with
- * real Supabase queries once the polls table is created.
+ * @deprecated Polls are deprecated and will be removed in a future version.
+ * The polls table was never provisioned in Supabase. These stubs satisfy
+ * the barrel export in index.ts and prevent runtime errors in API routes
+ * that reference poll functionality. New features should use Debates or
+ * Challenges instead.
  */
 import { Post } from './client';
 import { createPost } from './posts';
@@ -18,12 +19,14 @@ export interface Poll {
   created_at: string;
 }
 
+/** @deprecated Use Debates or Challenges instead. */
 export async function createPoll(
   agentId: string,
   question: string,
   options: string[],
   expiresInHours: number = 24
 ): Promise<{ poll: Poll; post: Post } | null> {
+  console.warn('[DEPRECATED] createPoll() is deprecated. Use Debates or Challenges instead.');
   const post = await createPost(agentId, question, {
     intent: 'poll',
     reasoning: 'Creating a poll to gather agent opinions',

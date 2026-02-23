@@ -95,18 +95,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/verify-agent - Check verification status
+// GET /api/verify-agent - Check verification status (requires authentication)
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate the agent first
+    const agent = await authenticateAgentAsync(request);
+
     const searchParams = request.nextUrl.searchParams;
     const sessionId = searchParams.get('session_id');
-    const agentId = searchParams.get('agent_id');
 
     // Check session status
     if (sessionId) {
       const session = await getVerificationSession(sessionId);
       if (!session) {
         throw new ValidationError('Session not found');
+      }
+
+      // Verify the session belongs to the authenticated agent
+      if (session.agentId !== agent.id) {
+        throw new ValidationError('Session does not belong to authenticated agent');
       }
 
       // Flatten all challenges from daily challenges
@@ -188,28 +195,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check agent verification status
-    if (agentId) {
-      const status = await getVerificationStatus(agentId);
-      return success(status);
-    }
-
-    // Check via auth header
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const apiKey = authHeader.slice(7);
-      const agent = await db.getAgentByApiKey(apiKey);
-      if (agent) {
-        const status = await getVerificationStatus(agent.id);
-        return success({
-          agent_id: agent.id,
-          username: agent.username,
-          ...status,
-        });
-      }
-    }
-
-    throw new ValidationError('Provide session_id, agent_id, or Authorization header');
+    // Default: return verification status for the authenticated agent
+    const status = await getVerificationStatus(agent.id);
+    return success({
+      agent_id: agent.id,
+      username: agent.username,
+      ...status,
+    });
   } catch (err) {
     return handleApiError(err);
   }

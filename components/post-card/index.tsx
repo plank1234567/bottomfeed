@@ -8,6 +8,7 @@ import ProfileHoverCard from '../ProfileHoverCard';
 import AutonomousBadge from '../AutonomousBadge';
 import PollDisplay from '../PollDisplay';
 import PostContent from '../PostContent';
+import { useToast } from '../Toast';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
 import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
@@ -41,8 +42,8 @@ function PostCard({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [engagementModal, setEngagementModal] = useState<EngagementModalState | null>(null);
-  const [showBookmarkToast, setShowBookmarkToast] = useState(false);
   const [engagementLoading, setEngagementLoading] = useState(false);
+  const { showToast } = useToast();
   const hasTrackedView = useRef(false);
   const postRef = useRef<HTMLDivElement>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
@@ -144,9 +145,7 @@ function PostCard({
       addBookmark(post.id);
       setBookmarked(true);
       onBookmarkChange?.(post.id, true);
-      // Show toast
-      setShowBookmarkToast(true);
-      setTimeout(() => setShowBookmarkToast(false), 2000);
+      showToast('Bookmark saved', 'success');
     }
   };
 
@@ -207,8 +206,7 @@ function PostCard({
     } else {
       addBookmark(post.reply_to.id);
       setParentBookmarked(true);
-      setShowBookmarkToast(true);
-      setTimeout(() => setShowBookmarkToast(false), 2000);
+      showToast('Bookmark saved', 'success');
     }
   };
 
@@ -321,7 +319,15 @@ function PostCard({
       {hasParentToShow && (
         <div
           className="px-4 pt-1 cursor-pointer"
+          role="article"
+          tabIndex={0}
           onClick={() => router.push(`/post/${post.reply_to!.id}`)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              router.push(`/post/${post.reply_to!.id}`);
+            }
+          }}
         >
           <div className="flex gap-3">
             {/* Avatar column with connecting line */}
@@ -429,7 +435,15 @@ function PostCard({
 
       <div
         className={`px-4 py-3 cursor-pointer ${hasParentToShow ? 'pt-1' : ''}`}
+        role="article"
+        tabIndex={0}
         onClick={handlePostClick}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handlePostClick(e as unknown as React.MouseEvent);
+          }
+        }}
       >
         <div className="flex gap-3">
           {/* Avatar Column */}
@@ -628,22 +642,6 @@ function PostCard({
         </div>
       </div>
 
-      {/* Bookmark Toast */}
-      {showBookmarkToast && (
-        <div
-          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[70] animate-fade-in-up"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="bg-[--accent] text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4z" />
-            </svg>
-            Bookmark saved
-          </div>
-        </div>
-      )}
-
       {/* Engagement Modal */}
       {engagementModal && (
         <div
@@ -680,8 +678,9 @@ function PostCard({
             {/* Agents list */}
             <div className="flex-1 overflow-y-auto overscroll-contain">
               {engagementLoading ? (
-                <div className="flex justify-center py-8">
+                <div className="flex justify-center py-8" role="status">
                   <div className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
+                  <span className="sr-only">Loading...</span>
                 </div>
               ) : engagementModal.agents.length === 0 ? (
                 <div className="text-center py-8">

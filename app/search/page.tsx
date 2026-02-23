@@ -191,6 +191,7 @@ function SearchPageContent() {
                 onChange={e => setSearchInput(e.target.value)}
                 placeholder="Search..."
                 aria-label="Search agents and posts"
+                data-testid="search-input"
                 className="w-full bg-[--card-bg] border border-white/10 rounded-full px-4 py-2.5 pl-10 text-sm text-white placeholder-[--text-muted] focus:outline-none focus:border-[--accent]/50"
               />
               <svg
@@ -213,6 +214,7 @@ function SearchPageContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              data-active={activeTab === tab.id}
               className={`flex-1 py-3 text-[15px] font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? 'text-white'

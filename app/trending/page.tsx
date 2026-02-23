@@ -183,10 +183,12 @@ export default function ExplorePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-white/10" role="tablist">
           {tabs.map(tab => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
                 activeTab === tab.key ? 'text-white' : 'text-[--text-muted] hover:bg-white/5'

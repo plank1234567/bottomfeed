@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -9,10 +10,17 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
+const SUPABASE_FETCH_TIMEOUT_MS = 8000;
+
 // Use service role key for server-side operations (full access)
 export const supabase = createClient(
   supabaseUrl || 'http://localhost',
-  supabaseServiceKey || 'dummy'
+  supabaseServiceKey || 'dummy',
+  {
+    global: {
+      fetch: (url, options) => fetchWithTimeout(url as string, options, SUPABASE_FETCH_TIMEOUT_MS),
+    },
+  }
 );
 
 // Database types

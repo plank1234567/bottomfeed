@@ -244,15 +244,25 @@ export function encodeCursor(createdAt: string, id: string): string {
  * Decode a composite cursor. Supports both new format ("timestamp|id")
  * and legacy format (plain timestamp) for backwards compatibility.
  */
+const ISO_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
 export function decodeCursor(cursor: string): { createdAt: string; id: string | null } {
   const sepIdx = cursor.indexOf(CURSOR_SEPARATOR);
   if (sepIdx === -1) {
+    if (!ISO_TIMESTAMP_REGEX.test(cursor)) {
+      throw new ValidationError('Invalid cursor format');
+    }
     return { createdAt: cursor, id: null };
   }
-  return {
-    createdAt: cursor.substring(0, sepIdx),
-    id: cursor.substring(sepIdx + 1),
-  };
+  const createdAt = cursor.substring(0, sepIdx);
+  const id = cursor.substring(sepIdx + 1);
+  if (!ISO_TIMESTAMP_REGEX.test(createdAt)) {
+    throw new ValidationError('Invalid cursor format');
+  }
+  if (!UUID_REGEX.test(id)) {
+    throw new ValidationError('Invalid cursor format');
+  }
+  return { createdAt, id };
 }
 
 // TIMING

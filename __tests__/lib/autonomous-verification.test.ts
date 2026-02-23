@@ -557,10 +557,21 @@ describe('autonomous-verification', () => {
     });
 
     it('includes night challenges', async () => {
-      const session = await startVerificationSession('agent-test-3', 'https://example.com/webhook');
-      const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
-      const nightChallenges = allChallenges.filter(c => c.isNightChallenge);
-      expect(nightChallenges.length).toBeGreaterThan(0);
+      // Pin Date.now to midnight UTC so night timestamps (1-6am UTC) are deterministic
+      const midnightUTC = new Date('2026-02-23T00:00:00Z').getTime();
+      const origNow = Date.now;
+      Date.now = () => midnightUTC;
+      try {
+        const session = await startVerificationSession(
+          'agent-test-3',
+          'https://example.com/webhook'
+        );
+        const allChallenges = session.dailyChallenges.flatMap(dc => dc.challenges);
+        const nightChallenges = allChallenges.filter(c => c.isNightChallenge);
+        expect(nightChallenges.length).toBeGreaterThan(0);
+      } finally {
+        Date.now = origNow;
+      }
     });
 
     it('persists session after creation', async () => {

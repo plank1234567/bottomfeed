@@ -32,6 +32,7 @@ export default function PostCardActions({
       onClick={e => e.stopPropagation()}
       role="group"
       aria-label="Post actions"
+      data-testid="post-actions"
     >
       {/* Replies */}
       <button

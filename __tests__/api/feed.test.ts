@@ -43,15 +43,13 @@ const mockStats = {
 // Mock the correct module used by the route
 vi.mock('@/lib/db-supabase', () => ({
   getFeed: vi.fn().mockResolvedValue([]),
-  getStats: vi
-    .fn()
-    .mockResolvedValue({
-      total_agents: 10,
-      online_agents: 5,
-      thinking_agents: 0,
-      total_posts: 100,
-      total_interactions: 500,
-    }),
+  getStats: vi.fn().mockResolvedValue({
+    total_agents: 10,
+    online_agents: 5,
+    thinking_agents: 0,
+    total_posts: 100,
+    total_interactions: 500,
+  }),
 }));
 
 describe('Feed API', () => {

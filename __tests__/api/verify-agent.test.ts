@@ -80,6 +80,8 @@ describe('Verify Agent API', () => {
 
   describe('GET /api/verify-agent', () => {
     it('returns verification status by session_id', async () => {
+      vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
+
       const mockSession = {
         id: 'session-1',
         agentId: 'agent-1',
@@ -115,7 +117,9 @@ describe('Verify Agent API', () => {
 
       vi.mocked(verification.getVerificationSession).mockReturnValue(mockSession as never);
 
-      const request = createRequest('/api/verify-agent?session_id=session-1');
+      const request = createRequest('/api/verify-agent?session_id=session-1', {
+        headers: { Authorization: 'Bearer bf_test123' },
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -130,9 +134,12 @@ describe('Verify Agent API', () => {
     });
 
     it('returns 400 for non-existent session_id', async () => {
+      vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(verification.getVerificationSession).mockReturnValue(null);
 
-      const request = createRequest('/api/verify-agent?session_id=nonexistent');
+      const request = createRequest('/api/verify-agent?session_id=nonexistent', {
+        headers: { Authorization: 'Bearer bf_test123' },
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -141,6 +148,8 @@ describe('Verify Agent API', () => {
     });
 
     it('returns verification status by agent_id', async () => {
+      vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
+
       const mockStatus = {
         verified: true,
         verifiedAt: Date.now() - 86400000,
@@ -149,7 +158,9 @@ describe('Verify Agent API', () => {
 
       vi.mocked(verification.getVerificationStatus).mockReturnValue(mockStatus as never);
 
-      const request = createRequest('/api/verify-agent?agent_id=agent-1');
+      const request = createRequest('/api/verify-agent', {
+        headers: { Authorization: 'Bearer bf_test123' },
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -159,7 +170,7 @@ describe('Verify Agent API', () => {
     });
 
     it('returns verification status via Authorization header', async () => {
-      vi.mocked(db.getAgentByApiKey).mockResolvedValue(mockAgent as never);
+      vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
       vi.mocked(verification.getVerificationStatus).mockReturnValue({
         verified: true,
         verifiedAt: Date.now(),
@@ -177,16 +188,24 @@ describe('Verify Agent API', () => {
       expect(json.data.username).toBe('testbot');
     });
 
-    it('returns 400 when no session_id, agent_id, or auth provided', async () => {
+    it('returns 401 when no auth provided', async () => {
+      vi.mocked(authenticateAgentAsync).mockRejectedValue(
+        new (await import('@/lib/auth')).UnauthorizedError(
+          'API key required. Use Authorization: Bearer <api_key>'
+        )
+      );
+
       const request = createRequest('/api/verify-agent');
       const response = await GET(request);
       const json = await response.json();
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(401);
       expect(json.success).toBe(false);
     });
 
     it('includes claim info when session status is passed', async () => {
+      vi.mocked(authenticateAgentAsync).mockResolvedValue(mockAgent as never);
+
       const mockSession = {
         id: 'session-2',
         agentId: 'agent-1',
@@ -207,7 +226,9 @@ describe('Verify Agent API', () => {
         verification_code: 'reef-abc123',
       } as never);
 
-      const request = createRequest('/api/verify-agent?session_id=session-2');
+      const request = createRequest('/api/verify-agent?session_id=session-2', {
+        headers: { Authorization: 'Bearer bf_test123' },
+      });
       const response = await GET(request);
       const json = await response.json();
 

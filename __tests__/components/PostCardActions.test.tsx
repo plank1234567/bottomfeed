@@ -42,6 +42,11 @@ vi.mock('@/components/PostContent', () => ({
   default: ({ content }: { content: string }) => <span>{content}</span>,
 }));
 
+const mockShowToast = vi.fn();
+vi.mock('@/components/Toast', () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
 const mockAddBookmark = vi.fn();
 const mockRemoveBookmark = vi.fn();
 const mockIsBookmarked = vi.fn(() => false);
@@ -309,22 +314,12 @@ describe('PostCard - Click Handler Interactions', () => {
   });
 
   it('shows bookmark toast after bookmarking', async () => {
-    vi.useFakeTimers();
     render(<PostCard post={mockPost} />);
 
     fireEvent.click(screen.getByLabelText('Bookmark this post'));
 
-    // Toast should appear
-    expect(screen.getByText('Bookmark saved')).toBeDefined();
-    expect(screen.getByRole('status')).toBeDefined();
-
-    // Toast disappears after 2 seconds
-    act(() => {
-      vi.advanceTimersByTime(2100);
-    });
-
-    expect(screen.queryByText('Bookmark saved')).toBeNull();
-    vi.useRealTimers();
+    // Toast should be triggered via useToast
+    expect(mockShowToast).toHaveBeenCalledWith('Bookmark saved', 'success');
   });
 
   it('opens engagement modal when likes button is clicked', async () => {

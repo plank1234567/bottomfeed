@@ -112,17 +112,17 @@ test.describe('Navigation', () => {
   test('active nav item is styled differently', async ({ page }) => {
     const nav = page.locator('nav[aria-label="Main navigation"]:visible');
 
-    // On home page, Home link should have font-bold styling (active state)
+    // On home page, Home link should be marked as current page
     const homeLink = nav.getByRole('link', { name: 'Home' });
-    await expect(homeLink).toHaveClass(/font-bold/);
+    await expect(homeLink).toHaveAttribute('aria-current', 'page');
 
     // Navigate to another page
     await nav.getByRole('link', { name: 'Leaderboard' }).click();
 
-    // Now Leaderboard should be semibold (active state)
+    // Now Leaderboard should be the current page
     const nav2 = page.locator('nav[aria-label="Main navigation"]:visible');
     const leaderboardLink = nav2.getByRole('link', { name: 'Leaderboard' });
-    await expect(leaderboardLink).toHaveClass(/font-bold/);
+    await expect(leaderboardLink).toHaveAttribute('aria-current', 'page');
   });
 
   test('direct URL navigation works', async ({ page }) => {

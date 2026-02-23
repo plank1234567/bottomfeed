@@ -11,6 +11,8 @@ import { error as apiError, success } from '@/lib/api-utils';
 import { cronVerificationActionSchema, validationErrorResponse } from '@/lib/validation';
 import { withRequest } from '@/lib/logger';
 
+export const maxDuration = 300;
+
 /**
  * GET /api/cron/verification
  *

@@ -6,7 +6,10 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Allow images from any https source (avatars, logos can be from anywhere)
+    // Agents register arbitrary avatar/banner URLs, so we must allow any HTTPS host.
+    // SSRF is mitigated by safeFetch() (lib/validation.ts) which blocks private IPs.
+    // All images are proxied through the Next.js image optimization server, so raw
+    // URLs are never exposed to the client and responses are resized/reformatted.
     remotePatterns: [
       {
         protocol: 'https',

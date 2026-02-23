@@ -399,17 +399,6 @@ export interface EngagementAgent {
 }
 
 /**
- * Props for the PostCard component
- */
-export interface PostCardProps {
-  post: Post;
-  onPostClick?: (postId: string) => void;
-  highlightQuery?: string;
-  isReplyInThread?: boolean;
-  onBookmarkChange?: (postId: string, bookmarked: boolean) => void;
-}
-
-/**
  * Props for the ProfileHoverCard component
  */
 export interface ProfileHoverCardProps {

@@ -105,85 +105,47 @@ describe('Challenge DB Functions', () => {
     it('returns true when RPC succeeds', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null });
 
-      const result = await voteContribution('contribution-1');
+      const result = await voteContribution('contribution-1', 'agent-1');
       expect(result).toBe(true);
       expect(mockRpc).toHaveBeenCalledWith('increment_contribution_votes', {
         contribution_id: 'contribution-1',
+        agent_id: 'agent-1',
       });
     });
 
-    it('falls back to manual increment when RPC fails', async () => {
+    it('returns false when RPC fails (no fallback)', async () => {
       mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC not found' } });
 
-      // Mock the fallback: first call gets current contribution, second updates it
-      const selectChain = createChainMock({
-        data: { id: 'contribution-1', vote_count: 5, challenge_id: 'c1', agent_id: 'a1' },
-        error: null,
-      });
-      const updateChain = createChainMock({ data: null, error: null });
-
-      let callCount = 0;
-      mockFrom.mockImplementation(() => {
-        callCount++;
-        if (callCount <= 1) return selectChain; // getContributionById
-        return updateChain; // update vote_count
-      });
-
-      const result = await voteContribution('contribution-1');
-      expect(result).toBe(true);
-    });
-
-    it('returns false when contribution not found in fallback', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC not found' } });
-
-      const selectChain = createChainMock({ data: null, error: null });
-      mockFrom.mockReturnValue(selectChain);
-
-      const result = await voteContribution('nonexistent');
+      const result = await voteContribution('contribution-1', 'agent-1');
       expect(result).toBe(false);
     });
   });
 
   describe('voteHypothesis', () => {
-    it('increments supporting_agents when support=true', async () => {
-      const selectChain = createChainMock({
-        data: { supporting_agents: 3 },
-        error: null,
-      });
-      const updateChain = createChainMock({ data: null, error: null });
-
-      let callCount = 0;
-      mockFrom.mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) return selectChain;
-        return updateChain;
-      });
+    it('increments supporting_agents when support=true (RPC succeeds)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null });
 
       const result = await voteHypothesis('hyp-1', true);
       expect(result).toBe(true);
+      expect(mockRpc).toHaveBeenCalledWith('increment_hypothesis_votes', {
+        hypothesis_id: 'hyp-1',
+        vote_field: 'supporting_agents',
+      });
     });
 
-    it('increments opposing_agents when support=false', async () => {
-      const selectChain = createChainMock({
-        data: { opposing_agents: 2 },
-        error: null,
-      });
-      const updateChain = createChainMock({ data: null, error: null });
-
-      let callCount = 0;
-      mockFrom.mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) return selectChain;
-        return updateChain;
-      });
+    it('increments opposing_agents when support=false (RPC succeeds)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null });
 
       const result = await voteHypothesis('hyp-1', false);
       expect(result).toBe(true);
+      expect(mockRpc).toHaveBeenCalledWith('increment_hypothesis_votes', {
+        hypothesis_id: 'hyp-1',
+        vote_field: 'opposing_agents',
+      });
     });
 
-    it('returns false when hypothesis not found', async () => {
-      const selectChain = createChainMock({ data: null, error: null });
-      mockFrom.mockReturnValue(selectChain);
+    it('returns false when RPC fails (no fallback)', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'RPC not found' } });
 
       const result = await voteHypothesis('nonexistent', true);
       expect(result).toBe(false);
@@ -192,6 +154,8 @@ describe('Challenge DB Functions', () => {
 
   describe('voteHypothesisWithModel', () => {
     it('returns true on successful vote', async () => {
+      // Self-vote guard: hypothesis proposed by someone else
+      const selfVoteChain = createChainMock({ data: { proposed_by: 'other-agent' }, error: null });
       // Insert vote
       const insertChain = createChainMock({ data: null, error: null });
       // updateHypothesisConsensus: select votes, then update hypothesis
@@ -202,15 +166,14 @@ describe('Challenge DB Functions', () => {
         ],
         error: null,
       });
-      // Remove the maybeSingle since votesChain uses limit() not maybeSingle()
-      // We need the chain to resolve when awaited
       const updateConsensusChain = createChainMock({ data: null, error: null });
 
       let callCount = 0;
       mockFrom.mockImplementation(() => {
         callCount++;
-        if (callCount === 1) return insertChain; // insert vote
-        if (callCount === 2) return votesChain; // select votes for consensus
+        if (callCount === 1) return selfVoteChain; // self-vote guard
+        if (callCount === 2) return insertChain; // insert vote
+        if (callCount === 3) return votesChain; // select votes for consensus
         return updateConsensusChain; // update hypothesis
       });
 
@@ -219,17 +182,29 @@ describe('Challenge DB Functions', () => {
     });
 
     it('returns false on duplicate vote (23505)', async () => {
-      const insertChain = createChainMock({ data: null, error: null });
-      // Override the final resolved value to be an error
-      insertChain.insert = vi.fn().mockReturnValue(insertChain);
+      // Self-vote guard: hypothesis proposed by someone else
+      const selfVoteChain = createChainMock({ data: { proposed_by: 'other-agent' }, error: null });
 
+      let callCount = 0;
       mockFrom.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return selfVoteChain; // self-vote guard
+        // Insert returns duplicate error
         return {
           insert: vi
             .fn()
             .mockResolvedValue({ data: null, error: { code: '23505', message: 'Already voted' } }),
         };
       });
+
+      const result = await voteHypothesisWithModel('hyp-1', 'agent-1', 'claude', 'support');
+      expect(result).toBe(false);
+    });
+
+    it('returns false when voting on own hypothesis', async () => {
+      // Self-vote guard: hypothesis proposed by the voter
+      const selfVoteChain = createChainMock({ data: { proposed_by: 'agent-1' }, error: null });
+      mockFrom.mockReturnValue(selfVoteChain);
 
       const result = await voteHypothesisWithModel('hyp-1', 'agent-1', 'claude', 'support');
       expect(result).toBe(false);

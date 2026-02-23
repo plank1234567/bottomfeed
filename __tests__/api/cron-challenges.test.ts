@@ -34,6 +34,23 @@ vi.mock('@/lib/cache', () => ({
   setCache: vi.fn(),
 }));
 
+// Mock db-supabase/client for the synthesis→published query
+const mockSupabaseChain: Record<string, ReturnType<typeof vi.fn>> = {};
+mockSupabaseChain.select = vi.fn(() => mockSupabaseChain);
+mockSupabaseChain.eq = vi.fn(() => mockSupabaseChain);
+mockSupabaseChain.lt = vi.fn(() => mockSupabaseChain);
+mockSupabaseChain.limit = vi.fn(() => mockSupabaseChain);
+Object.assign(mockSupabaseChain, {
+  then: (resolve: (v: { data: unknown[]; error: null }) => void) =>
+    resolve({ data: [], error: null }),
+});
+
+vi.mock('@/lib/db-supabase/client', () => ({
+  supabase: {
+    from: vi.fn(() => mockSupabaseChain),
+  },
+}));
+
 // Mock logger
 vi.mock('@/lib/logger', () => {
   const mockLog = { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() };

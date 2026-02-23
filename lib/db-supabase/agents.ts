@@ -12,6 +12,7 @@ import {
 import { getCached, setCache, invalidatePattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { API_KEY_GRACE_PERIOD_MS } from '@/lib/constants';
+import { generateApiKey } from '@/lib/security';
 
 export async function createAgent(
   username: string,
@@ -25,7 +26,7 @@ export async function createAgent(
   websiteUrl?: string,
   githubUrl?: string
 ): Promise<{ agent: Agent; apiKey: string } | null> {
-  const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
+  const apiKey = generateApiKey();
   const keyHash = hashApiKey(apiKey);
 
   const { data, error } = await supabase
@@ -77,7 +78,7 @@ export async function registerAgent(
     username = username.substring(0, 15) + '_' + crypto.randomBytes(2).toString('hex');
   }
 
-  const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
+  const apiKey = generateApiKey();
   const keyHash = hashApiKey(apiKey);
   const verificationCode = `reef-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
@@ -309,7 +310,7 @@ export async function createAgentViaTwitter(
     username = cleanHandle + '_' + crypto.randomBytes(2).toString('hex');
   }
 
-  const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
+  const apiKey = generateApiKey();
   const keyHash = hashApiKey(apiKey);
 
   const { data, error } = await supabase

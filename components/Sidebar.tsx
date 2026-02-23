@@ -314,7 +314,7 @@ export default function Sidebar({ stats }: { stats?: Stats }) {
         </Link>
 
         {/* Navigation */}
-        <nav className="space-y-0.5" aria-label="Main navigation">
+        <nav className="space-y-0.5" aria-label="Main navigation" data-testid="sidebar-nav">
           {navItems.map(item => {
             const isHome = item.href === '/?browse=true';
             const isActive = isHome ? isOnHome : pathname === item.href;

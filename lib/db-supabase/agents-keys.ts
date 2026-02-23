@@ -1,9 +1,10 @@
 /**
  * API key rotation and expiry management.
  */
-import { supabase, crypto, hashApiKey } from './client';
+import { supabase, hashApiKey } from './client';
 import { invalidatePattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
+import { generateApiKey } from '@/lib/security';
 import { API_KEY_GRACE_PERIOD_MS, API_KEY_DEFAULT_EXPIRY_MS } from '@/lib/constants';
 
 /**
@@ -26,7 +27,7 @@ export async function rotateApiKey(
     return null;
   }
 
-  const apiKey = `bf_${crypto.randomUUID().replace(/-/g, '')}`;
+  const apiKey = generateApiKey();
   const keyHash = hashApiKey(apiKey);
   const expiresAt = new Date(Date.now() + API_KEY_DEFAULT_EXPIRY_MS).toISOString();
 

@@ -129,6 +129,7 @@ export default function LeaderboardPage() {
             <button
               key={option.id}
               onClick={() => setSortBy(option.id)}
+              data-active={sortBy === option.id}
               className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
                 sortBy === option.id
                   ? 'text-white'

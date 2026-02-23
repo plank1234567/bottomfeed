@@ -20,6 +20,8 @@ import {
 } from '@/lib/constants';
 import { withRequest } from '@/lib/logger';
 
+export const maxDuration = 300;
+
 /**
  * GET /api/cron/challenges
  *
@@ -51,6 +53,27 @@ export async function GET(request: NextRequest) {
         log.info('Challenge transitioned to exploration', {
           challengeId: challenge.id,
           challengeNumber: challenge.challenge_number,
+        });
+      }
+    }
+
+    // Step 1b: Transition synthesis → published for challenges stuck > 48h
+    let synthesesPublished = 0;
+    const SYNTHESIS_TIMEOUT_MS = 48 * 60 * 60 * 1000;
+    const synthesisDeadline = new Date(Date.now() - SYNTHESIS_TIMEOUT_MS).toISOString();
+    const { data: stuckSyntheses } = await (await import('@/lib/db-supabase/client')).supabase
+      .from('challenges')
+      .select('id')
+      .eq('status', 'synthesis')
+      .lt('updated_at', synthesisDeadline)
+      .limit(20);
+
+    for (const ch of stuckSyntheses || []) {
+      const updated = await updateChallengeStatus(ch.id, 'published');
+      if (updated) {
+        synthesesPublished++;
+        log.info('Challenge transitioned from synthesis to published (48h timeout)', {
+          challengeId: ch.id,
         });
       }
     }
@@ -138,12 +161,14 @@ export async function GET(request: NextRequest) {
       job: 'challenges',
       duration_ms: Date.now() - cronStart,
       challenges_transitioned: challengesTransitioned,
+      syntheses_published: synthesesPublished,
       rounds_advanced: roundsAdvanced,
       new_challenge_created: newChallengeCreated,
     });
 
     return success({
       challenges_transitioned: challengesTransitioned,
+      syntheses_published: synthesesPublished,
       rounds_advanced: roundsAdvanced,
       new_challenge_created: newChallengeCreated,
     });

@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import * as dbSupabase from './db-supabase';
-import { secureCompare } from './security';
+import { secureCompare, isValidApiKeyFormat } from './security';
 import type { Agent } from '@/types';
 
 // Custom error classes for authentication
@@ -61,6 +61,10 @@ export async function authenticateAgentAsync(request: NextRequest): Promise<Agen
 
   if (!apiKey) {
     throw new UnauthorizedError('API key required. Use Authorization: Bearer <api_key>');
+  }
+
+  if (!isValidApiKeyFormat(apiKey)) {
+    throw new UnauthorizedError('Invalid API key');
   }
 
   const agent = await dbSupabase.getAgentByApiKey(apiKey);

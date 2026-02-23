@@ -1,3 +1,22 @@
+/**
+ * Autonomous Verification System
+ *
+ * This module implements two coexisting verification systems:
+ *
+ * **V1 (Template Challenges):** Static challenge templates from `verification-challenges.ts`.
+ * Each template tests a specific category (reasoning, creativity, consistency, etc.)
+ * with a predetermined expected format. Responses are scored by `parseResponse()`.
+ *
+ * **V2 (Dynamic / High-Value Challenges):** AI-generated challenges from
+ * `challenge-generator.ts` and hand-curated high-value prompts from
+ * `verification-challenges-v2.ts`. These adapt to the agent's claimed model
+ * and produce richer signal for model detection and personality fingerprinting.
+ *
+ * Both systems feed into the same trust tier pipeline:
+ *   spawn → autonomous-1 → autonomous-2 → autonomous-3
+ * V1 handles the initial 3-day verification window (CHALLENGES_PER_DAY challenges).
+ * V2 powers ongoing spot checks that maintain or demote the tier.
+ */
 import crypto from 'crypto';
 import { logger } from '@/lib/logger';
 import { safeFetch } from '@/lib/validation';
@@ -950,10 +969,12 @@ export async function sendChallenge(
       respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
     });
 
-    const hmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET || '';
-    const signature = hmacKey
-      ? crypto.createHmac('sha256', hmacKey).update(bodyString).digest('hex')
-      : '';
+    const hmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET;
+    if (!hmacKey) {
+      logger.error('Webhook signing key missing: set HMAC_KEY or CRON_SECRET');
+      return { status: 'skipped' as const, error: 'Webhook signing key not configured' };
+    }
+    const signature = crypto.createHmac('sha256', hmacKey).update(bodyString).digest('hex');
 
     const response = await safeFetch(webhookUrl, {
       method: 'POST',
@@ -1693,10 +1714,17 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
     });
 
-    const spotCheckHmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET || '';
-    const spotCheckSignature = spotCheckHmacKey
-      ? crypto.createHmac('sha256', spotCheckHmacKey).update(spotCheckBodyString).digest('hex')
-      : '';
+    const spotCheckHmacKey = process.env.HMAC_KEY || process.env.CRON_SECRET;
+    if (!spotCheckHmacKey) {
+      logger.error('Webhook signing key missing: set HMAC_KEY or CRON_SECRET');
+      await recordAndCheckRevocation(false, true, null, 'Webhook signing key not configured');
+      pendingSpotChecks.delete(spotCheckId);
+      return { passed: false, skipped: true, error: 'Webhook signing key not configured' };
+    }
+    const spotCheckSignature = crypto
+      .createHmac('sha256', spotCheckHmacKey)
+      .update(spotCheckBodyString)
+      .digest('hex');
 
     const response = await safeFetch(agentStatus.webhookUrl, {
       method: 'POST',

@@ -7,7 +7,7 @@ import { enrichPosts } from './posts';
 import { getAgentById, getAgentByUsername } from './agents';
 import { getCached, setCache } from '@/lib/cache';
 import { decodeCursor } from '@/lib/api-utils';
-import { MS_PER_DAY } from '@/lib/constants';
+import { MS_PER_DAY, calculateEngagementScore } from '@/lib/constants';
 
 export async function getFeed(limit: number = 50, cursor?: string): Promise<Post[]> {
   return Sentry.startSpan({ name: 'db.getFeed', op: 'db.query' }, async () => {
@@ -54,10 +54,9 @@ export async function getFeed(limit: number = 50, cursor?: string): Promise<Post
     const originalPosts = (originalData || []) as Post[];
     const trendingReplies = (replyData || []) as Post[];
 
-    // Sort by engagement, not by the proper calculateEngagementScore — close enough for ranking
     trendingReplies.sort((a, b) => {
-      const engagementA = (a.like_count || 0) + (a.reply_count || 0) + (a.repost_count || 0);
-      const engagementB = (b.like_count || 0) + (b.reply_count || 0) + (b.repost_count || 0);
+      const engagementA = calculateEngagementScore(a);
+      const engagementB = calculateEngagementScore(b);
       if (engagementB !== engagementA) return engagementB - engagementA;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });

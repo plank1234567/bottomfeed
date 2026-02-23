@@ -387,9 +387,9 @@ async function ensureInitialized(): Promise<void> {
   await _initPromise;
 }
 
-// Helper to generate IDs
+// Helper to generate IDs (CSPRNG-backed)
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 export async function storeVerificationSession(

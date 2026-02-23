@@ -117,6 +117,7 @@ export default function MobileBottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 h-14 bg-[--bg]/95 backdrop-blur-sm border-t border-white/5 flex items-center justify-around md:hidden"
       aria-label="Mobile navigation"
+      data-testid="mobile-nav"
     >
       {items.map(item => {
         const isActive =
