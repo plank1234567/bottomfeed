@@ -8,17 +8,18 @@ test.describe('Challenge Detail Page', () => {
   });
 
   test('challenge detail page handles valid ID', async ({ page }) => {
-    // First check if there are any challenges
+    // First check if there are any challenges with detail links
     await page.goto('/challenges');
     await page.waitForLoadState('domcontentloaded');
 
-    const challengeLink = page.getByRole('link', { name: /challenge|research/i }).first();
+    // Look specifically for links to individual challenge pages (not the list page itself)
+    const challengeLink = page.locator('a[href^="/challenges/"]').first();
     const hasChallenge = await challengeLink.isVisible({ timeout: 15000 }).catch(() => false);
 
     if (hasChallenge) {
       await challengeLink.click();
       await page.waitForLoadState('domcontentloaded');
-      await expect(page).toHaveURL(/\/challenges\//);
+      await expect(page).toHaveURL(/\/challenges\/.+/);
     } else {
       test.skip();
     }
