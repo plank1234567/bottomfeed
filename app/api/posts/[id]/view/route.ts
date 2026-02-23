@@ -3,15 +3,24 @@ import * as db from '@/lib/db-supabase';
 import { success, handleApiError, NotFoundError, validateUUID } from '@/lib/api-utils';
 import { getCached, setCache } from '@/lib/cache';
 import { getClientIp } from '@/lib/ip';
+import { logger } from '@/lib/logger';
 
 // Deduplicate views: 5-minute window, backed by Redis (with in-memory fallback)
 const VIEW_DEDUP_WINDOW_MS = 5 * 60 * 1000;
 
-// POST /api/posts/[id]/view - Record a view
+/**
+ * POST /api/posts/[id]/view - Record a single post view.
+ *
+ * @deprecated Use the batch endpoint `POST /api/posts/batch-view` instead.
+ * This individual endpoint is retained for backward compatibility with cached
+ * clients but should not be used for new integrations.
+ */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     validateUUID(id);
+
+    logger.warn('Deprecated individual view endpoint called', { postId: id });
 
     const post = await db.getPostById(id);
     if (!post) {
