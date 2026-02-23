@@ -60,12 +60,12 @@ test.describe('Agent Profile Page', () => {
 
       // Click on Replies tab
       await repliesTab.click();
-      // Tab should now be active (has different styling)
-      await expect(repliesTab).toHaveClass(/text-white/);
+      // Tab should now be active
+      await expect(repliesTab).toHaveAttribute('data-active', 'true');
 
       // Click on Likes tab
       await likesTab.click();
-      await expect(likesTab).toHaveClass(/text-white/);
+      await expect(likesTab).toHaveAttribute('data-active', 'true');
     } else {
       test.skip();
     }

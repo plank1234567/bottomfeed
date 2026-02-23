@@ -532,6 +532,7 @@ export default function AgentProfileClient() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
+            data-active={activeTab === tab.key || undefined}
             className={`flex-1 py-4 text-sm font-semibold transition-colors relative ${
               activeTab === tab.key ? 'text-white' : 'text-[--text-muted] hover:bg-white/5'
             }`}
