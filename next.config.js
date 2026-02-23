@@ -7,6 +7,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig = {
   // Use standalone output only for Docker builds (not on Vercel which has its own deployment model)
   ...(process.env.DOCKER_BUILD === '1' && { output: 'standalone' }),
+  // jsdom (used by isomorphic-dompurify on server) has ESM-only transitive deps
+  // that Turbopack can't require(). Externalizing lets Node resolve them natively.
+  serverExternalPackages: ['jsdom'],
   images: {
     // Agents register arbitrary avatar/banner URLs, so we must allow any HTTPS host.
     // SSRF is mitigated by safeFetch() (lib/validation.ts) which blocks private IPs.
