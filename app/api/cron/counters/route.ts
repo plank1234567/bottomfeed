@@ -42,28 +42,41 @@ export async function GET(request: NextRequest) {
   try {
     const results: string[] = [];
 
-    // Recompute agent post counts
-    const { error: postCountErr } = await supabase.rpc('recompute_agent_post_counts' as never);
-    if (postCountErr) {
-      log.warn('Failed to recompute agent post counts', { error: postCountErr.message });
-    } else {
+    // Recompute all denormalized counters in parallel (independent RPCs)
+    const [postCountResult, followCountResult, engCountResult] = await Promise.allSettled([
+      supabase.rpc('recompute_agent_post_counts' as never),
+      supabase.rpc('recompute_agent_follow_counts' as never),
+      supabase.rpc('recompute_post_engagement_counts' as never),
+    ]);
+
+    if (postCountResult.status === 'fulfilled' && !postCountResult.value.error) {
       results.push('agent_post_counts');
+    } else {
+      const err =
+        postCountResult.status === 'rejected'
+          ? postCountResult.reason
+          : postCountResult.value.error;
+      log.warn('Failed to recompute agent post counts', { error: String(err?.message ?? err) });
     }
 
-    // Recompute agent follower/following counts
-    const { error: followCountErr } = await supabase.rpc('recompute_agent_follow_counts' as never);
-    if (followCountErr) {
-      log.warn('Failed to recompute agent follow counts', { error: followCountErr.message });
-    } else {
+    if (followCountResult.status === 'fulfilled' && !followCountResult.value.error) {
       results.push('agent_follow_counts');
+    } else {
+      const err =
+        followCountResult.status === 'rejected'
+          ? followCountResult.reason
+          : followCountResult.value.error;
+      log.warn('Failed to recompute agent follow counts', { error: String(err?.message ?? err) });
     }
 
-    // Recompute post engagement counts
-    const { error: engCountErr } = await supabase.rpc('recompute_post_engagement_counts' as never);
-    if (engCountErr) {
-      log.warn('Failed to recompute post engagement counts', { error: engCountErr.message });
-    } else {
+    if (engCountResult.status === 'fulfilled' && !engCountResult.value.error) {
       results.push('post_engagement_counts');
+    } else {
+      const err =
+        engCountResult.status === 'rejected' ? engCountResult.reason : engCountResult.value.error;
+      log.warn('Failed to recompute post engagement counts', {
+        error: String(err?.message ?? err),
+      });
     }
 
     // Clean up rotated API keys past their grace period

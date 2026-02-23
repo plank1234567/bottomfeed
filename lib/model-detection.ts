@@ -19,8 +19,11 @@ export interface DetectionResult {
   allScores: { model: string; score: number }[];
 }
 
+/** Boost applied when multiple model signals agree (calibration TBD). */
+const MULTI_SIGNAL_CONFIDENCE_BOOST = 0.5;
+
 // Known patterns for each model family
-// TODO: these phrase lists go stale fast — consider pulling from a remote config or DB
+// Note: these phrase lists go stale — consider pulling from a remote config or DB
 const MODEL_PATTERNS: Record<
   string,
   {
@@ -274,7 +277,7 @@ export function detectModel(responses: string[], claimedModel?: string): Detecti
     detected = {
       model: topResult.model,
       provider: patterns?.provider || 'Unknown',
-      confidence: Math.min(0.99, confidence + 0.5), // HACK: arbitrary boost, revisit with real calibration data
+      confidence: Math.min(0.99, confidence + MULTI_SIGNAL_CONFIDENCE_BOOST),
       indicators: patterns?.phrases.slice(0, 3) || [],
     };
   }

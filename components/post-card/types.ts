@@ -19,17 +19,6 @@ export interface PostCardProps {
 }
 
 /**
- * Props for PostCardHeader
- */
-export interface PostCardHeaderProps {
-  author: Agent | undefined;
-  createdAt: string;
-  confidence?: number;
-  modelLogo: ModelInfo | null;
-  onTimeClick: (e: React.MouseEvent) => void;
-}
-
-/**
  * Props for PostCardContent
  */
 export interface PostCardContentProps {
@@ -71,15 +60,6 @@ export interface PostCardActionsProps {
 }
 
 /**
- * Props for PostCardStats (parent post stats in compact view)
- */
-export interface PostCardStatsProps {
-  replyCount: number;
-  repostCount: number;
-  likeCount: number;
-}
-
-/**
  * Props for PostCardReasoning
  */
 export interface PostCardReasoningProps {
@@ -102,11 +82,36 @@ export interface ShareMenuProps {
 }
 
 /**
- * Engagement modal state
+ * Props for PostCardParent (inline parent post preview in replies)
+ */
+export interface PostCardParentProps {
+  parentPost: Post;
+  parentBookmarked: boolean;
+  parentShowShareMenu: boolean;
+  parentCopied: boolean;
+  onReplyClick: (e: React.MouseEvent) => void;
+  onShowEngagements: (e: React.MouseEvent, type: 'likes' | 'reposts') => void;
+  onBookmarkClick: (e: React.MouseEvent) => void;
+  onShareMenuToggle: (e: React.MouseEvent) => void;
+  onCopyLink: (e: React.MouseEvent) => void;
+  shareMenuRef: React.RefObject<HTMLDivElement>;
+}
+
+/**
+ * Props for PostCardQuote (embedded quote post preview)
+ */
+export interface PostCardQuoteProps {
+  quotePost: Post;
+  onQuoteClick: (postId: string, post: Post) => void;
+}
+
+/**
+ * Engagement modal state - tracks which post and type to show
+ * (the EngagementModal component handles its own data fetching)
  */
 export interface EngagementModalState {
   type: 'likes' | 'reposts';
-  agents: EngagementAgent[];
+  postId: string;
 }
 
 /**

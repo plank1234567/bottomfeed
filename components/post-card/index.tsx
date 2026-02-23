@@ -6,20 +6,21 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ProfileHoverCard from '../ProfileHoverCard';
 import AutonomousBadge from '../AutonomousBadge';
+import AgentAvatar from '../AgentAvatar';
 import PollDisplay from '../PollDisplay';
-import PostContent from '../PostContent';
+import EngagementModal from '../EngagementModal';
 import { useToast } from '../Toast';
 import { isBookmarked, addBookmark, removeBookmark } from '@/lib/humanPrefs';
 import { getModelLogo } from '@/lib/constants';
-import { getInitials, formatRelativeTime as formatTime } from '@/lib/utils/format';
-import { AVATAR_BLUR_DATA_URL, MEDIA_BLUR_DATA_URL } from '@/lib/blur-placeholder';
-import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
-import { useModalKeyboard } from '@/hooks/useModalKeyboard';
+import { formatRelativeTime as formatTime } from '@/lib/utils/format';
+import { addView } from '@/lib/viewTracker';
 
 import PostCardContent from './PostCardContent';
 import PostCardMedia from './PostCardMedia';
 import PostCardActions from './PostCardActions';
 import PostCardReasoning from './PostCardReasoning';
+import PostCardParent from './PostCardParent';
+import PostCardQuote from './PostCardQuote';
 import type { PostCardProps, EngagementModalState } from './types';
 
 /**
@@ -38,16 +39,13 @@ function PostCard({
   const [showReasoning, setShowReasoning] = useState(post.post_type === 'conversation');
   const [bookmarked, setBookmarked] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [viewCount, setViewCount] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [engagementModal, setEngagementModal] = useState<EngagementModalState | null>(null);
-  const [engagementLoading, setEngagementLoading] = useState(false);
   const { showToast } = useToast();
   const hasTrackedView = useRef(false);
   const postRef = useRef<HTMLDivElement>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
-  const engagementModalRef = useRef<HTMLDivElement>(null);
 
   // Parent post state (for interactive buttons on parent preview in threads)
   const [parentBookmarked, setParentBookmarked] = useState(false);
@@ -85,28 +83,9 @@ function PostCard({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showShareMenu, parentShowShareMenu]);
 
-  const engagementPrevFocusRef = useRef<HTMLElement | null>(null);
   const closeEngagementModal = useCallback(() => setEngagementModal(null), []);
-  useModalKeyboard(engagementModalRef, closeEngagementModal);
 
-  useEffect(() => {
-    if (!engagementModal) return;
-
-    engagementPrevFocusRef.current = document.activeElement as HTMLElement;
-    document.body.style.overflow = 'hidden';
-
-    requestAnimationFrame(() => {
-      const first = engagementModalRef.current?.querySelector<HTMLElement>('button, a[href]');
-      first?.focus();
-    });
-
-    return () => {
-      document.body.style.overflow = '';
-      engagementPrevFocusRef.current?.focus();
-    };
-  }, [engagementModal]);
-
-  // Track view when post becomes visible
+  // Track view when post becomes visible (batched via viewTracker)
   useEffect(() => {
     if (hasTrackedView.current) return;
 
@@ -115,14 +94,7 @@ function PostCard({
         const entry = entries[0];
         if (entry?.isIntersecting && !hasTrackedView.current) {
           hasTrackedView.current = true;
-          fetchWithTimeout(`/api/posts/${post.id}/view`, { method: 'POST' }, 5000)
-            .then(res => res.json())
-            .then(json => {
-              const data = json.data || json;
-              if (data.view_count) setViewCount(data.view_count);
-            })
-            // Fire-and-forget: view tracking is non-critical
-            .catch(() => {});
+          addView(post.id);
         }
       },
       { threshold: 0.5 }
@@ -149,22 +121,9 @@ function PostCard({
     }
   };
 
-  const showEngagements = async (e: React.MouseEvent, type: 'likes' | 'reposts') => {
+  const showEngagements = (e: React.MouseEvent, type: 'likes' | 'reposts') => {
     e.stopPropagation();
-    // Show modal immediately with loading state
-    setEngagementModal({ type, agents: [] });
-    setEngagementLoading(true);
-    try {
-      const res = await fetchWithTimeout(`/api/posts/${post.id}/engagements?type=${type}`);
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data || json;
-        setEngagementModal({ type, agents: data.agents || [] });
-      }
-    } catch (error) {
-      console.error('Failed to fetch engagements:', error);
-    }
-    setEngagementLoading(false);
+    setEngagementModal({ type, postId: post.id });
   };
 
   // --- Parent post handlers ---
@@ -179,22 +138,10 @@ function PostCard({
     }
   };
 
-  const showParentEngagements = async (e: React.MouseEvent, type: 'likes' | 'reposts') => {
+  const showParentEngagements = (e: React.MouseEvent, type: 'likes' | 'reposts') => {
     e.stopPropagation();
     if (!post.reply_to?.id) return;
-    setEngagementModal({ type, agents: [] });
-    setEngagementLoading(true);
-    try {
-      const res = await fetchWithTimeout(`/api/posts/${post.reply_to.id}/engagements?type=${type}`);
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data || json;
-        setEngagementModal({ type, agents: data.agents || [] });
-      }
-    } catch (error) {
-      console.error('Failed to fetch engagements:', error);
-    }
-    setEngagementLoading(false);
+    setEngagementModal({ type, postId: post.reply_to.id });
   };
 
   const handleParentBookmark = (e: React.MouseEvent) => {
@@ -271,6 +218,10 @@ function PostCard({
     router.push(`/post/${post.id}`);
   };
 
+  const handleQuoteClick = (postId: string, quotePost: import('@/types').Post) => {
+    if (onPostClick) onPostClick(postId, quotePost);
+  };
+
   // Check if this is a conversation post or a reply to a conversation
   const isConversationType =
     post.post_type === 'conversation' || post.reply_to?.post_type === 'conversation';
@@ -317,120 +268,18 @@ function PostCard({
 
       {/* Parent post with connecting line for ANY reply in feed */}
       {hasParentToShow && (
-        <div
-          className="px-4 pt-1 cursor-pointer"
-          role="article"
-          tabIndex={0}
-          onClick={() => router.push(`/post/${post.reply_to!.id}`)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              router.push(`/post/${post.reply_to!.id}`);
-            }
-          }}
-        >
-          <div className="flex gap-3">
-            {/* Avatar column with connecting line */}
-            <div
-              className="flex-shrink-0 flex flex-col items-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <ProfileHoverCard username={post.reply_to!.author?.username || ''}>
-                <Link href={`/agent/${post.reply_to!.author?.username}`}>
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                      {post.reply_to!.author?.avatar_url ? (
-                        <Image
-                          src={post.reply_to!.author.avatar_url}
-                          alt={`${post.reply_to!.author?.display_name || post.reply_to!.author?.username || 'Agent'}'s avatar`}
-                          width={40}
-                          height={40}
-                          sizes="40px"
-                          className="w-full h-full object-cover"
-                          placeholder="blur"
-                          blurDataURL={AVATAR_BLUR_DATA_URL}
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-xs">
-                          {getInitials(post.reply_to!.author?.display_name || 'Agent')}
-                        </span>
-                      )}
-                    </div>
-                    {post.reply_to!.author?.trust_tier && (
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-                        <AutonomousBadge tier={post.reply_to!.author.trust_tier} size="xs" />
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              </ProfileHoverCard>
-              {/* Connecting line extending down from parent avatar */}
-              <div className="w-0.5 bg-[#333639] flex-1 mt-2 min-h-[8px]" />
-            </div>
-            <div className="flex-1 min-w-0 pb-2">
-              <div
-                className="flex items-center gap-1 text-[15px]"
-                onClick={e => e.stopPropagation()}
-              >
-                <ProfileHoverCard username={post.reply_to!.author?.username || ''}>
-                  <Link
-                    href={`/agent/${post.reply_to!.author?.username}`}
-                    className="hover:underline"
-                  >
-                    <span className="font-bold text-white">
-                      {post.reply_to!.author?.display_name}
-                    </span>
-                  </Link>
-                </ProfileHoverCard>
-                {(() => {
-                  const logo = getModelLogo(post.reply_to!.author?.model);
-                  return logo ? (
-                    <span
-                      style={{ backgroundColor: logo.brandColor }}
-                      className="w-4 h-4 rounded flex items-center justify-center"
-                      title={logo.name}
-                    >
-                      <Image
-                        src={logo.logo}
-                        alt={logo.name}
-                        width={10}
-                        height={10}
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </span>
-                  ) : null;
-                })()}
-                <span className="text-[--text-muted]">@{post.reply_to!.author?.username}</span>
-                <span className="text-[--text-muted]">·</span>
-                <span className="text-[--text-muted]">{formatTime(post.reply_to!.created_at)}</span>
-              </div>
-              <div className="mt-1">
-                <div className="text-[--text-primary] text-[15px] leading-normal whitespace-pre-wrap">
-                  <PostContent content={post.reply_to!.content} />
-                </div>
-              </div>
-              {/* Full interactive actions for parent */}
-              <PostCardActions
-                postId={post.reply_to!.id}
-                authorUsername={post.reply_to!.author?.username}
-                replyCount={post.reply_to!.reply_count}
-                repostCount={post.reply_to!.repost_count}
-                likeCount={post.reply_to!.like_count}
-                viewCount={0}
-                bookmarked={parentBookmarked}
-                showShareMenu={parentShowShareMenu}
-                copied={parentCopied}
-                onReplyClick={handleParentReplyClick}
-                onShowEngagements={showParentEngagements}
-                onBookmarkClick={handleParentBookmark}
-                onShareMenuToggle={handleParentShareMenu}
-                onCopyLink={handleParentCopyLink}
-                shareMenuRef={parentShareMenuRef}
-              />
-            </div>
-          </div>
-        </div>
+        <PostCardParent
+          parentPost={post.reply_to!}
+          parentBookmarked={parentBookmarked}
+          parentShowShareMenu={parentShowShareMenu}
+          parentCopied={parentCopied}
+          onReplyClick={handleParentReplyClick}
+          onShowEngagements={showParentEngagements}
+          onBookmarkClick={handleParentBookmark}
+          onShareMenuToggle={handleParentShareMenu}
+          onCopyLink={handleParentCopyLink}
+          shareMenuRef={parentShareMenuRef}
+        />
       )}
 
       <div
@@ -451,24 +300,11 @@ function PostCard({
             <ProfileHoverCard username={post.author?.username || ''}>
               <Link href={`/agent/${post.author?.username}`}>
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                    {post.author?.avatar_url ? (
-                      <Image
-                        src={post.author.avatar_url}
-                        alt={`${post.author?.display_name || post.author?.username || 'Agent'}'s avatar`}
-                        width={40}
-                        height={40}
-                        sizes="40px"
-                        className="w-full h-full object-cover"
-                        placeholder="blur"
-                        blurDataURL={AVATAR_BLUR_DATA_URL}
-                      />
-                    ) : (
-                      <span className="text-[--accent] font-semibold text-xs">
-                        {getInitials(post.author?.display_name || 'Agent')}
-                      </span>
-                    )}
-                  </div>
+                  <AgentAvatar
+                    avatarUrl={post.author?.avatar_url}
+                    displayName={post.author?.display_name || 'Agent'}
+                    size={40}
+                  />
                   {post.author?.trust_tier && (
                     <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
                       <AutonomousBadge tier={post.author.trust_tier} size="xs" />
@@ -536,63 +372,7 @@ function PostCard({
 
             {/* Quote post embed */}
             {post.quote_post && (
-              <div
-                className="mt-3 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-colors cursor-pointer"
-                onClick={e => {
-                  e.stopPropagation();
-                  if (onPostClick) onPostClick(post.quote_post!.id, post.quote_post!);
-                }}
-              >
-                <div className="px-3 py-2.5">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-5 h-5 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center flex-shrink-0">
-                      {post.quote_post.author?.avatar_url ? (
-                        <Image
-                          src={post.quote_post.author.avatar_url}
-                          alt={`${post.quote_post.author?.display_name || post.quote_post.author?.username || 'Agent'}'s avatar`}
-                          width={20}
-                          height={20}
-                          sizes="20px"
-                          className="w-full h-full object-cover"
-                          placeholder="blur"
-                          blurDataURL={AVATAR_BLUR_DATA_URL}
-                        />
-                      ) : (
-                        <span className="text-[--accent] font-semibold text-[8px]">
-                          {getInitials(post.quote_post.author?.display_name || 'Agent')}
-                        </span>
-                      )}
-                    </div>
-                    <span className="font-bold text-white text-[13px] truncate">
-                      {post.quote_post.author?.display_name}
-                    </span>
-                    <span className="text-[--text-muted] text-[13px]">
-                      @{post.quote_post.author?.username}
-                    </span>
-                    <span className="text-[--text-muted] text-[13px]">·</span>
-                    <span className="text-[--text-muted] text-[13px]">
-                      {formatTime(post.quote_post.created_at)}
-                    </span>
-                  </div>
-                  <div className="text-[--text-primary] text-[14px] leading-normal whitespace-pre-wrap line-clamp-3">
-                    <PostContent content={post.quote_post.content} />
-                  </div>
-                  {post.quote_post.media_urls && post.quote_post.media_urls.length > 0 && (
-                    <div className="mt-2 rounded-xl overflow-hidden max-h-[200px]">
-                      <Image
-                        src={post.quote_post.media_urls[0]!}
-                        alt="Quoted post media"
-                        width={400}
-                        height={200}
-                        sizes="(max-width: 768px) 100vw, 600px"
-                        className="w-full h-full object-cover"
-                        placeholder="blur"
-                        blurDataURL={MEDIA_BLUR_DATA_URL}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PostCardQuote quotePost={post.quote_post} onQuoteClick={handleQuoteClick} />
             )}
 
             {/* Poll display */}
@@ -627,7 +407,7 @@ function PostCard({
               replyCount={post.reply_count}
               repostCount={post.repost_count}
               likeCount={post.like_count}
-              viewCount={viewCount}
+              viewCount={post.view_count ?? 0}
               bookmarked={bookmarked}
               showShareMenu={showShareMenu}
               copied={copied}
@@ -642,121 +422,13 @@ function PostCard({
         </div>
       </div>
 
-      {/* Engagement Modal */}
+      {/* Engagement Modal - reuses the shared EngagementModal component */}
       {engagementModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center"
-          onClick={() => setEngagementModal(null)}
-          onWheel={e => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="engagement-modal-title"
-        >
-          <div className="absolute inset-0 bg-black/60 animate-backdrop-enter" />
-          <div
-            ref={engagementModalRef}
-            id={`engagement-modal-${post.id}`}
-            className="relative w-full max-w-[400px] max-h-[80vh] bg-[--bg] rounded-2xl overflow-hidden flex flex-col border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-modal-enter"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <h3 id="engagement-modal-title" className="text-lg font-bold text-white">
-                {engagementModal.type === 'likes' ? 'Liked by' : 'Reposted by'}
-              </h3>
-              <button
-                onClick={() => setEngagementModal(null)}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M10.59 12L4.54 5.96l1.42-1.42L12 10.59l6.04-6.05 1.42 1.42L13.41 12l6.05 6.04-1.42 1.42L12 13.41l-6.04 6.05-1.42-1.42L10.59 12z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Agents list */}
-            <div className="flex-1 overflow-y-auto overscroll-contain">
-              {engagementLoading ? (
-                <div className="flex justify-center py-8" role="status">
-                  <div className="w-5 h-5 border-2 border-[--accent] border-t-transparent rounded-full animate-spin" />
-                  <span className="sr-only">Loading...</span>
-                </div>
-              ) : engagementModal.agents.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-[--text-muted] text-sm">No agents yet</p>
-                </div>
-              ) : (
-                engagementModal.agents.map(agent => {
-                  const agentModelLogo = getModelLogo(agent.model);
-                  return (
-                    <Link
-                      key={agent.id}
-                      href={`/agent/${agent.username}`}
-                      onClick={() => setEngagementModal(null)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
-                    >
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-[--card-bg-darker] overflow-hidden flex items-center justify-center">
-                          {agent.avatar_url ? (
-                            <Image
-                              src={agent.avatar_url}
-                              alt={`${agent.display_name || agent.username || 'Agent'}'s avatar`}
-                              width={40}
-                              height={40}
-                              sizes="40px"
-                              className="w-full h-full object-cover"
-                              placeholder="blur"
-                              blurDataURL={AVATAR_BLUR_DATA_URL}
-                            />
-                          ) : (
-                            <span className="text-[--accent] font-semibold text-xs">
-                              {agent.display_name
-                                ?.split(' ')
-                                .map(n => n[0])
-                                .join('')
-                                .toUpperCase()
-                                .slice(0, 2) || 'AI'}
-                            </span>
-                          )}
-                        </div>
-                        {agent.trust_tier && (
-                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-                            <AutonomousBadge tier={agent.trust_tier} size="xs" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="font-bold text-white truncate">
-                            {agent.display_name}
-                          </span>
-                          {agentModelLogo && (
-                            <span
-                              style={{ backgroundColor: agentModelLogo.brandColor }}
-                              className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                              title={agentModelLogo.name}
-                            >
-                              <Image
-                                src={agentModelLogo.logo}
-                                alt={agentModelLogo.name}
-                                width={10}
-                                height={10}
-                                className="w-2.5 h-2.5 object-contain"
-                                unoptimized
-                              />
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[--text-muted] text-sm">@{agent.username}</span>
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
+        <EngagementModal
+          postId={engagementModal.postId}
+          type={engagementModal.type}
+          onClose={closeEngagementModal}
+        />
       )}
     </div>
   );

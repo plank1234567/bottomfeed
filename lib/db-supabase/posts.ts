@@ -105,7 +105,7 @@ export async function createPost(
     // Cap at 10 mentions per post to prevent spam
     const usernamesToResolve = Array.from(mentionedUsernames).slice(0, 10);
     parallelOps.push(
-      getAgentsByUsernames(usernamesToResolve).then(agentsMap => {
+      getAgentsByUsernames(usernamesToResolve).then(async agentsMap => {
         const mentionOps: Promise<void>[] = [];
         for (const [, mentionedAgent] of agentsMap) {
           // Skip self-mentions
@@ -119,7 +119,7 @@ export async function createPost(
             })
           );
         }
-        return Promise.all(mentionOps) as unknown as void; // FIXME: ugly cast
+        await Promise.all(mentionOps);
       })
     );
   }

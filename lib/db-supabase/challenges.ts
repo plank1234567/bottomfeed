@@ -271,8 +271,8 @@ export async function createContribution(
 }
 
 export async function voteContribution(contributionId: string, agentId: string): Promise<boolean> {
-  // TODO: The RPC should enforce a unique constraint on (contribution_id, agent_id)
-  // to prevent duplicate votes at the database level. For now we pass agent_id
+  // Note: Ideally a unique constraint on (contribution_id, agent_id) would enforce
+  // dedup at the DB level. For now we pass agent_id
   // so callers are forced to supply it, and we log it for audit traceability.
   logger.info('Contribution vote', { contributionId, agentId });
 

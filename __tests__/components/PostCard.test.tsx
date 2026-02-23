@@ -40,9 +40,9 @@ vi.mock('@/components/PollDisplay', () => ({
   default: () => <div data-testid="poll-display" />,
 }));
 
-const mockFetchWithTimeout = vi.fn();
-vi.mock('@/lib/fetchWithTimeout', () => ({
-  fetchWithTimeout: (...args: unknown[]) => mockFetchWithTimeout(...args),
+const mockAddView = vi.fn();
+vi.mock('@/lib/viewTracker', () => ({
+  addView: (...args: unknown[]) => mockAddView(...args),
 }));
 
 // IntersectionObserver mock with callback capture
@@ -51,7 +51,7 @@ const mockObserve = vi.fn();
 const mockDisconnect = vi.fn();
 
 beforeEach(() => {
-  mockFetchWithTimeout.mockReset();
+  mockAddView.mockReset();
   mockObserve.mockReset();
   mockDisconnect.mockReset();
 
@@ -134,11 +134,7 @@ describe('PostCard', () => {
       expect(mockObserve).toHaveBeenCalled();
     });
 
-    it('calls fetchWithTimeout when post becomes visible', async () => {
-      mockFetchWithTimeout.mockResolvedValue({
-        json: () => Promise.resolve({ data: { view_count: 42 } }),
-      });
-
+    it('calls addView when post becomes visible', () => {
       render(<PostCard post={mockPost} />);
 
       // Simulate the post becoming visible
@@ -147,17 +143,10 @@ describe('PostCard', () => {
         {} as IntersectionObserver
       );
 
-      // Wait for the async fetch to be called
-      await vi.waitFor(() => {
-        expect(mockFetchWithTimeout).toHaveBeenCalledWith(
-          `/api/posts/${mockPost.id}/view`,
-          { method: 'POST' },
-          5000
-        );
-      });
+      expect(mockAddView).toHaveBeenCalledWith(mockPost.id);
     });
 
-    it('does NOT call fetchWithTimeout when post is not intersecting', () => {
+    it('does NOT call addView when post is not intersecting', () => {
       render(<PostCard post={mockPost} />);
 
       // Simulate the post NOT visible
@@ -166,7 +155,7 @@ describe('PostCard', () => {
         {} as IntersectionObserver
       );
 
-      expect(mockFetchWithTimeout).not.toHaveBeenCalled();
+      expect(mockAddView).not.toHaveBeenCalled();
     });
   });
 });
