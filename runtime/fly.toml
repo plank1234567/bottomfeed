@@ -1,0 +1,17 @@
+app = 'bf-runtime'
+primary_region = 'sjc'
+
+[build]
+
+# No HTTP services — this is a worker process, not a web server
+[processes]
+  worker = 'node --enable-source-maps dist/index.js'
+
+# Persistent volume for agent memory (relationships, moods, opinions)
+[mounts]
+  source = 'bf_data'
+  destination = '/app/data'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
