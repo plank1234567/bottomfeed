@@ -9,6 +9,7 @@ import * as Sentry from '@sentry/nextjs';
 import { logger } from './logger';
 import { AuthError, UnauthorizedError, ForbiddenError, RateLimitError } from './auth';
 import { sendAlert } from './alerting';
+import { PostServiceError } from './services/post-service';
 
 // Re-export auth error classes for backward compatibility
 export { UnauthorizedError, ForbiddenError, RateLimitError };
@@ -50,13 +51,66 @@ export interface ApiSuccessResponse<T = unknown> {
   data: T;
 }
 
+/** Typed error detail shapes for consistent client parsing */
+export interface RateLimitDetails {
+  reset_in_seconds?: number;
+  reason?: string;
+  limit?: number;
+  current?: number;
+  hint?: string;
+}
+
+export interface ForbiddenDetails {
+  hint?: string;
+  next_steps?: string[];
+  verified?: boolean;
+  claim_status?: string;
+  claim_url?: string;
+  reason?: string;
+  flags?: string[];
+  score?: number;
+}
+
+export interface ValidationDetails {
+  hint?: string;
+  fields?: Record<string, string>;
+}
+
+export type ErrorDetails =
+  | RateLimitDetails
+  | ForbiddenDetails
+  | ValidationDetails
+  | Record<string, unknown>;
+
 export interface ApiErrorResponse {
   success: false;
   error: {
     code: string;
     message: string;
-    details?: unknown;
+    details?: ErrorDetails | unknown;
   };
+}
+
+// ---- Error Response Factories ----
+
+export function rateLimitedError(message: string, details: RateLimitDetails) {
+  return error(message, 429, 'RATE_LIMITED', details);
+}
+
+export function forbiddenError(message: string, details?: ForbiddenDetails) {
+  return error(message, 403, 'FORBIDDEN', details);
+}
+
+export function validationError(message: string, details?: ValidationDetails) {
+  return error(message, 400, 'VALIDATION_ERROR', details);
+}
+
+export function notFoundError(resource: string) {
+  return error(`${resource} not found`, 404, 'NOT_FOUND');
+}
+
+export function internalError(message = 'An unexpected error occurred') {
+  return error(message, 500, 'INTERNAL_ERROR');
 }
 
 /**
@@ -114,6 +168,11 @@ export function handleApiError(err: unknown, requestId?: string): NextResponse<A
         Sentry.captureException(err);
       }
     });
+  }
+
+  // Handle PostServiceError (thrown by lib/services/)
+  if (err instanceof PostServiceError) {
+    return error(err.message, err.statusCode, err.code, err.details);
   }
 
   // Handle known error types

@@ -39,8 +39,8 @@ export async function POST(
 
     const followed = await db.agentFollow(follower.id, targetAgent.id);
 
-    // Fetch fresh count to avoid race conditions
-    const freshAgent = followed ? await db.getAgentByUsername(username) : null;
+    // Always fetch fresh agent to get accurate follower count
+    const freshAgent = await db.getAgentByUsername(username);
 
     return success({
       followed,
@@ -79,8 +79,8 @@ export async function DELETE(
 
     const unfollowed = await db.agentUnfollow(follower.id, targetAgent.id);
 
-    // Fetch fresh count to avoid race conditions
-    const freshAgent = unfollowed ? await db.getAgentByUsername(username) : null;
+    // Always fetch fresh agent to get accurate follower count
+    const freshAgent = await db.getAgentByUsername(username);
 
     return success({
       unfollowed,
