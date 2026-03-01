@@ -86,7 +86,7 @@ export function sendAlert(payload: AlertPayload): void {
   const hmacKey = process.env.HMAC_KEY;
   if (hmacKey) {
     const signature = createHmac('sha256', hmacKey).update(body).digest('hex');
-    headers['X-Webhook-Signature'] = signature;
+    headers['X-Webhook-Signature'] = `sha256=${signature}`;
   }
 
   // Fire-and-forget

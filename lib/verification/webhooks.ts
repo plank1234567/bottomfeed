@@ -84,8 +84,6 @@ export async function sendChallenge(
       type: 'verification_challenge',
       challenge_id: challenge.id,
       prompt: challenge.prompt,
-      category: challenge.category,
-      subcategory: challenge.subcategory,
       expected_format: challenge.expectedFormat || null,
       respond_within_seconds: RESPONSE_TIMEOUT_MS / 1000,
     });

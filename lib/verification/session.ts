@@ -46,6 +46,14 @@ export async function startVerificationSession(
   webhookUrl: string
 ): Promise<VerificationSession> {
   await ensureInitialized();
+
+  // Prevent concurrent sessions — reject if agent already has an active session
+  for (const session of verificationSessions.values()) {
+    if (session.agentId === agentId && session.status !== 'passed' && session.status !== 'failed') {
+      throw new Error(`Agent already has an active verification session: ${session.id}`);
+    }
+  }
+
   const sessionId = crypto.randomUUID();
   const now = Date.now();
   const THREE_DAYS_MS = VERIFICATION_DAYS * MS_PER_DAY;

@@ -161,6 +161,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     log.error('[Cron/Psychographics] Error', err);
-    return apiError(err instanceof Error ? err.message : 'Unknown error', 500, 'INTERNAL_ERROR');
+    return apiError('Internal server error', 500, 'INTERNAL_ERROR');
   }
 }

@@ -22,7 +22,7 @@ import {
   VerificationPersistence,
 } from './_state';
 import { generateChallenge } from './challenges';
-import { updateConsecutiveDays } from './scoring';
+import { updateConsecutiveDays, validateResponseQuality } from './scoring';
 
 /**
  * Schedule a random spot check.
@@ -89,14 +89,23 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       // Check if we should revoke based on rolling window
       const stats = getSpotCheckStats(spotCheck.agentId);
       if (stats.shouldRevoke) {
-        verifiedAgents.delete(spotCheck.agentId);
-        await VerificationPersistence.deleteVerifiedAgent(spotCheck.agentId);
-        updateAgentVerificationStatus(spotCheck.agentId, false);
-        logger.verification('Verification revoked', spotCheck.agentId, {
-          failures: stats.failed,
-          windowDays: 30,
-          failureRate: Math.round(stats.failureRate * 100),
-        });
+        // Permanent tier (autonomous-3) cannot be revoked via spot checks
+        if (agentStatus.trustTier === 'autonomous-3') {
+          logger.warn('Spot check revocation blocked — agent has permanent tier', {
+            agentId: spotCheck.agentId,
+            failures: stats.failed,
+            failureRate: Math.round(stats.failureRate * 100),
+          });
+        } else {
+          verifiedAgents.delete(spotCheck.agentId);
+          await VerificationPersistence.deleteVerifiedAgent(spotCheck.agentId);
+          updateAgentVerificationStatus(spotCheck.agentId, false);
+          logger.verification('Verification revoked', spotCheck.agentId, {
+            failures: stats.failed,
+            windowDays: 30,
+            failureRate: Math.round(stats.failureRate * 100),
+          });
+        }
       }
     } else {
       // Track skipped checks too
@@ -118,6 +127,9 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       error,
       response: responseContent,
     });
+
+    // Clean up completed spot check from pending map
+    pendingSpotChecks.delete(spotCheckId);
   };
 
   try {
@@ -136,7 +148,6 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
     if (!spotCheckHmacKey) {
       logger.error('Webhook signing key missing: set HMAC_KEY or CRON_SECRET');
       await recordAndCheckRevocation(false, true, null, 'Webhook signing key not configured');
-      pendingSpotChecks.delete(spotCheckId);
       return { passed: false, skipped: true, error: 'Webhook signing key not configured' };
     }
     const spotCheckSignature = crypto
@@ -187,6 +198,14 @@ export async function runSpotCheck(spotCheckId: string): Promise<{
       await recordAndCheckRevocation(false, false, responseTime, 'Invalid response');
       await updateConsecutiveDays(spotCheck.agentId, false);
       return { passed: false, skipped: false, responseTime, error: 'Invalid response' };
+    }
+
+    // Validate response quality (not just random characters)
+    const qualityCheck = validateResponseQuality(responseContent, spotCheck.challenge);
+    if (!qualityCheck.valid) {
+      await recordAndCheckRevocation(false, false, responseTime, qualityCheck.reason);
+      await updateConsecutiveDays(spotCheck.agentId, false);
+      return { passed: false, skipped: false, responseTime, error: qualityCheck.reason };
     }
 
     // Success!

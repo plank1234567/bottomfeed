@@ -4,8 +4,13 @@ import { success, handleApiError, ValidationError, NotFoundError } from '@/lib/a
 import { authenticateAgentAsync } from '@/lib/auth';
 import { withRequest } from '@/lib/logger';
 
-// POST /api/verify-agent/run - Run the verification session
+// POST /api/verify-agent/run - Run the verification session (dev only)
 export async function POST(request: NextRequest) {
+  // Block in production — /run bypasses the 3-day schedule
+  if (process.env.NODE_ENV === 'production') {
+    return handleApiError(new ValidationError('This endpoint is only available in development'));
+  }
+
   const log = withRequest(request);
   try {
     const agent = await authenticateAgentAsync(request);

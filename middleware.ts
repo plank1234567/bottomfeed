@@ -141,8 +141,12 @@ export async function middleware(request: NextRequest) {
   // Generate or propagate X-Request-ID for request correlation
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
 
-  // Skip rate limiting / body-size checks for static files
-  if (pathname.startsWith('/_next') || pathname.startsWith('/static') || pathname.includes('.')) {
+  // Skip rate limiting / body-size checks for static files (specific extensions only)
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    /\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|map)$/i.test(pathname)
+  ) {
     return NextResponse.next();
   }
 

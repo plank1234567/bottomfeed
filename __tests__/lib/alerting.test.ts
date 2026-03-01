@@ -50,7 +50,7 @@ describe('sendAlert', () => {
 
     const [, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(opts.headers['X-Webhook-Signature']).toBeDefined();
-    expect(opts.headers['X-Webhook-Signature']).toMatch(/^[a-f0-9]{64}$/);
+    expect(opts.headers['X-Webhook-Signature']).toMatch(/^sha256=[a-f0-9]{64}$/);
   });
 
   it('does not include HMAC header when HMAC_KEY is not set', () => {

@@ -20,7 +20,6 @@ import {
   MIN_ATTEMPT_RATE,
   MIN_PASSES_PER_DAY,
   PASS_RATE_REQUIRED,
-  MS_PER_HOUR,
 } from './types';
 import {
   verificationSessions,
@@ -109,25 +108,21 @@ export async function finalizeVerification(sessionId: string): Promise<void> {
   }
 
   // REQUIREMENT 2: Must have at least 1 successful response on each day
-  const sessionDuration = Date.now() - session.startedAt;
-  const isTestMode = sessionDuration < MS_PER_HOUR;
-
-  if (!isTestMode) {
-    const daysWithoutPasses: number[] = [];
-    for (let day = 1; day <= VERIFICATION_DAYS; day++) {
-      if ((passesPerDay[day] || 0) < MIN_PASSES_PER_DAY) {
-        daysWithoutPasses.push(day);
-      }
+  // Always enforced — no test mode bypass
+  const daysWithoutPasses: number[] = [];
+  for (let day = 1; day <= VERIFICATION_DAYS; day++) {
+    if ((passesPerDay[day] || 0) < MIN_PASSES_PER_DAY) {
+      daysWithoutPasses.push(day);
     }
-    if (daysWithoutPasses.length > 0) {
-      session.status = 'failed';
-      session.completedAt = Date.now();
-      session.failureReason = `Missing successful responses on day(s): ${daysWithoutPasses.join(', ')}. Need at least ${MIN_PASSES_PER_DAY} pass per day.`;
-      updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
-      await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
-      await persistSession(sessionId);
-      return;
-    }
+  }
+  if (daysWithoutPasses.length > 0) {
+    session.status = 'failed';
+    session.completedAt = Date.now();
+    session.failureReason = `Missing successful responses on day(s): ${daysWithoutPasses.join(', ')}. Need at least ${MIN_PASSES_PER_DAY} pass per day.`;
+    updateAgentVerificationStatus(session.agentId, false, session.webhookUrl);
+    await storeSessionToDb('failed', session.failureReason, 'pending', null, null, []);
+    await persistSession(sessionId);
+    return;
   }
 
   // REQUIREMENT 3: Must pass 80% of attempted challenges
@@ -142,8 +137,8 @@ export async function finalizeVerification(sessionId: string): Promise<void> {
     return;
   }
 
-  // REQUIREMENT 4: Autonomy Analysis
-  if (!isTestMode) {
+  // REQUIREMENT 4: Autonomy Analysis (always enforced)
+  {
     const autonomyAnalysis = analyzeAutonomy(session);
     logger.verification('Autonomy analysis complete', session.agentId, {
       score: autonomyAnalysis.score,
@@ -183,7 +178,7 @@ export async function finalizeVerification(sessionId: string): Promise<void> {
     }
   }
 
-  const initialTier: TrustTier = isTestMode ? 'spawn' : calculateTierFromDays(consecutiveDays);
+  const initialTier: TrustTier = calculateTierFromDays(consecutiveDays);
 
   verifiedAgents.set(session.agentId, {
     verifiedAt: Date.now(),
