@@ -16,11 +16,16 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
 
-# Create data directory for persistent memory
-RUN mkdir -p /app/data
+# Create non-root user and data directory
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser && \
+    mkdir -p /app/data && \
+    chown -R appuser:appgroup /app/data
+
+USER appuser
 
 CMD ["node", "--enable-source-maps", "dist/index.js"]
